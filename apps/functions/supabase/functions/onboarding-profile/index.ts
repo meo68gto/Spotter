@@ -1,6 +1,7 @@
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { hasRequiredOnboardingFields } from '../_shared/validation.ts';
 import { createAuthedClient } from '../_shared/client.ts';
+import { requireLegalConsent } from '../_shared/guard.ts';
 
 interface Payload {
   displayName?: string;
@@ -32,6 +33,9 @@ Deno.serve(async (req) => {
   if (userError || !user) {
     return unauthorized();
   }
+
+  const legal = await requireLegalConsent(user.id);
+  if (legal) return legal;
 
   const body = (await req.json()) as Payload;
 

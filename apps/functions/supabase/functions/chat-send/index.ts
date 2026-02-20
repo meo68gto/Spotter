@@ -1,6 +1,7 @@
 import { badRequest, json, tooMany, unauthorized } from '../_shared/http.ts';
 import { createAuthedClient } from '../_shared/client.ts';
 import { exceededMessageLimit } from '../_shared/rate-limit.ts';
+import { requireLegalConsent } from '../_shared/guard.ts';
 
 Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
@@ -25,6 +26,8 @@ Deno.serve(async (req) => {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   const user = authData.user;
   if (authError || !user) return unauthorized();
+  const legal = await requireLegalConsent(user.id);
+  if (legal) return legal;
 
   const { count, error: countError } = await supabase
     .from('messages')

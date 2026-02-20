@@ -72,6 +72,40 @@ curl -sS "$SUPABASE_URL/rest/v1/users" \
   -H "Prefer: resolution=merge-duplicates" \
   -d "[{\"id\":\"$REQ_USER_ID\",\"display_name\":\"Requester\",\"home_location\":\"SRID=4326;POINT(-110.7624 43.4799)\"},{\"id\":\"$CAND_USER_ID\",\"display_name\":\"Candidate\",\"home_location\":\"SRID=4326;POINT(-110.7600 43.4800)\"}]" >/dev/null
 
+LEGAL_STATUS_BEFORE="$(curl -sS "$FUNCTIONS_URL/legal-status" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $REQ_ACCESS_TOKEN" \
+  -H "Content-Type: application/json")"
+
+if [[ "$(echo "$LEGAL_STATUS_BEFORE" | jq -r '.data.accepted')" != "false" ]]; then
+  echo "Legal status pre-consent check failed"
+  echo "$LEGAL_STATUS_BEFORE"
+  exit 1
+fi
+
+LEGAL_CONSENT="$(curl -sS "$FUNCTIONS_URL/legal-consent" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $REQ_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"accepted\":true,\"locale\":\"en-US\"}")"
+
+if [[ "$(echo "$LEGAL_CONSENT" | jq -r '.data.id // empty')" == "" ]]; then
+  echo "Legal consent function failed"
+  echo "$LEGAL_CONSENT"
+  exit 1
+fi
+
+LEGAL_STATUS_AFTER="$(curl -sS "$FUNCTIONS_URL/legal-status" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $REQ_ACCESS_TOKEN" \
+  -H "Content-Type: application/json")"
+
+if [[ "$(echo "$LEGAL_STATUS_AFTER" | jq -r '.data.accepted')" != "true" ]]; then
+  echo "Legal status post-consent check failed"
+  echo "$LEGAL_STATUS_AFTER"
+  exit 1
+fi
+
 ONBOARDING_RESPONSE="$(curl -sS "$FUNCTIONS_URL/onboarding-profile" \
   -H "apikey: $ANON_KEY" \
   -H "Authorization: Bearer $REQ_ACCESS_TOKEN" \
@@ -166,4 +200,4 @@ if [[ "$(echo "$CONFIRM_RESPONSE" | jq -r '.data.status')" != "confirmed" ]]; th
   exit 1
 fi
 
-echo "Smoke test passed: auth + onboarding + matching + session lifecycle + chat"
+echo "Smoke test passed: auth + legal consent + onboarding + matching + session lifecycle + chat"

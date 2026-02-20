@@ -23,6 +23,10 @@
 - `progress_snapshot_generated`
 - `deletion_request_completed`
 - `deletion_request_failed`
+- `payment_intent_succeeded`
+- `payment_intent_failed`
+- `refund_processed`
+- `legal_consent_accepted`
 
 ## Core properties
 - `distinct_id` (Supabase user id)

@@ -6,7 +6,13 @@ export const env = {
   mapboxToken: process.env.EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN ?? '',
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
   posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
-  posthogHost: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://app.posthog.com'
+  posthogHost: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://app.posthog.com',
+  legalTosUrl: process.env.EXPO_PUBLIC_LEGAL_TOS_URL ?? '',
+  legalPrivacyUrl: process.env.EXPO_PUBLIC_LEGAL_PRIVACY_URL ?? '',
+  legalCookieUrl: process.env.EXPO_PUBLIC_LEGAL_COOKIE_URL ?? '',
+  legalTosVersion: process.env.EXPO_PUBLIC_LEGAL_TOS_VERSION ?? '1.0',
+  legalPrivacyVersion: process.env.EXPO_PUBLIC_LEGAL_PRIVACY_VERSION ?? '1.0',
+  legalCookieVersion: process.env.EXPO_PUBLIC_LEGAL_COOKIE_VERSION ?? '1.0'
 };
 
 export const validateMobileEnv = (): string[] => {
@@ -15,13 +21,25 @@ export const validateMobileEnv = (): string[] => {
       EXPO_PUBLIC_SUPABASE_URL: env.supabaseUrl,
       EXPO_PUBLIC_SUPABASE_ANON_KEY: env.supabaseAnonKey,
       EXPO_PUBLIC_API_BASE_URL: env.apiBaseUrl,
-      EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN: env.mapboxToken
+      EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN: env.mapboxToken,
+      EXPO_PUBLIC_LEGAL_TOS_URL: env.legalTosUrl,
+      EXPO_PUBLIC_LEGAL_PRIVACY_URL: env.legalPrivacyUrl,
+      EXPO_PUBLIC_LEGAL_COOKIE_URL: env.legalCookieUrl,
+      EXPO_PUBLIC_LEGAL_TOS_VERSION: env.legalTosVersion,
+      EXPO_PUBLIC_LEGAL_PRIVACY_VERSION: env.legalPrivacyVersion,
+      EXPO_PUBLIC_LEGAL_COOKIE_VERSION: env.legalCookieVersion
     },
     [
       'EXPO_PUBLIC_SUPABASE_URL',
       'EXPO_PUBLIC_SUPABASE_ANON_KEY',
       'EXPO_PUBLIC_API_BASE_URL',
-      'EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN'
+      'EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN',
+      'EXPO_PUBLIC_LEGAL_TOS_URL',
+      'EXPO_PUBLIC_LEGAL_PRIVACY_URL',
+      'EXPO_PUBLIC_LEGAL_COOKIE_URL',
+      'EXPO_PUBLIC_LEGAL_TOS_VERSION',
+      'EXPO_PUBLIC_LEGAL_PRIVACY_VERSION',
+      'EXPO_PUBLIC_LEGAL_COOKIE_VERSION'
     ]
   );
 };

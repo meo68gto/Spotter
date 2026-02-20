@@ -3,6 +3,7 @@ import { clampMatchLimit } from '../_shared/matching.ts';
 import { createAuthedClient, createServiceClient } from '../_shared/client.ts';
 import { resolveBooleanFlag } from '../_shared/flags-db.ts';
 import { trackServerEvent } from '../_shared/telemetry.ts';
+import { requireLegalConsent } from '../_shared/guard.ts';
 
 interface Payload {
   activityId: string;
@@ -35,6 +36,9 @@ Deno.serve(async (req) => {
   if (userError || !user) {
     return unauthorized();
   }
+
+  const legal = await requireLegalConsent(user.id);
+  if (legal) return legal;
 
   const matchingV2 = await resolveBooleanFlag(service, 'matching_v2', false);
 

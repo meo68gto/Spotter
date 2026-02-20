@@ -11,6 +11,7 @@
     "test": "turbo run test",
     "db:check": "pnpm --filter @spotter/db db:check",
     "env:validate": "node scripts/ci/validate-env.mjs",
+    "release:preflight": "node scripts/ci/release-preflight.mjs",
     "supabase:start": "pnpm --filter @spotter/functions supabase:start",
     "supabase:stop": "pnpm --filter @spotter/functions supabase:stop",
     "supabase:reset": "pnpm --filter @spotter/functions supabase:reset",

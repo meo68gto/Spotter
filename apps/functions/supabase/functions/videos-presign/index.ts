@@ -3,6 +3,7 @@ import { createAuthedClient, createServiceClient } from '../_shared/client.ts';
 import { getRuntimeEnv } from '../_shared/env.ts';
 import { resolveBooleanFlag } from '../_shared/flags-db.ts';
 import { trackServerEvent } from '../_shared/telemetry.ts';
+import { requireLegalConsent } from '../_shared/guard.ts';
 
 Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
@@ -27,6 +28,8 @@ Deno.serve(async (req) => {
   const { data: authData, error: authError } = await authed.auth.getUser();
   const user = authData.user;
   if (authError || !user) return unauthorized();
+  const legal = await requireLegalConsent(user.id);
+  if (legal) return legal;
 
   const safeExt = fileExt.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'mp4';
   const objectPath = `${user.id}/${crypto.randomUUID()}.${safeExt}`;

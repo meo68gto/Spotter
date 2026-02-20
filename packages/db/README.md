@@ -24,6 +24,17 @@ Schema package for Spotter with migrations, seeds, and policy checks.
 - message idempotency/moderation fields
 - upgraded matching score + availability overlap SQL helpers
 
+`migrations/0009_production_gap_closure.sql` adds:
+
+- `coaches`
+- `coach_review_products`
+- `review_orders`
+- `payment_events`
+- `refund_requests`
+- `notification_events`
+- `user_legal_consents`
+- payment/legal indexes + RLS policies
+
 ## ERD (text)
 
 - A `users` row maps 1:1 to `auth.users`
@@ -36,6 +47,13 @@ Schema package for Spotter with migrations, seeds, and policy checks.
 - `messages` belongs to sessions and sender users
 - `availability_slots` belongs to users and optional activity
 - `session_feedback` belongs to sessions and reviewer/reviewee users
+- `coaches` maps 1:1 from coach `users`
+- `coach_review_products` belongs to a `coach`
+- `review_orders` belongs to buyer user, coach, product, and video submission
+- `refund_requests` belongs to review orders
+- `payment_events` stores webhook idempotency
+- `notification_events` stores transactional delivery receipts
+- `user_legal_consents` stores legal acceptance versions
 
 ## Geospatial
 

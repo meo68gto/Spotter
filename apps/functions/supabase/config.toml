@@ -94,3 +94,24 @@ verify_jwt = false
 
 [functions.feature-flags]
 verify_jwt = false
+
+[functions.legal-status]
+verify_jwt = false
+
+[functions.legal-consent]
+verify_jwt = false
+
+[functions.payments-connect-onboard]
+verify_jwt = false
+
+[functions.payments-review-order-create]
+verify_jwt = false
+
+[functions.payments-review-order-confirm]
+verify_jwt = false
+
+[functions.payments-refund-request]
+verify_jwt = false
+
+[functions.payments-webhook]
+verify_jwt = false

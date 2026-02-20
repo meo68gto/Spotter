@@ -1,5 +1,6 @@
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { createAuthedClient, createServiceClient } from '../_shared/client.ts';
+import { requireLegalConsent } from '../_shared/guard.ts';
 
 interface Payload {
   candidateUserId: string;
@@ -22,6 +23,8 @@ Deno.serve(async (req) => {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   const user = authData.user;
   if (authError || !user) return unauthorized();
+  const legal = await requireLegalConsent(user.id);
+  if (legal) return legal;
 
   if (body.candidateUserId === user.id) {
     return badRequest('Cannot request match with yourself', 'self_match_not_allowed');

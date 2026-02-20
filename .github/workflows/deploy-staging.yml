@@ -26,6 +26,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: Release preflight
+        run: pnpm release:preflight
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SENTRY_DSN_FUNCTIONS: ${{ secrets.SENTRY_DSN_FUNCTIONS }}
+          SENTRY_DSN_MOBILE: ${{ secrets.SENTRY_DSN_MOBILE }}
+          ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
+          FLAG_ENVIRONMENT: staging
+
+      - name: Migration validation
+        run: pnpm db:check
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
@@ -63,6 +78,13 @@ jobs:
           supabase functions deploy progress-generate
           supabase functions deploy progress-snapshots
           supabase functions deploy admin-process-deletion
+          supabase functions deploy legal-status
+          supabase functions deploy legal-consent
+          supabase functions deploy payments-connect-onboard
+          supabase functions deploy payments-review-order-create
+          supabase functions deploy payments-review-order-confirm
+          supabase functions deploy payments-refund-request
+          supabase functions deploy payments-webhook
         working-directory: apps/functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
