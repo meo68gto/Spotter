@@ -29,6 +29,20 @@ Set in repository settings:
 - `SUPABASE_PROJECT_ID`
 - `SUPABASE_ACCESS_TOKEN`
 - `ADMIN_DELETION_TOKEN`
+- `SUPABASE_URL`
+- `SUPABASE_FUNCTIONS_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_CONNECT_REFRESH_URL`
+- `STRIPE_CONNECT_RETURN_URL`
+- `DAILY_API_KEY`
+- `DAILY_WEBHOOK_SECRET`
+- `POSTHOG_PROJECT_API_KEY`
+- `POSTHOG_HOST`
+- `SENTRY_DSN_MOBILE`
+- `SENTRY_DSN_FUNCTIONS`
 
 ## 6) Deploy
 - Merge to `main` to trigger staging workflow.
@@ -47,3 +61,4 @@ Set in repository settings:
 - Run one-command cutover verifier to capture artifacts:
   - `pnpm ops:verify`
   - Artifacts are written to `.artifacts/ops-cutover/<timestamp>/`
+  - GitHub Actions alternative: run `Ops Verify` workflow and download artifact `ops-cutover-<run_id>`

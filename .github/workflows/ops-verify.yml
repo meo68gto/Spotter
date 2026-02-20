@@ -1,0 +1,63 @@
+name: Ops Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Run ops verification
+        run: pnpm ops:verify
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_CONNECT_REFRESH_URL: ${{ secrets.STRIPE_CONNECT_REFRESH_URL }}
+          STRIPE_CONNECT_RETURN_URL: ${{ secrets.STRIPE_CONNECT_RETURN_URL }}
+          DAILY_API_KEY: ${{ secrets.DAILY_API_KEY }}
+          DAILY_WEBHOOK_SECRET: ${{ secrets.DAILY_WEBHOOK_SECRET }}
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
+          SENTRY_DSN_FUNCTIONS: ${{ secrets.SENTRY_DSN_FUNCTIONS }}
+          SENTRY_DSN_MOBILE: ${{ secrets.SENTRY_DSN_MOBILE }}
+          FLAG_ENVIRONMENT: ${{ github.event.inputs.environment }}
+
+      - name: Upload ops artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-cutover-${{ github.run_id }}
+          path: .artifacts/ops-cutover/**
+          if-no-files-found: warn

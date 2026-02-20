@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Trigger engagement expiry
         run: |
-          curl -sS -X POST "$SUPABASE_FUNCTIONS_URL/jobs-engagement-expire-pending" \
+          curl -fssS --max-time 30 -X POST "$SUPABASE_FUNCTIONS_URL/jobs-engagement-expire-pending" \
             -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
             -H "content-type: application/json"
         env:
@@ -21,7 +21,7 @@ jobs:
 
       - name: Trigger payment auth release
         run: |
-          curl -sS -X POST "$SUPABASE_FUNCTIONS_URL/jobs-payment-auth-release-expired" \
+          curl -fssS --max-time 30 -X POST "$SUPABASE_FUNCTIONS_URL/jobs-payment-auth-release-expired" \
             -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
             -H "content-type: application/json"
         env:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Trigger call billing finalize
         run: |
-          curl -sS -X POST "$SUPABASE_FUNCTIONS_URL/jobs-call-billing-finalize" \
+          curl -fssS --max-time 30 -X POST "$SUPABASE_FUNCTIONS_URL/jobs-call-billing-finalize" \
             -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
             -H "content-type: application/json"
         env:
@@ -39,7 +39,7 @@ jobs:
 
       - name: Trigger call duration reconcile
         run: |
-          curl -sS -X POST "$SUPABASE_FUNCTIONS_URL/jobs-call-duration-reconcile" \
+          curl -fssS --max-time 30 -X POST "$SUPABASE_FUNCTIONS_URL/jobs-call-duration-reconcile" \
             -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
             -H "content-type: application/json"
         env:

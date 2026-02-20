@@ -31,7 +31,11 @@ jobs:
         env:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_CONNECT_REFRESH_URL: ${{ secrets.STRIPE_CONNECT_REFRESH_URL }}
+          STRIPE_CONNECT_RETURN_URL: ${{ secrets.STRIPE_CONNECT_RETURN_URL }}
           DAILY_API_KEY: ${{ secrets.DAILY_API_KEY }}
+          DAILY_WEBHOOK_SECRET: ${{ secrets.DAILY_WEBHOOK_SECRET }}
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
           POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           SENTRY_DSN_FUNCTIONS: ${{ secrets.SENTRY_DSN_FUNCTIONS }}

@@ -46,3 +46,21 @@
 - Platform owner: backend lead (`Supabase`, `Stripe`, `Sentry`, `PostHog` secrets)
 - Mobile owner: mobile lead (`EXPO_PUBLIC_*` runtime config)
 - Compliance owner: legal/ops (`LEGAL_*` versions and URLs)
+
+## GitHub Actions secrets for `ops-verify`
+
+- `SUPABASE_URL`
+- `SUPABASE_FUNCTIONS_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_CONNECT_REFRESH_URL`
+- `STRIPE_CONNECT_RETURN_URL`
+- `DAILY_API_KEY`
+- `DAILY_WEBHOOK_SECRET`
+- `POSTHOG_PROJECT_API_KEY`
+- `POSTHOG_HOST`
+- `ADMIN_DELETION_TOKEN`
+- `SENTRY_DSN_MOBILE`
+- `SENTRY_DSN_FUNCTIONS`
