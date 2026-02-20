@@ -36,7 +36,13 @@ Deno.serve(async (req) => {
       {
         video_submission_id: videoSubmissionId,
         status: 'pending',
-        last_error: null
+        attempts: 0,
+        started_at: null,
+        completed_at: null,
+        next_run_at: new Date().toISOString(),
+        last_error: null,
+        last_error_code: null,
+        last_error_at: null
       },
       { onConflict: 'video_submission_id' }
     )

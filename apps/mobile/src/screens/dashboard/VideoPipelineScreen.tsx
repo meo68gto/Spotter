@@ -20,6 +20,18 @@ type VideoSubmissionRow = {
   storage_path: string;
 };
 
+type VideoJobRow = {
+  id: string;
+  video_submission_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  attempts: number;
+  max_attempts: number;
+  last_error: string | null;
+  last_error_code: string | null;
+  next_run_at: string | null;
+  updated_at: string;
+};
+
 const MAX_UPLOAD_ATTEMPTS = 3;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -41,6 +53,7 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
   const [lastError, setLastError] = useState('');
   const [lastSubmissionId, setLastSubmissionId] = useState('');
   const [submissions, setSubmissions] = useState<VideoSubmissionRow[]>([]);
+  const [jobsBySubmissionId, setJobsBySubmissionId] = useState<Record<string, VideoJobRow>>({});
 
   const canRetry = useMemo(() => stage === 'failed' && Boolean(videoUri) && Boolean(activityId), [stage, videoUri, activityId]);
 
@@ -67,7 +80,27 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
       .limit(10);
 
     if (!error) {
-      setSubmissions((data ?? []) as VideoSubmissionRow[]);
+      const submissionRows = (data ?? []) as VideoSubmissionRow[];
+      setSubmissions(submissionRows);
+
+      if (submissionRows.length === 0) {
+        setJobsBySubmissionId({});
+        return;
+      }
+
+      const ids = submissionRows.map((row) => row.id);
+      const { data: jobs, error: jobsError } = await supabase
+        .from('video_processing_jobs')
+        .select('id, video_submission_id, status, attempts, max_attempts, last_error, last_error_code, next_run_at, updated_at')
+        .in('video_submission_id', ids);
+
+      if (!jobsError) {
+        const mapped: Record<string, VideoJobRow> = {};
+        for (const job of (jobs ?? []) as VideoJobRow[]) {
+          mapped[job.video_submission_id] = job;
+        }
+        setJobsBySubmissionId(mapped);
+      }
     }
   };
 
@@ -156,6 +189,21 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
       setStatus('Compressing on device...');
       setProgressPct(5);
       const compressed = await compressVideoOnDevice(videoUri);
+      await trackEvent('video_compression_attempted', session.user.id, {
+        strategy: compressed.strategy,
+        compressed: compressed.compressed,
+        input_size_bytes: compressed.inputSizeBytes ?? null,
+        output_size_bytes: compressed.outputSizeBytes ?? null,
+        target_max_bytes: compressed.targetMaxBytes,
+        estimated_bitrate_kbps: compressed.estimatedBitrateKbps
+      });
+      if (!compressed.compressed && compressed.strategy === 'passthrough' && compressed.note) {
+        await trackEvent('video_compression_fallback', session.user.id, {
+          note: compressed.note,
+          input_size_bytes: compressed.inputSizeBytes ?? null,
+          target_max_bytes: compressed.targetMaxBytes
+        });
+      }
 
       const ext = compressed.outputUri.split('.').pop()?.toLowerCase() ?? 'mp4';
 
@@ -235,7 +283,9 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
 
       await trackEvent('video_uploaded_and_queued', session.user.id, {
         video_submission_id: videoSubmissionId,
-        compression_strategy: compressed.strategy
+        compression_strategy: compressed.strategy,
+        input_size_bytes: compressed.inputSizeBytes ?? null,
+        output_size_bytes: compressed.outputSizeBytes ?? null
       });
 
       setStage('done');
@@ -244,6 +294,10 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
       await refreshSubmissions();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Upload failed';
+      await trackEvent('video_upload_failed', session.user.id, {
+        stage,
+        error_message: message
+      });
       setStage('failed');
       setStatus('Upload failed');
       setLastError(message);
@@ -313,6 +367,24 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
                 <Text style={styles.submissionId}>{item.id.slice(0, 8)}</Text>
                 <Text style={styles.submissionStatus}>{item.status}</Text>
                 <Text style={styles.submissionTime}>{new Date(item.created_at).toLocaleString()}</Text>
+                {jobsBySubmissionId[item.id] ? (
+                  <>
+                    <Text style={styles.queueMeta}>
+                      Queue: {jobsBySubmissionId[item.id].status} • attempts {jobsBySubmissionId[item.id].attempts}/
+                      {jobsBySubmissionId[item.id].max_attempts}
+                    </Text>
+                    {jobsBySubmissionId[item.id].next_run_at ? (
+                      <Text style={styles.queueMeta}>
+                        Next run: {new Date(jobsBySubmissionId[item.id].next_run_at as string).toLocaleString()}
+                      </Text>
+                    ) : null}
+                    {jobsBySubmissionId[item.id].last_error ? (
+                      <Text style={styles.queueError}>
+                        {jobsBySubmissionId[item.id].last_error_code ?? 'processing_error'}: {jobsBySubmissionId[item.id].last_error}
+                      </Text>
+                    ) : null}
+                  </>
+                ) : null}
               </View>
               {(item.status === 'failed' || item.status === 'uploaded') ? (
                 <TouchableOpacity style={styles.secondary} onPress={() => retryQueueForSubmission(item.id)}>
@@ -422,5 +494,15 @@ const styles = StyleSheet.create({
     color: '#627d98',
     fontSize: 12,
     marginTop: 2
+  },
+  queueMeta: {
+    color: '#486581',
+    marginTop: 2,
+    fontSize: 12
+  },
+  queueError: {
+    color: '#9f3a38',
+    marginTop: 2,
+    fontSize: 12
   }
 });
