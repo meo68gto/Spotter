@@ -1,0 +1,16 @@
+{
+  "name": "@spotter/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'No build needed for SQL package'",
+    "typecheck": "echo 'No typecheck needed for SQL package'",
+    "lint": "echo 'SQL lint placeholder'",
+    "test": "node scripts/rls-smoke-check.mjs",
+    "db:check": "node scripts/migration-check.mjs"
+  },
+  "devDependencies": {
+    "glob": "^11.0.1"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "spotter",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:check": "pnpm --filter @spotter/db db:check",
+    "env:validate": "node scripts/ci/validate-env.mjs",
+    "supabase:start": "pnpm --filter @spotter/functions supabase:start",
+    "supabase:stop": "pnpm --filter @spotter/functions supabase:stop",
+    "supabase:reset": "pnpm --filter @spotter/functions supabase:reset",
+    "functions:serve": "pnpm --filter @spotter/functions dev",
+    "local:up": "bash ./scripts/local/up.sh",
+    "local:down": "bash ./scripts/local/down.sh",
+    "smoke:local": "bash ./scripts/smoke/local-api-smoke.sh"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.2",
+    "typescript": "^5.7.3",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ES2022"
+  },
+  "include": ["supabase/functions/**/*.ts"]
+}

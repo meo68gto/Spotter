@@ -1,0 +1,93 @@
+project_id = "spotter-local"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["spotter://auth/callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[functions.health]
+verify_jwt = false
+
+[functions.videos-process-next]
+verify_jwt = false
+
+[functions.admin-process-deletion]
+verify_jwt = false
+
+[functions.chat-send]
+verify_jwt = false
+
+[functions.matching-accept]
+verify_jwt = false
+
+[functions.matching-candidates]
+verify_jwt = false
+
+[functions.matching-reject]
+verify_jwt = false
+
+[functions.matching-request]
+verify_jwt = false
+
+[functions.onboarding-profile]
+verify_jwt = false
+
+[functions.progress-generate]
+verify_jwt = false
+
+[functions.progress-snapshots]
+verify_jwt = false
+
+[functions.sessions-cancel]
+verify_jwt = false
+
+[functions.sessions-confirm]
+verify_jwt = false
+
+[functions.sessions-feedback]
+verify_jwt = false
+
+[functions.sessions-propose]
+verify_jwt = false
+
+[functions.videos-analysis]
+verify_jwt = false
+
+[functions.videos-enqueue-processing]
+verify_jwt = false
+
+[functions.videos-presign]
+verify_jwt = false
+
+[functions.profiles-feedback-summary]
+verify_jwt = false

@@ -1,0 +1,24 @@
+{
+  "name": "@spotter/functions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Supabase Edge Functions are built by the Supabase runtime'",
+    "dev": "supabase functions serve --env-file ../../.env.local",
+    "typecheck": "echo 'Typecheck handled by Supabase/Deno runtime checks'",
+    "lint": "echo 'Lint placeholder for edge functions'",
+    "test": "vitest run",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

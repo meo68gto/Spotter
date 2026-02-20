@@ -1,0 +1,42 @@
+{
+  "name": "@spotter/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo/AppEntry",
+  "scripts": {
+    "dev": "EXPO_NO_DOCTOR=1 expo start",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "web": "expo start --web",
+    "build": "expo export",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@spotter/env": "workspace:*",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@rnmapbox/maps": "^10.1.36",
+    "@supabase/supabase-js": "^2.49.1",
+    "expo": "~52.0.17",
+    "expo-auth-session": "~6.0.3",
+    "expo-file-system": "~18.0.4",
+    "expo-image-picker": "~16.0.4",
+    "expo-linking": "~7.0.3",
+    "expo-location": "~18.0.4",
+    "expo-secure-store": "~14.0.1",
+    "expo-status-bar": "~2.0.1",
+    "expo-web-browser": "~14.0.2",
+    "react": "18.3.1",
+    "react-native": "0.76.9",
+    "react-native-url-polyfill": "^2.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/react": "~18.3.12",
+    "@types/react-native": "^0.73.0",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.9"
+  }
+}

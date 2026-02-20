@@ -1,0 +1,70 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase project
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+        working-directory: apps/functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Push DB migrations
+        run: supabase db push --include-all
+        working-directory: apps/functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy Edge Functions
+        run: |
+          supabase functions deploy health
+          supabase functions deploy onboarding-profile
+          supabase functions deploy matching-candidates
+          supabase functions deploy matching-request
+          supabase functions deploy matching-accept
+          supabase functions deploy matching-reject
+          supabase functions deploy sessions-propose
+          supabase functions deploy sessions-confirm
+          supabase functions deploy sessions-cancel
+          supabase functions deploy sessions-feedback
+          supabase functions deploy chat-send
+          supabase functions deploy videos-presign
+          supabase functions deploy videos-analysis
+          supabase functions deploy videos-enqueue-processing
+          supabase functions deploy videos-process-next
+          supabase functions deploy progress-generate
+          supabase functions deploy progress-snapshots
+          supabase functions deploy admin-process-deletion
+        working-directory: apps/functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

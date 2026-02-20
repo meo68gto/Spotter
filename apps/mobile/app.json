@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Spotter",
+    "slug": "spotter",
+    "version": "0.1.0",
+    "scheme": "spotter",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.spotter.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Spotter uses your location to find nearby activity matches."
+      }
+    },
+    "android": {
+      "package": "com.spotter.app",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "plugins": [
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsVersion": "10.1.36"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_ME"
+      }
+    }
+  }
+}
