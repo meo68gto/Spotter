@@ -10,12 +10,18 @@ type Snapshot = {
   id: string;
   trend_summary: string;
   snapshot_date: string;
-  metrics: Array<{ key: string; label?: string; value: number }>;
+  metrics: Array<{ key: string; label?: string; value: number; delta?: number; baseline_value?: number }>;
 };
 
 export function ProgressScreen({ session }: { session: Session }) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [activityId, setActivityId] = useState<string>('');
+  const [summary, setSummary] = useState<{
+    count: number;
+    latestSnapshotDate: string | null;
+    latestTrendSummary: string | null;
+    latestMetrics: Array<{ key: string; label: string; value: number; delta: number }>;
+  } | null>(null);
 
   const loadSnapshots = async (nextActivityId?: string) => {
     const target = nextActivityId ?? activityId;
@@ -24,7 +30,7 @@ export function ProgressScreen({ session }: { session: Session }) {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     if (!token) return;
 
-    const res = await fetch(`${env.apiBaseUrl}/functions/v1/progress-snapshots?activityId=${target}`, {
+    const res = await fetch(`${env.apiBaseUrl}/functions/v1/progress-snapshots?activityId=${target}&limit=30`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const payload = await res.json();
@@ -33,6 +39,7 @@ export function ProgressScreen({ session }: { session: Session }) {
       return;
     }
     setSnapshots(payload.data ?? []);
+    setSummary(payload.summary ?? null);
   };
 
   const generateSnapshot = async () => {
@@ -80,12 +87,34 @@ export function ProgressScreen({ session }: { session: Session }) {
       <Text style={styles.subtitle}>AI + coach trendline across submissions.</Text>
       <Button title="Generate Snapshot" onPress={generateSnapshot} disabled={!activityId} />
 
+      {summary?.latestTrendSummary ? (
+        <Card>
+          <Text style={styles.metric}>Latest Trend</Text>
+          <Text style={styles.values}>{summary.latestTrendSummary}</Text>
+          <Text style={styles.subtle}>
+            Snapshot {summary.latestSnapshotDate ?? 'n/a'} • total {summary.count}
+          </Text>
+          {summary.latestMetrics.map((metric) => (
+            <Text key={metric.key} style={styles.metricLine}>
+              {metric.label}: {metric.value}
+              {metric.delta >= 0 ? ` (+${metric.delta})` : ` (${metric.delta})`}
+            </Text>
+          ))}
+        </Card>
+      ) : null}
+
       {snapshots.length === 0 ? <Text style={styles.empty}>No snapshots yet.</Text> : null}
 
       {snapshots.map((snapshot) => (
         <Card key={snapshot.id}>
           <Text style={styles.metric}>{snapshot.snapshot_date}</Text>
           <Text style={styles.values}>{snapshot.trend_summary}</Text>
+          {snapshot.metrics.slice(0, 3).map((metric) => (
+            <Text key={`${snapshot.id}-${metric.key}`} style={styles.metricLine}>
+              {metric.label ?? metric.key}: {metric.value}
+              {typeof metric.delta === 'number' ? (metric.delta >= 0 ? ` (+${metric.delta})` : ` (${metric.delta})`) : ''}
+            </Text>
+          ))}
         </Card>
       ))}
     </View>
@@ -119,5 +148,14 @@ const styles = StyleSheet.create({
   values: {
     marginTop: 6,
     color: '#334e68'
+  },
+  subtle: {
+    marginTop: 6,
+    color: '#627d98',
+    fontSize: 12
+  },
+  metricLine: {
+    marginTop: 4,
+    color: '#1f5f8b'
   }
 });
