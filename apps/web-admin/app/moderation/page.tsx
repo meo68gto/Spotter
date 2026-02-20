@@ -1,3 +1,5 @@
+import { revalidatePath } from 'next/cache';
+import Link from 'next/link';
 import { invokeAdminFunction, restFetch } from '../lib';
 
 type ModerationRow = {
@@ -9,27 +11,103 @@ type ModerationRow = {
   created_at: string;
 };
 
+const PAGE_SIZE = 25;
+
 async function approve(formData: FormData) {
   'use server';
   const engagementRequestId = String(formData.get('engagementRequestId') ?? '');
   await invokeAdminFunction('engagements-moderate', { engagementRequestId, moderationStatus: 'approved' });
+  revalidatePath('/moderation');
 }
 
 async function reject(formData: FormData) {
   'use server';
   const engagementRequestId = String(formData.get('engagementRequestId') ?? '');
   await invokeAdminFunction('engagements-moderate', { engagementRequestId, moderationStatus: 'rejected' });
+  revalidatePath('/moderation');
 }
 
-export default async function ModerationPage() {
-  const rows = await restFetch<ModerationRow[]>(
-    "engagement_requests?select=id,question_text,engagement_mode,moderation_status,public_opt_in,created_at&public_opt_in=eq.true&moderation_status=eq.pending&order=created_at.desc&limit=100"
-  );
+async function bulkModerate(formData: FormData) {
+  'use server';
+  const decision = String(formData.get('decision') ?? '');
+  const ids = String(formData.get('ids') ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+  const confirmText = String(formData.get('confirmText') ?? '').trim();
+
+  if (!ids.length) return;
+  if (confirmText !== 'CONFIRM') return;
+
+  const moderationStatus = decision === 'approve' ? 'approved' : 'rejected';
+  for (const id of ids) {
+    await invokeAdminFunction('engagements-moderate', { engagementRequestId: id, moderationStatus });
+  }
+  revalidatePath('/moderation');
+}
+
+export default async function ModerationPage({
+  searchParams
+}: {
+  searchParams?: { page?: string; q?: string; mode?: string };
+}) {
+  const page = Math.max(Number(searchParams?.page ?? '1'), 1);
+  const q = (searchParams?.q ?? '').trim();
+  const mode = (searchParams?.mode ?? '').trim();
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const params = new URLSearchParams({
+    select: 'id,question_text,engagement_mode,moderation_status,public_opt_in,created_at',
+    public_opt_in: 'eq.true',
+    moderation_status: 'eq.pending',
+    order: 'created_at.desc',
+    limit: String(PAGE_SIZE),
+    offset: String(offset)
+  });
+  if (q) params.set('question_text', `ilike.*${q.replaceAll('*', '')}*`);
+  if (mode) params.set('engagement_mode', `eq.${mode}`);
+
+  const rows = await restFetch<ModerationRow[]>(`engagement_requests?${params.toString()}`);
+  const idsCsv = rows.map((r) => r.id).join(',');
+
+  const buildHref = (nextPage: number) => {
+    const p = new URLSearchParams();
+    p.set('page', String(nextPage));
+    if (q) p.set('q', q);
+    if (mode) p.set('mode', mode);
+    return `/moderation?${p.toString()}`;
+  };
 
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif' }}>
+    <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 1080 }}>
       <h1>Public Answer Moderation Queue</h1>
       <p>Pending public Coacher posts: {rows.length}</p>
+
+      <form method="get" style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <input name="q" defaultValue={q} placeholder="Search question text" />
+        <select name="mode" defaultValue={mode}>
+          <option value="">All modes</option>
+          <option value="text_answer">Text Answer</option>
+          <option value="video_answer">Video Answer</option>
+          <option value="video_call">Video Call</option>
+        </select>
+        <button type="submit">Apply Filters</button>
+      </form>
+
+      {rows.length > 0 ? (
+        <section style={{ border: '1px solid #d9e2ec', borderRadius: 10, padding: 12, marginBottom: 14 }}>
+          <h3 style={{ marginTop: 0 }}>Bulk Actions (Current Page)</h3>
+          <form action={bulkModerate} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input type="hidden" name="ids" value={idsCsv} />
+            <select name="decision" defaultValue="approve">
+              <option value="approve">Approve All</option>
+              <option value="reject">Reject All</option>
+            </select>
+            <input name="confirmText" placeholder="Type CONFIRM" />
+            <button type="submit">Run Bulk Action</button>
+          </form>
+        </section>
+      ) : null}
 
       {rows.length === 0 ? <p>No pending moderation items.</p> : null}
 
@@ -51,6 +129,12 @@ export default async function ModerationPage() {
           </div>
         </section>
       ))}
+
+      <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+        {page > 1 ? <Link href={buildHref(page - 1)}>Previous</Link> : <span style={{ color: '#829ab1' }}>Previous</span>}
+        <span>Page {page}</span>
+        {rows.length === PAGE_SIZE ? <Link href={buildHref(page + 1)}>Next</Link> : <span style={{ color: '#829ab1' }}>Next</span>}
+      </div>
     </main>
   );
 }

@@ -36,3 +36,12 @@ jobs:
         env:
           SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
           ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
+
+      - name: Trigger call duration reconcile
+        run: |
+          curl -sS -X POST "$SUPABASE_FUNCTIONS_URL/jobs-call-duration-reconcile" \
+            -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
+            -H "content-type: application/json"
+        env:
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}

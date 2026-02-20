@@ -108,6 +108,8 @@ jobs:
           supabase functions deploy jobs-engagement-expire-pending
           supabase functions deploy jobs-payment-auth-release-expired
           supabase functions deploy jobs-call-billing-finalize
+          supabase functions deploy calls-daily-webhook
+          supabase functions deploy jobs-call-duration-reconcile
         working-directory: apps/functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

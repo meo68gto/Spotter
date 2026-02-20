@@ -20,6 +20,7 @@ export const getRuntimeEnv = () => ({
   stripeConnectReturnUrl: Deno.env.get('STRIPE_CONNECT_RETURN_URL') ?? '',
   stripePlatformFeeBps: Number(Deno.env.get('STRIPE_PLATFORM_FEE_BPS') ?? '2500'),
   dailyApiKey: Deno.env.get('DAILY_API_KEY') ?? '',
+  dailyWebhookSecret: Deno.env.get('DAILY_WEBHOOK_SECRET') ?? '',
   resendApiKey: Deno.env.get('RESEND_API_KEY') ?? '',
   resendFromEmail: Deno.env.get('RESEND_FROM_EMAIL') ?? '',
   legalTosVersion: Deno.env.get('LEGAL_TOS_VERSION') ?? '1.0',

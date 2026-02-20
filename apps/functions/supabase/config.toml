@@ -175,3 +175,9 @@ verify_jwt = false
 
 [functions.jobs-call-billing-finalize]
 verify_jwt = false
+
+[functions.calls-daily-webhook]
+verify_jwt = false
+
+[functions.jobs-call-duration-reconcile]
+verify_jwt = false
