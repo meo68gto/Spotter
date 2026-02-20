@@ -53,6 +53,8 @@ Supabase Edge Functions for Spotter.
    - `SUPABASE_SERVICE_ROLE_KEY`
 2. Run integration smoke checks:
    - `pnpm smoke:staging`
+3. Run one-command ops verifier (preflight + smoke + evidence artifacts):
+   - `pnpm ops:verify`
 
 ## Staging setup checklist
 

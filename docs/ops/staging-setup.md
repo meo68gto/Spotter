@@ -44,3 +44,6 @@ Set in repository settings:
   - Required env vars: `SUPABASE_URL`, `SUPABASE_FUNCTIONS_URL` (or `FUNCTIONS_URL`), `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
   - Optional for full feed moderation path: `ADMIN_DELETION_TOKEN`
   - Optional for Daily webhook reconcile path: `DAILY_WEBHOOK_SECRET`
+- Run one-command cutover verifier to capture artifacts:
+  - `pnpm ops:verify`
+  - Artifacts are written to `.artifacts/ops-cutover/<timestamp>/`

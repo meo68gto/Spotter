@@ -12,7 +12,10 @@
 1. Create fresh staging DB snapshot reference.
 2. Restore the latest production-like backup into staging.
 3. Run smoke scripts: auth, matching candidates, session propose, legal status.
+   - Preferred: `pnpm ops:verify`
+   - Alternative: `pnpm release:preflight && pnpm smoke:staging`
 4. Record restore start/end times and any failed checks.
+5. Save evidence artifact path from `.artifacts/ops-cutover/<timestamp>/`.
 
 ## Rollback strategy
 
