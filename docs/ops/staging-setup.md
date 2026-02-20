@@ -39,3 +39,8 @@ Set in repository settings:
 - Confirm onboarding write to `users` and `skill_profiles`.
 - Confirm map screen renders with location permissions.
 - Confirm `matching-request`, `sessions-confirm`, and `chat-send` function flows.
+- Run staging integration smoke script from repo root:
+  - `pnpm smoke:staging`
+  - Required env vars: `SUPABASE_URL`, `SUPABASE_FUNCTIONS_URL` (or `FUNCTIONS_URL`), `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+  - Optional for full feed moderation path: `ADMIN_DELETION_TOKEN`
+  - Optional for Daily webhook reconcile path: `DAILY_WEBHOOK_SECRET`

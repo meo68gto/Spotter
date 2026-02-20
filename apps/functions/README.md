@@ -44,6 +44,16 @@ Supabase Edge Functions for Spotter.
 4. Run smoke checks:
    - `pnpm smoke:local`
 
+## Staging verification
+
+1. Export staging credentials:
+   - `SUPABASE_URL`
+   - `SUPABASE_FUNCTIONS_URL` (or `FUNCTIONS_URL`)
+   - `SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+2. Run integration smoke checks:
+   - `pnpm smoke:staging`
+
 ## Staging setup checklist
 
 1. Create Supabase project and set secrets:

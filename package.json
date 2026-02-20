@@ -18,7 +18,8 @@
     "functions:serve": "pnpm --filter @spotter/functions dev",
     "local:up": "bash ./scripts/local/up.sh",
     "local:down": "bash ./scripts/local/down.sh",
-    "smoke:local": "bash ./scripts/smoke/local-api-smoke.sh"
+    "smoke:local": "bash ./scripts/smoke/local-api-smoke.sh",
+    "smoke:staging": "bash ./scripts/smoke/staging-integration-smoke.sh"
   },
   "devDependencies": {
     "turbo": "^2.4.2",
