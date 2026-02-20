@@ -91,3 +91,6 @@ verify_jwt = false
 
 [functions.profiles-feedback-summary]
 verify_jwt = false
+
+[functions.feature-flags]
+verify_jwt = false

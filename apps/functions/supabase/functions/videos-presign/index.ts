@@ -1,13 +1,10 @@
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { createAuthedClient, createServiceClient } from '../_shared/client.ts';
 import { getRuntimeEnv } from '../_shared/env.ts';
-import { flags } from '../_shared/flags.ts';
+import { resolveBooleanFlag } from '../_shared/flags-db.ts';
+import { trackServerEvent } from '../_shared/telemetry.ts';
 
 Deno.serve(async (req) => {
-  if (!flags.videoPipeline) {
-    return json(503, { error: 'Video pipeline is disabled', code: 'feature_disabled' });
-  }
-
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return unauthorized('Missing Authorization header', 'missing_auth_header');
 
@@ -22,6 +19,10 @@ Deno.serve(async (req) => {
   const authed = createAuthedClient(authHeader);
   const service = createServiceClient();
   const env = getRuntimeEnv();
+  const videoPipeline = await resolveBooleanFlag(service, 'video_pipeline', true);
+  if (!videoPipeline) {
+    return json(503, { error: 'Video pipeline is disabled', code: 'feature_disabled' });
+  }
 
   const { data: authData, error: authError } = await authed.auth.getUser();
   const user = authData.user;
@@ -50,6 +51,12 @@ Deno.serve(async (req) => {
     .single();
 
   if (error) return json(500, { error: error.message, code: 'video_submission_create_failed' });
+
+  await trackServerEvent('video_presign_created', user.id, {
+    activity_id: activityId,
+    video_submission_id: data.id,
+    storage_path: data.storage_path
+  });
 
   return json(200, {
     data: {

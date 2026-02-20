@@ -1,6 +1,8 @@
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { clampMatchLimit } from '../_shared/matching.ts';
-import { createAuthedClient } from '../_shared/client.ts';
+import { createAuthedClient, createServiceClient } from '../_shared/client.ts';
+import { resolveBooleanFlag } from '../_shared/flags-db.ts';
+import { trackServerEvent } from '../_shared/telemetry.ts';
 
 interface Payload {
   activityId: string;
@@ -23,6 +25,7 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createAuthedClient(authHeader);
+  const service = createServiceClient();
 
   const {
     data: { user },
@@ -32,6 +35,8 @@ Deno.serve(async (req) => {
   if (userError || !user) {
     return unauthorized();
   }
+
+  const matchingV2 = await resolveBooleanFlag(service, 'matching_v2', false);
 
   const { data: me, error: meError } = await supabase
     .from('users')
@@ -48,12 +53,20 @@ Deno.serve(async (req) => {
     p_activity_id: body.activityId,
     p_skill_band: body.skillBand,
     p_radius_meters: Math.round(body.radiusKm * 1000),
-    p_limit: clampMatchLimit(body.limit)
+    p_limit: clampMatchLimit(matchingV2 ? body.limit : Math.min(body.limit ?? 3, 3))
   });
 
   if (error) {
     return json(500, { error: error.message, code: 'matching_candidates_failed' });
   }
 
-  return json(200, { data });
+  await trackServerEvent('matching_candidates_returned', user.id, {
+    activity_id: body.activityId,
+    skill_band: body.skillBand,
+    radius_km: body.radiusKm,
+    matching_v2: matchingV2,
+    candidate_count: (data ?? []).length
+  });
+
+  return json(200, { data, flags: { matchingV2 } });
 });

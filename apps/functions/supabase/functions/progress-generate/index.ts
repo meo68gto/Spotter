@@ -1,5 +1,6 @@
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { createAuthedClient } from '../_shared/client.ts';
+import { trackServerEvent } from '../_shared/telemetry.ts';
 
 type AnalysisMetric = { key: string; label?: string; value: number; unit?: string };
 
@@ -89,5 +90,10 @@ Deno.serve(async (req) => {
   const { data, error } = await query.select('*').single();
 
   if (error) return json(500, { error: error.message, code: 'progress_snapshot_create_failed' });
+  await trackServerEvent('progress_snapshot_generated', user.id, {
+    activity_id: activityId,
+    source_submission_count: parsed.length,
+    metric_count: snapshotMetrics.length
+  });
   return json(200, { data });
 });

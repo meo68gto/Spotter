@@ -1,5 +1,6 @@
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { createAuthedClient } from '../_shared/client.ts';
+import { trackServerEvent } from '../_shared/telemetry.ts';
 
 interface AnalysisMetric {
   key: string;
@@ -107,5 +108,11 @@ Deno.serve(async (req) => {
     .single();
 
   if (error) return json(500, { error: error.message, code: 'analysis_update_failed' });
+  await trackServerEvent('video_analysis_ingested', user.id, {
+    video_submission_id: videoSubmissionId,
+    provider: body.provider,
+    metric_count: sanitizedMetrics.length,
+    annotation_count: sanitizedAnnotations.length
+  });
   return json(200, { data });
 });

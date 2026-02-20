@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { MapScreen } from './MapScreen';
@@ -7,6 +7,7 @@ import { ProgressScreen } from './dashboard/ProgressScreen';
 import { ProfileScreen } from './dashboard/ProfileScreen';
 import { SessionsScreen } from './dashboard/SessionsScreen';
 import { VideoPipelineScreen } from './dashboard/VideoPipelineScreen';
+import { loadFeatureFlags } from '../lib/flags';
 
 type TabKey = 'map' | 'sessions' | 'matches' | 'videos' | 'progress' | 'profile';
 
@@ -17,6 +18,15 @@ type Props = {
 
 export function DashboardScreen({ session, onSignOut }: Props) {
   const [tab, setTab] = useState<TabKey>('map');
+
+  useEffect(() => {
+    const bootstrapFlags = async () => {
+      const accessToken = session.access_token ?? '';
+      if (!accessToken) return;
+      await loadFeatureFlags(accessToken);
+    };
+    bootstrapFlags();
+  }, [session.access_token]);
 
   const title = useMemo(() => {
     if (tab === 'map') return 'Map';
