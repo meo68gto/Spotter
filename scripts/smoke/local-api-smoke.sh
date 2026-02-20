@@ -124,6 +124,26 @@ curl -sS "$SUPABASE_URL/rest/v1/skill_profiles" \
   -H "Content-Type: application/json" \
   -d "{\"user_id\":\"$CAND_USER_ID\",\"activity_id\":\"$ACTIVITY_ID\",\"source_scale\":\"self_assessment\",\"source_value\":\"intermediate\",\"canonical_score\":57,\"skill_band\":\"intermediate\"}" >/dev/null
 
+COACH_CREATE="$(curl -sS "$SUPABASE_URL/rest/v1/coaches" \
+  -H "apikey: $SERVICE_KEY" \
+  -H "Authorization: Bearer $SERVICE_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=representation" \
+  -d "{\"user_id\":\"$CAND_USER_ID\",\"onboarding_status\":\"active\"}")"
+
+COACH_ID="$(echo "$COACH_CREATE" | jq -r '.[0].id')"
+if [[ "$COACH_ID" == "null" || -z "$COACH_ID" ]]; then
+  echo "Coach create failed"
+  echo "$COACH_CREATE"
+  exit 1
+fi
+
+curl -sS "$SUPABASE_URL/rest/v1/expert_pricing" \
+  -H "apikey: $SERVICE_KEY" \
+  -H "Authorization: Bearer $SERVICE_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"coach_id\":\"$COACH_ID\",\"engagement_mode\":\"text_answer\",\"currency\":\"usd\",\"price_cents\":1500,\"active\":true}" >/dev/null
+
 MATCH_RESPONSE="$(curl -sS "$FUNCTIONS_URL/matching-candidates" \
   -H "apikey: $ANON_KEY" \
   -H "Authorization: Bearer $REQ_ACCESS_TOKEN" \
@@ -200,4 +220,38 @@ if [[ "$(echo "$CONFIRM_RESPONSE" | jq -r '.data.status')" != "confirmed" ]]; th
   exit 1
 fi
 
-echo "Smoke test passed: auth + legal consent + onboarding + matching + session lifecycle + chat"
+ENGAGEMENT_CREATE="$(curl -sS "$FUNCTIONS_URL/engagements-create" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $REQ_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"coachId\":\"$COACH_ID\",\"engagementMode\":\"text_answer\",\"questionText\":\"How can I improve edge control?\"}")"
+ENGAGEMENT_ID="$(echo "$ENGAGEMENT_CREATE" | jq -r '.data.request.id')"
+if [[ "$ENGAGEMENT_ID" == "null" || -z "$ENGAGEMENT_ID" ]]; then
+  echo "Engagement create failed"
+  echo "$ENGAGEMENT_CREATE"
+  exit 1
+fi
+
+ENGAGEMENT_ACCEPT="$(curl -sS "$FUNCTIONS_URL/engagements-accept" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $CAND_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"engagementRequestId\":\"$ENGAGEMENT_ID\"}")"
+if [[ "$(echo "$ENGAGEMENT_ACCEPT" | jq -r '.data.status')" != "accepted" ]]; then
+  echo "Engagement accept failed"
+  echo "$ENGAGEMENT_ACCEPT"
+  exit 1
+fi
+
+ENGAGEMENT_RESPOND="$(curl -sS "$FUNCTIONS_URL/engagements-respond" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $CAND_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"engagementRequestId\":\"$ENGAGEMENT_ID\",\"responseText\":\"Work on outside ski pressure and early edge engagement.\"}")"
+if [[ "$(echo "$ENGAGEMENT_RESPOND" | jq -r '.data.engagement_request_id')" != "$ENGAGEMENT_ID" ]]; then
+  echo "Engagement respond failed"
+  echo "$ENGAGEMENT_RESPOND"
+  exit 1
+fi
+
+echo "Smoke test passed: auth + legal consent + onboarding + matching + session lifecycle + chat + engagements"

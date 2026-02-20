@@ -2,7 +2,7 @@
   "name": "@spotter/mobile",
   "version": "0.1.0",
   "private": true,
-  "main": "expo/AppEntry",
+  "main": "index.ts",
   "scripts": {
     "dev": "EXPO_OFFLINE=1 EXPO_NO_DOCTOR=1 expo start --offline",
     "ios": "expo run:ios",

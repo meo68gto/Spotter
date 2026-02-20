@@ -35,6 +35,19 @@ Schema package for Spotter with migrations, seeds, and policy checks.
 - `user_legal_consents`
 - payment/legal indexes + RLS policies
 
+`migrations/0010_engagements_mvp.sql` adds:
+
+- `expert_profiles`
+- `expert_pricing`
+- `engagement_requests`
+- `engagement_responses`
+- `guest_checkout_sessions`
+- `video_call_sessions`
+- `home_feed_items`
+- `reschedule_requests`
+- engagement enums/status lifecycle
+- auth-hold fields on `review_orders`
+
 ## ERD (text)
 
 - A `users` row maps 1:1 to `auth.users`

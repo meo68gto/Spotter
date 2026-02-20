@@ -115,3 +115,63 @@ verify_jwt = false
 
 [functions.payments-webhook]
 verify_jwt = false
+
+[functions.engagements-create]
+verify_jwt = false
+
+[functions.engagements-accept]
+verify_jwt = false
+
+[functions.engagements-decline]
+verify_jwt = false
+
+[functions.engagements-respond]
+verify_jwt = false
+
+[functions.engagements-public-toggle]
+verify_jwt = false
+
+[functions.engagements-moderate]
+verify_jwt = false
+
+[functions.feed-home]
+verify_jwt = false
+
+[functions.guest-start-checkout]
+verify_jwt = false
+
+[functions.guest-verify]
+verify_jwt = false
+
+[functions.calls-create-room]
+verify_jwt = false
+
+[functions.calls-start]
+verify_jwt = false
+
+[functions.calls-end]
+verify_jwt = false
+
+[functions.experts-pricing-upsert]
+verify_jwt = false
+
+[functions.experts-availability-upsert]
+verify_jwt = false
+
+[functions.experts-dnd-toggle]
+verify_jwt = false
+
+[functions.engagements-reschedule]
+verify_jwt = false
+
+[functions.engagements-reschedule-respond]
+verify_jwt = false
+
+[functions.jobs-engagement-expire-pending]
+verify_jwt = false
+
+[functions.jobs-payment-auth-release-expired]
+verify_jwt = false
+
+[functions.jobs-call-billing-finalize]
+verify_jwt = false

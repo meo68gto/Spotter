@@ -31,6 +31,7 @@ jobs:
         env:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          DAILY_API_KEY: ${{ secrets.DAILY_API_KEY }}
           POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           SENTRY_DSN_FUNCTIONS: ${{ secrets.SENTRY_DSN_FUNCTIONS }}
@@ -85,6 +86,26 @@ jobs:
           supabase functions deploy payments-review-order-confirm
           supabase functions deploy payments-refund-request
           supabase functions deploy payments-webhook
+          supabase functions deploy engagements-create
+          supabase functions deploy engagements-accept
+          supabase functions deploy engagements-decline
+          supabase functions deploy engagements-respond
+          supabase functions deploy engagements-public-toggle
+          supabase functions deploy engagements-moderate
+          supabase functions deploy feed-home
+          supabase functions deploy guest-start-checkout
+          supabase functions deploy guest-verify
+          supabase functions deploy calls-create-room
+          supabase functions deploy calls-start
+          supabase functions deploy calls-end
+          supabase functions deploy experts-pricing-upsert
+          supabase functions deploy experts-availability-upsert
+          supabase functions deploy experts-dnd-toggle
+          supabase functions deploy engagements-reschedule
+          supabase functions deploy engagements-reschedule-respond
+          supabase functions deploy jobs-engagement-expire-pending
+          supabase functions deploy jobs-payment-auth-release-expired
+          supabase functions deploy jobs-call-billing-finalize
         working-directory: apps/functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

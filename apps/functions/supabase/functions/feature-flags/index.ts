@@ -15,15 +15,23 @@ Deno.serve(async (req) => {
   const user = authData.user;
   if (authError || !user) return unauthorized();
 
-  const [matchingV2, videoPipeline] = await Promise.all([
+  const [matchingV2, videoPipeline, engagementAsyncAnswers, engagementGuestCheckout, engagementPublicFeed, engagementVideoCallDaily] = await Promise.all([
     resolveBooleanFlag(service, 'matching_v2', false),
-    resolveBooleanFlag(service, 'video_pipeline', true)
+    resolveBooleanFlag(service, 'video_pipeline', true),
+    resolveBooleanFlag(service, 'engagement_async_answers', true),
+    resolveBooleanFlag(service, 'engagement_guest_checkout', true),
+    resolveBooleanFlag(service, 'engagement_public_feed', true),
+    resolveBooleanFlag(service, 'engagement_video_call_daily', true)
   ]);
 
   return json(200, {
     data: {
       matchingV2,
       videoPipeline,
+      engagementAsyncAnswers,
+      engagementGuestCheckout,
+      engagementPublicFeed,
+      engagementVideoCallDaily,
       environment: env.flagEnvironment
     }
   });

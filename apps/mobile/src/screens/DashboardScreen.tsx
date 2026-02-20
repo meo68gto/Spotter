@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { MapScreen } from './MapScreen';
+import { AskScreen } from './dashboard/AskScreen';
+import { CallRoomScreen } from './dashboard/CallRoomScreen';
+import { ExpertConsoleScreen } from './dashboard/ExpertConsoleScreen';
+import { ExpertsScreen } from './dashboard/ExpertsScreen';
+import { FeedScreen } from './dashboard/FeedScreen';
 import { MatchesScreen } from './dashboard/MatchesScreen';
+import { MyRequestsScreen } from './dashboard/MyRequestsScreen';
 import { ProgressScreen } from './dashboard/ProgressScreen';
 import { ProfileScreen } from './dashboard/ProfileScreen';
 import { SessionsScreen } from './dashboard/SessionsScreen';
 import { VideoPipelineScreen } from './dashboard/VideoPipelineScreen';
 import { loadFeatureFlags } from '../lib/flags';
 
-type TabKey = 'map' | 'sessions' | 'matches' | 'videos' | 'progress' | 'profile';
+type TabKey = 'map' | 'experts' | 'ask' | 'feed' | 'requests' | 'call' | 'expert' | 'sessions' | 'matches' | 'videos' | 'progress' | 'profile';
 
 type Props = {
   session: Session;
@@ -30,6 +36,12 @@ export function DashboardScreen({ session, onSignOut }: Props) {
 
   const title = useMemo(() => {
     if (tab === 'map') return 'Map';
+    if (tab === 'experts') return 'Experts';
+    if (tab === 'ask') return 'Ask';
+    if (tab === 'feed') return 'Feed';
+    if (tab === 'requests') return 'My Requests';
+    if (tab === 'call') return 'Call Room';
+    if (tab === 'expert') return 'Expert Console';
     if (tab === 'sessions') return 'Sessions';
     if (tab === 'matches') return 'Matches';
     if (tab === 'videos') return 'Videos';
@@ -46,6 +58,12 @@ export function DashboardScreen({ session, onSignOut }: Props) {
 
       <View style={styles.content}>
         {tab === 'map' ? <MapScreen /> : null}
+        {tab === 'experts' ? <ExpertsScreen session={session} /> : null}
+        {tab === 'ask' ? <AskScreen session={session} /> : null}
+        {tab === 'feed' ? <FeedScreen /> : null}
+        {tab === 'requests' ? <MyRequestsScreen session={session} /> : null}
+        {tab === 'call' ? <CallRoomScreen session={session} /> : null}
+        {tab === 'expert' ? <ExpertConsoleScreen session={session} /> : null}
         {tab === 'sessions' ? <SessionsScreen session={session} /> : null}
         {tab === 'matches' ? <MatchesScreen session={session} /> : null}
         {tab === 'videos' ? <VideoPipelineScreen session={session} /> : null}
@@ -55,14 +73,20 @@ export function DashboardScreen({ session, onSignOut }: Props) {
         ) : null}
       </View>
 
-      <View style={styles.tabBar}>
+      <ScrollView horizontal style={styles.tabBar} contentContainerStyle={styles.tabBarContent} showsHorizontalScrollIndicator={false}>
         <TabButton label="Map" active={tab === 'map'} onPress={() => setTab('map')} />
+        <TabButton label="Experts" active={tab === 'experts'} onPress={() => setTab('experts')} />
+        <TabButton label="Ask" active={tab === 'ask'} onPress={() => setTab('ask')} />
+        <TabButton label="Feed" active={tab === 'feed'} onPress={() => setTab('feed')} />
+        <TabButton label="Requests" active={tab === 'requests'} onPress={() => setTab('requests')} />
+        <TabButton label="Call" active={tab === 'call'} onPress={() => setTab('call')} />
+        <TabButton label="Expert" active={tab === 'expert'} onPress={() => setTab('expert')} />
         <TabButton label="Sessions" active={tab === 'sessions'} onPress={() => setTab('sessions')} />
         <TabButton label="Matches" active={tab === 'matches'} onPress={() => setTab('matches')} />
         <TabButton label="Videos" active={tab === 'videos'} onPress={() => setTab('videos')} />
         <TabButton label="Progress" active={tab === 'progress'} onPress={() => setTab('progress')} />
         <TabButton label="Profile" active={tab === 'profile'} onPress={() => setTab('profile')} />
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -112,18 +136,21 @@ const styles = StyleSheet.create({
     flex: 1
   },
   tabBar: {
-    flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: '#e4ecf2',
     backgroundColor: '#ffffff',
-    paddingHorizontal: 8,
     paddingVertical: 8
   },
+  tabBarContent: {
+    paddingHorizontal: 8,
+    gap: 8,
+    alignItems: 'center'
+  },
   tabButton: {
-    flex: 1,
-    marginHorizontal: 4,
+    minWidth: 82,
     borderRadius: 10,
     paddingVertical: 10,
+    paddingHorizontal: 12,
     alignItems: 'center'
   },
   tabActive: {

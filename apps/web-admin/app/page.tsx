@@ -1,8 +1,15 @@
-export default function CoachPortalPlaceholder() {
+import Link from 'next/link';
+
+export default function CoachPortalHome() {
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <h1>Spotter Coach Portal (Placeholder)</h1>
-      <p>Week 1 scope includes scaffold only. Functional features begin in phase 3.</p>
+      <h1>Spotter Web Admin</h1>
+      <p>Minnect MVP operations surfaces.</p>
+      <ul>
+        <li><Link href="/moderation">Public Answer Moderation</Link></li>
+        <li><Link href="/disputes">Disputes & Refund Oversight</Link></li>
+        <li><Link href="/payments">Payment Exceptions</Link></li>
+      </ul>
     </main>
   );
 }

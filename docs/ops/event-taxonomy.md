@@ -27,6 +27,18 @@
 - `payment_intent_failed`
 - `refund_processed`
 - `legal_consent_accepted`
+- `engagement_created`
+- `engagement_accepted`
+- `engagement_declined`
+- `engagement_completed`
+- `guest_checkout_started`
+- `guest_checkout_verified`
+- `public_answer_submitted`
+- `public_answer_approved`
+- `public_answer_rejected`
+- `video_call_started`
+- `video_call_ended`
+- `video_call_billed`
 
 ## Core properties
 - `distinct_id` (Supabase user id)
