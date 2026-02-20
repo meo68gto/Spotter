@@ -1,4 +1,5 @@
 import { createServiceClient } from './client.ts';
+import { billableMinutesFromSeconds, mapStripeIntentToOrderStatus } from './engagement-utils.ts';
 import { getRuntimeEnv } from './env.ts';
 import { stripeRequest } from './payments.ts';
 
@@ -10,6 +11,8 @@ export const hashToken = async (value: string) => {
 };
 
 export const randomToken = () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+
+export { mapStripeIntentToOrderStatus, billableMinutesFromSeconds };
 
 export const ensureCoachForUser = async (userId: string) => {
   const service = createServiceClient();

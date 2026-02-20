@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { invokeFunction } from '../../lib/api';
+import { shortId } from './ui-utils';
 
 export function CallRoomScreen({ session }: { session: Session }) {
   const [engagementRequestId, setEngagementRequestId] = useState('');
@@ -24,17 +25,25 @@ export function CallRoomScreen({ session }: { session: Session }) {
 
   const start = async () => {
     if (!engagementRequestId.trim()) return;
-    await invokeFunction('calls-start', { method: 'POST', body: { engagementRequestId: engagementRequestId.trim() } });
-    Alert.alert('Call started', 'Call start timestamp recorded.');
+    try {
+      await invokeFunction('calls-start', { method: 'POST', body: { engagementRequestId: engagementRequestId.trim() } });
+      Alert.alert('Call started', 'Call start timestamp recorded.');
+    } catch (error) {
+      Alert.alert('Call start failed', error instanceof Error ? error.message : 'Unknown error');
+    }
   };
 
   const end = async () => {
     if (!engagementRequestId.trim()) return;
-    const data = await invokeFunction<{ billableMinutes: number }>('calls-end', {
-      method: 'POST',
-      body: { engagementRequestId: engagementRequestId.trim() }
-    });
-    Alert.alert('Call ended', `Billable minutes: ${data.billableMinutes}`);
+    try {
+      const data = await invokeFunction<{ billableMinutes: number }>('calls-end', {
+        method: 'POST',
+        body: { engagementRequestId: engagementRequestId.trim() }
+      });
+      Alert.alert('Call ended', `Billable minutes: ${data.billableMinutes}`);
+    } catch (error) {
+      Alert.alert('Call end failed', error instanceof Error ? error.message : 'Unknown error');
+    }
   };
 
   return (
@@ -47,7 +56,7 @@ export function CallRoomScreen({ session }: { session: Session }) {
         <TextInput
           value={engagementRequestId}
           onChangeText={setEngagementRequestId}
-          placeholder="paste request id"
+          placeholder="Paste request ID from My Requests"
           style={styles.input}
           autoCapitalize="none"
         />
@@ -56,6 +65,7 @@ export function CallRoomScreen({ session }: { session: Session }) {
         <Button title="Start Call" onPress={start} />
         <Button title="End Call" onPress={end} />
 
+        {engagementRequestId ? <Text style={styles.room}>Request: {shortId(engagementRequestId)}</Text> : null}
         {roomUrl ? <Text style={styles.room}>Room URL: {roomUrl}</Text> : null}
       </Card>
 

@@ -1,6 +1,6 @@
 import { createServiceClient } from '../_shared/client.ts';
 import { createDailyRoom, createDailyTokenPair } from '../_shared/daily.ts';
-import { parseJson, requireUser } from '../_shared/guard.ts';
+import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
 
 type Payload = { engagementRequestId?: string };
@@ -11,6 +11,8 @@ Deno.serve(async (req) => {
   const body = await parseJson<Payload>(req);
   if (body instanceof Response) return body;
   if (!body.engagementRequestId) return badRequest('Missing engagementRequestId', 'missing_engagement_request_id');
+  const legal = await requireLegalConsent(auth.user.id);
+  if (legal) return legal;
 
   const service = createServiceClient();
   const { data: engagement, error } = await service

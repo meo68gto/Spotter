@@ -1,5 +1,5 @@
 import { createServiceClient } from '../_shared/client.ts';
-import { parseJson, requireUser } from '../_shared/guard.ts';
+import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
 
 type Payload = {
@@ -16,6 +16,8 @@ Deno.serve(async (req) => {
   if (!body.engagementRequestId || !body.proposedTime) {
     return badRequest('Missing required fields', 'missing_required_fields');
   }
+  const legal = await requireLegalConsent(auth.user.id);
+  if (legal) return legal;
 
   const proposedDate = new Date(body.proposedTime);
   if (Number.isNaN(proposedDate.getTime())) {

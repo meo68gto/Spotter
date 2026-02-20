@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text } from 'react-na
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { env } from '../../types/env';
+import { formatMode } from './ui-utils';
 
 type FeedItem = {
   id: string;
@@ -47,14 +48,14 @@ export function FeedScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Feed</Text>
-      <Text style={styles.subtitle}>Public approved Minnects.</Text>
+      <Text style={styles.subtitle}>Public approved Coacher posts.</Text>
       <Button title={loading ? 'Refreshing...' : 'Refresh Feed'} onPress={load} disabled={loading} />
       {loading ? <ActivityIndicator style={styles.loader} /> : null}
 
       {items.map((item) => (
         <Card key={item.id}>
           <Text style={styles.question}>{item.engagement_requests?.question_text ?? 'Unknown question'}</Text>
-          <Text style={styles.meta}>Mode: {item.engagement_requests?.engagement_mode}</Text>
+          <Text style={styles.meta}>Mode: {formatMode(item.engagement_requests?.engagement_mode ?? '')}</Text>
           <Text style={styles.answer}>
             {item.engagement_requests?.engagement_responses?.[0]?.response_text ??
               item.engagement_requests?.engagement_responses?.[0]?.transcript ??

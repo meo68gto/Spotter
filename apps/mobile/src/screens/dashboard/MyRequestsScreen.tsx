@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { supabase } from '../../lib/supabase';
+import { formatMode, formatStatus, shortId } from './ui-utils';
 
 type RequestRow = {
   id: string;
@@ -49,11 +50,13 @@ export function MyRequestsScreen({ session }: { session: Session }) {
       {requests.map((row) => (
         <Card key={row.id}>
           <Text style={styles.question}>{row.question_text}</Text>
-          <Text style={styles.meta}>Mode: {row.engagement_mode}</Text>
-          <Text style={styles.meta}>Status: {row.status}</Text>
+          <Text style={styles.meta}>Request: {shortId(row.id)}</Text>
+          <Text style={styles.meta}>Mode: {formatMode(row.engagement_mode)}</Text>
+          <Text style={styles.meta}>Status: {formatStatus(row.status)}</Text>
           <Text style={styles.meta}>
-            Public: {row.public_opt_in ? 'yes' : 'no'} ({row.moderation_status})
+            Public: {row.public_opt_in ? 'Yes' : 'No'} ({formatStatus(row.moderation_status)})
           </Text>
+          <Text style={styles.meta}>Created: {new Date(row.created_at).toLocaleString()}</Text>
         </Card>
       ))}
 

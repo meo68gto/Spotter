@@ -1,6 +1,6 @@
 import { createServiceClient } from '../_shared/client.ts';
 import { ensureCoachForUser } from '../_shared/engagements.ts';
-import { parseJson, requireUser } from '../_shared/guard.ts';
+import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 
 type Slot = {
@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
   const body = await parseJson<Payload>(req);
   if (body instanceof Response) return body;
   if (!body.slots) return badRequest('Missing slots', 'missing_slots');
+  const legal = await requireLegalConsent(auth.user.id);
+  if (legal) return legal;
 
   const coach = await ensureCoachForUser(auth.user.id);
   if (!coach) return unauthorized('Only coaches can update availability', 'coach_required');

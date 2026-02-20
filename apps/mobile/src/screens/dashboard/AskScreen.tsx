@@ -5,6 +5,7 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { invokeFunction } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { shortId } from './ui-utils';
 
 type CoachOption = {
   id: string;
@@ -66,10 +67,11 @@ export function AskScreen({ session }: { session: Session }) {
 
       <Card>
         <Text style={styles.label}>Coach</Text>
+        {!coaches.length ? <Text style={styles.meta}>No coaches found yet.</Text> : null}
         {coaches.map((coach) => (
           <Button
             key={coach.id}
-            title={`${coach.id.slice(0, 8)}${coachId === coach.id ? ' (Selected)' : ''}`}
+            title={`Coach ${shortId(coach.id)}${coachId === coach.id ? ' (Selected)' : ''}`}
             onPress={() => setCoachId(coach.id)}
           />
         ))}
@@ -94,7 +96,7 @@ export function AskScreen({ session }: { session: Session }) {
         <TextInput
           value={scheduledTime}
           onChangeText={setScheduledTime}
-          placeholder="2026-02-25T17:00:00Z"
+          placeholder="2026-03-01T17:00:00Z"
           style={styles.input}
           autoCapitalize="none"
         />
@@ -132,5 +134,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     textAlignVertical: 'top'
   },
-  me: { color: '#9fb3c8', marginTop: 12, fontSize: 12 }
+  me: { color: '#9fb3c8', marginTop: 12, fontSize: 12 },
+  meta: { color: '#627d98', marginTop: 4 }
 });

@@ -1,6 +1,6 @@
 import { createServiceClient } from '../_shared/client.ts';
-import { createPaymentAuthorization, ensureCoachForUser, hashToken, randomToken } from '../_shared/engagements.ts';
-import { parseJson, requireUser } from '../_shared/guard.ts';
+import { createPaymentAuthorization, hashToken, mapStripeIntentToOrderStatus, randomToken } from '../_shared/engagements.ts';
+import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
 
 type Payload = {
@@ -94,6 +94,8 @@ Deno.serve(async (req) => {
   } else {
     requesterUserId = auth.user.id;
     buyerEmail = auth.user.email ?? undefined;
+    const legal = await requireLegalConsent(requesterUserId);
+    if (legal) return legal;
   }
 
   const { data: order, error: orderError } = await service
@@ -154,7 +156,7 @@ Deno.serve(async (req) => {
     clientSecret = intent.client_secret;
     await service
       .from('review_orders')
-      .update({ stripe_payment_intent_id: intent.id, status: intent.status as never })
+      .update({ stripe_payment_intent_id: intent.id, status: mapStripeIntentToOrderStatus(intent.status) })
       .eq('id', order.id);
   } catch (error) {
     await service.from('review_orders').update({ status: 'failed' }).eq('id', order.id);

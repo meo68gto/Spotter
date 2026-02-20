@@ -5,6 +5,7 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { invokeFunction } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { formatMode, formatStatus, shortId } from './ui-utils';
 
 type QueueItem = {
   id: string;
@@ -44,13 +45,21 @@ export function ExpertConsoleScreen({ session }: { session: Session }) {
   }, []);
 
   const accept = async (id: string) => {
-    await invokeFunction('engagements-accept', { method: 'POST', body: { engagementRequestId: id } });
-    await loadQueue();
+    try {
+      await invokeFunction('engagements-accept', { method: 'POST', body: { engagementRequestId: id } });
+      await loadQueue();
+    } catch (error) {
+      Alert.alert('Accept failed', error instanceof Error ? error.message : 'Unknown error');
+    }
   };
 
   const decline = async (id: string) => {
-    await invokeFunction('engagements-decline', { method: 'POST', body: { engagementRequestId: id } });
-    await loadQueue();
+    try {
+      await invokeFunction('engagements-decline', { method: 'POST', body: { engagementRequestId: id } });
+      await loadQueue();
+    } catch (error) {
+      Alert.alert('Decline failed', error instanceof Error ? error.message : 'Unknown error');
+    }
   };
 
   const respond = async () => {
@@ -59,22 +68,29 @@ export function ExpertConsoleScreen({ session }: { session: Session }) {
       return;
     }
 
-    await invokeFunction('engagements-respond', {
-      method: 'POST',
-      body: {
-        engagementRequestId: selectedId,
-        responseText: responseText.trim()
-      }
-    });
-
-    setResponseText('');
-    await loadQueue();
+    try {
+      await invokeFunction('engagements-respond', {
+        method: 'POST',
+        body: {
+          engagementRequestId: selectedId,
+          responseText: responseText.trim()
+        }
+      });
+      setResponseText('');
+      await loadQueue();
+    } catch (error) {
+      Alert.alert('Response failed', error instanceof Error ? error.message : 'Unknown error');
+    }
   };
 
   const toggleDnd = async () => {
     const next = !dnd;
-    await invokeFunction('experts-dnd-toggle', { method: 'POST', body: { enabled: next } });
-    setDnd(next);
+    try {
+      await invokeFunction('experts-dnd-toggle', { method: 'POST', body: { enabled: next } });
+      setDnd(next);
+    } catch (error) {
+      Alert.alert('DND update failed', error instanceof Error ? error.message : 'Unknown error');
+    }
   };
 
   return (
@@ -88,8 +104,9 @@ export function ExpertConsoleScreen({ session }: { session: Session }) {
       {queue.map((item) => (
         <Card key={item.id}>
           <Text style={styles.question}>{item.question_text}</Text>
-          <Text style={styles.meta}>Mode: {item.engagement_mode}</Text>
-          <Text style={styles.meta}>Status: {item.status}</Text>
+          <Text style={styles.meta}>Request: {shortId(item.id)}</Text>
+          <Text style={styles.meta}>Mode: {formatMode(item.engagement_mode)}</Text>
+          <Text style={styles.meta}>Status: {formatStatus(item.status)}</Text>
           <Button title={selectedId === item.id ? 'Selected' : 'Select'} onPress={() => setSelectedId(item.id)} />
           <Button title="Accept" onPress={() => accept(item.id)} />
           <Button title="Decline" onPress={() => decline(item.id)} />

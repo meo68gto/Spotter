@@ -1,0 +1,38 @@
+name: Ops Recurring Jobs
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-jobs:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Trigger engagement expiry
+        run: |
+          curl -sS -X POST "$SUPABASE_FUNCTIONS_URL/jobs-engagement-expire-pending" \
+            -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
+            -H "content-type: application/json"
+        env:
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
+
+      - name: Trigger payment auth release
+        run: |
+          curl -sS -X POST "$SUPABASE_FUNCTIONS_URL/jobs-payment-auth-release-expired" \
+            -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
+            -H "content-type: application/json"
+        env:
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
+
+      - name: Trigger call billing finalize
+        run: |
+          curl -sS -X POST "$SUPABASE_FUNCTIONS_URL/jobs-call-billing-finalize" \
+            -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
+            -H "content-type: application/json"
+        env:
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}

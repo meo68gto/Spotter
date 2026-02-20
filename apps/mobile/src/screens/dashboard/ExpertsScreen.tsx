@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { supabase } from '../../lib/supabase';
+import { shortId } from './ui-utils';
 
 type ExpertRow = {
   id: string;
@@ -72,10 +73,10 @@ export function ExpertsScreen({ session }: { session: Session }) {
 
       {experts.map((expert) => (
         <Card key={expert.id}>
-          <Text style={styles.name}>{expert.coaches?.[0]?.users?.[0]?.display_name ?? expert.coach_id.slice(0, 8)}</Text>
+          <Text style={styles.name}>{expert.coaches?.[0]?.users?.[0]?.display_name ?? `Coach ${shortId(expert.coach_id)}`}</Text>
           <Text style={styles.meta}>{expert.headline ?? 'No headline yet'}</Text>
           {expert.bio ? <Text style={styles.meta}>{expert.bio}</Text> : null}
-          <Text style={styles.meta}>Coach ID: {expert.coach_id}</Text>
+          <Text style={styles.meta}>Coach ID: {shortId(expert.coach_id)}</Text>
         </Card>
       ))}
 
