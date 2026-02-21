@@ -20,7 +20,10 @@
     "local:down": "bash ./scripts/local/down.sh",
     "smoke:local": "bash ./scripts/smoke/local-api-smoke.sh",
     "smoke:staging": "bash ./scripts/smoke/staging-integration-smoke.sh",
-    "ops:verify": "bash ./scripts/ops/verify-cutover.sh"
+    "ops:verify": "bash ./scripts/ops/verify-cutover.sh",
+    "ops:health": "bash ./scripts/ops/launch-health-report.sh",
+    "ops:rc:prepare": "bash ./scripts/ops/prepare-rc.sh",
+    "ops:rc:tag": "bash ./scripts/ops/cut-release-tag.sh"
   },
   "devDependencies": {
     "turbo": "^2.4.2",

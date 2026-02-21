@@ -62,3 +62,13 @@ Set in repository settings:
   - `pnpm ops:verify`
   - Artifacts are written to `.artifacts/ops-cutover/<timestamp>/`
   - GitHub Actions alternative: run `Ops Verify` workflow and download artifact `ops-cutover-<run_id>`
+
+## 8) Launch control references
+- RC process:
+  - `/Users/brucewayne/Documents/Spotter/docs/ops/release-candidate-runbook.md`
+- Launch-day execution:
+  - `/Users/brucewayne/Documents/Spotter/docs/ops/launch-day-checklist.md`
+- Incident handling:
+  - `/Users/brucewayne/Documents/Spotter/docs/ops/incident-playbook.md`
+- 24h/72h post-launch monitoring:
+  - `/Users/brucewayne/Documents/Spotter/docs/ops/post-launch-monitoring.md`
