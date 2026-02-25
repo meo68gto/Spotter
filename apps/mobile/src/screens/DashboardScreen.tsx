@@ -9,13 +9,29 @@ import { ExpertsScreen } from './dashboard/ExpertsScreen';
 import { FeedScreen } from './dashboard/FeedScreen';
 import { MatchesScreen } from './dashboard/MatchesScreen';
 import { MyRequestsScreen } from './dashboard/MyRequestsScreen';
+import { NetworkingHubScreen } from './dashboard/NetworkingHubScreen';
 import { ProgressScreen } from './dashboard/ProgressScreen';
 import { ProfileScreen } from './dashboard/ProfileScreen';
 import { SessionsScreen } from './dashboard/SessionsScreen';
+import { SponsoredEventsScreen } from './dashboard/SponsoredEventsScreen';
 import { VideoPipelineScreen } from './dashboard/VideoPipelineScreen';
 import { loadFeatureFlags } from '../lib/flags';
 
-type TabKey = 'map' | 'experts' | 'ask' | 'feed' | 'requests' | 'call' | 'expert' | 'sessions' | 'matches' | 'videos' | 'progress' | 'profile';
+type TabKey =
+  | 'map'
+  | 'network'
+  | 'events'
+  | 'experts'
+  | 'ask'
+  | 'feed'
+  | 'requests'
+  | 'call'
+  | 'expert'
+  | 'sessions'
+  | 'matches'
+  | 'videos'
+  | 'progress'
+  | 'profile';
 
 type Props = {
   session: Session;
@@ -36,6 +52,8 @@ export function DashboardScreen({ session, onSignOut }: Props) {
 
   const title = useMemo(() => {
     if (tab === 'map') return 'Map';
+    if (tab === 'network') return 'Networking';
+    if (tab === 'events') return 'Sponsored Events';
     if (tab === 'experts') return 'Experts';
     if (tab === 'ask') return 'Ask';
     if (tab === 'feed') return 'Feed';
@@ -58,6 +76,8 @@ export function DashboardScreen({ session, onSignOut }: Props) {
 
       <View style={styles.content}>
         {tab === 'map' ? <MapScreen /> : null}
+        {tab === 'network' ? <NetworkingHubScreen /> : null}
+        {tab === 'events' ? <SponsoredEventsScreen /> : null}
         {tab === 'experts' ? <ExpertsScreen session={session} /> : null}
         {tab === 'ask' ? <AskScreen session={session} /> : null}
         {tab === 'feed' ? <FeedScreen /> : null}
@@ -75,6 +95,8 @@ export function DashboardScreen({ session, onSignOut }: Props) {
 
       <ScrollView horizontal style={styles.tabBar} contentContainerStyle={styles.tabBarContent} showsHorizontalScrollIndicator={false}>
         <TabButton label="Map" active={tab === 'map'} onPress={() => setTab('map')} />
+        <TabButton label="Network" active={tab === 'network'} onPress={() => setTab('network')} />
+        <TabButton label="Events" active={tab === 'events'} onPress={() => setTab('events')} />
         <TabButton label="Experts" active={tab === 'experts'} onPress={() => setTab('experts')} />
         <TabButton label="Ask" active={tab === 'ask'} onPress={() => setTab('ask')} />
         <TabButton label="Feed" active={tab === 'feed'} onPress={() => setTab('feed')} />

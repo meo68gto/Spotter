@@ -4,6 +4,7 @@
     "slug": "spotter",
     "version": "0.1.0",
     "scheme": "spotter",
+    "jsEngine": "jsc",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
@@ -17,14 +18,6 @@
       "package": "com.spotter.app",
       "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
-    "plugins": [
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsVersion": "10.1.36"
-        }
-      ]
-    ],
     "extra": {
       "eas": {
         "projectId": "REPLACE_ME"

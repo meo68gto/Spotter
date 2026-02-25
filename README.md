@@ -10,6 +10,8 @@ Monorepo for Spotter mobile app, backend functions, and shared packages.
    - `cp .env.example .env.local`
 3. Start mobile app:
    - `pnpm --filter @spotter/mobile dev`
+   - or launch web + iOS simulator + Android emulator browser:
+     - `pnpm mobile:launch:all`
 4. Run Supabase local stack (if Supabase CLI installed):
    - `pnpm --filter @spotter/functions supabase:start`
 
@@ -50,6 +52,19 @@ Monorepo for Spotter mobile app, backend functions, and shared packages.
 - `videos-process-next`
 - `progress-generate`
 - `progress-snapshots`
+- `mcp-booking-plan`
+- `networking-invite-send`
+- `sponsors-event-create`
+- `sponsors-event-list`
+- `sponsors-event-invite-locals`
+- `sponsors-event-rsvp`
+
+## Demo Mode
+
+If required env vars are missing, the app now offers `Continue in Demo Mode` so you can validate UI flows for:
+- Networking recommendations
+- Sponsored event creation/listing
+- Local invite + RSVP actions
 
 ## Workspace layout
 

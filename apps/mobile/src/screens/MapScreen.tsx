@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -9,10 +8,8 @@ import {
   parseCachedCoords,
   type Coords
 } from '../lib/location-utils';
-import { env } from '../types/env';
 
 const LAST_COORDS_KEY = 'spotter:last-known-coords';
-Mapbox.setAccessToken(env.mapboxToken);
 
 export function MapScreen() {
   const [coords, setCoords] = useState<Coords | null>(null);
@@ -64,17 +61,15 @@ export function MapScreen() {
       {error ? <Text style={styles.warning}>{error}</Text> : null}
 
       {coords ? (
-        <Mapbox.MapView style={styles.map}>
-          <Mapbox.Camera
-            zoomLevel={11}
-            centerCoordinate={[coords.longitude, coords.latitude]}
-            animationMode="flyTo"
-            animationDuration={1200}
-          />
-          <Mapbox.PointAnnotation id="me" coordinate={[coords.longitude, coords.latitude]}>
+        <View style={styles.previewCard}>
+          <Text style={styles.previewTitle}>Map Preview</Text>
+          <Text style={styles.previewMeta}>Native map rendering is disabled in this local build.</Text>
+          <Text style={styles.previewMeta}>Latitude: {coords.latitude.toFixed(5)}</Text>
+          <Text style={styles.previewMeta}>Longitude: {coords.longitude.toFixed(5)}</Text>
+          <View style={styles.previewSurface}>
             <View style={styles.pin} />
-          </Mapbox.PointAnnotation>
-        </Mapbox.MapView>
+          </View>
+        </View>
       ) : (
         <View style={styles.centered}>
           <Text>No location available.</Text>
@@ -97,8 +92,30 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     color: '#102a43'
   },
-  map: {
-    flex: 1
+  previewCard: {
+    marginHorizontal: 16,
+    borderRadius: 14,
+    padding: 16,
+    backgroundColor: '#d9e2ec'
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#102a43',
+    marginBottom: 8
+  },
+  previewMeta: {
+    fontSize: 14,
+    color: '#334e68',
+    marginBottom: 4
+  },
+  previewSurface: {
+    marginTop: 14,
+    height: 280,
+    borderRadius: 12,
+    backgroundColor: '#bcccdc',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   centered: {
     flex: 1,

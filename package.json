@@ -16,6 +16,8 @@
     "supabase:stop": "pnpm --filter @spotter/functions supabase:stop",
     "supabase:reset": "pnpm --filter @spotter/functions supabase:reset",
     "functions:serve": "pnpm --filter @spotter/functions dev",
+    "mobile:dev": "pnpm --filter @spotter/mobile dev",
+    "mobile:launch:all": "bash ./scripts/local/mobile-launch-all.sh",
     "local:up": "bash ./scripts/local/up.sh",
     "local:down": "bash ./scripts/local/down.sh",
     "smoke:local": "bash ./scripts/smoke/local-api-smoke.sh",

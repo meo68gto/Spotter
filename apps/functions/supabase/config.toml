@@ -181,3 +181,21 @@ verify_jwt = false
 
 [functions.jobs-call-duration-reconcile]
 verify_jwt = false
+
+[functions.mcp-booking-plan]
+verify_jwt = false
+
+[functions.networking-invite-send]
+verify_jwt = false
+
+[functions.sponsors-event-create]
+verify_jwt = false
+
+[functions.sponsors-event-list]
+verify_jwt = false
+
+[functions.sponsors-event-invite-locals]
+verify_jwt = false
+
+[functions.sponsors-event-rsvp]
+verify_jwt = false

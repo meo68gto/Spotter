@@ -5,7 +5,11 @@ import { trackEvent } from '../lib/analytics';
 import { redirectTo, supabase } from '../lib/supabase';
 import { extractOAuthCode } from '../lib/auth-utils';
 
-export function AuthScreen() {
+type Props = {
+  onDemoMode?: () => void;
+};
+
+export function AuthScreen({ onDemoMode }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,7 +37,7 @@ export function AuthScreen() {
     }
   };
 
-  const oauth = async (provider: 'google' | 'apple') => {
+  const oauth = async (provider: 'google' | 'linkedin_oidc') => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -87,7 +91,8 @@ export function AuthScreen() {
       <Button title="Sign In" onPress={signIn} disabled={loading} />
       <Button title="Create Account" onPress={signUp} disabled={loading} />
       <Button title="Continue with Google" onPress={() => oauth('google')} />
-      <Button title="Continue with Apple" onPress={() => oauth('apple')} />
+      <Button title="Continue with LinkedIn" onPress={() => oauth('linkedin_oidc')} />
+      <Button title="Explore Demo Mode" onPress={() => onDemoMode?.()} />
     </View>
   );
 }
