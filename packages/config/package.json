@@ -1,6 +1,11 @@
 {
   "name": "@spotter/config",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint/base": "./eslint/base.mjs",
+    "./tsconfig/base": "./tsconfig/base.json"
+  },
   "files": ["eslint", "tsconfig"]
 }

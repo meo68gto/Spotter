@@ -1,14 +1,13 @@
 {
   "name": "@spotter/db",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "echo 'No build needed for SQL package'",
-    "typecheck": "echo 'No typecheck needed for SQL package'",
-    "lint": "echo 'SQL lint placeholder'",
-    "test": "node scripts/rls-smoke-check.mjs",
-    "db:check": "node scripts/migration-check.mjs"
+    "db:smoke": "node scripts/rls-smoke-check.mjs",
+    "db:check": "node scripts/migration-check.mjs",
+    "test": "node scripts/rls-smoke-check.mjs && node scripts/migration-check.mjs",
+    "lint": "echo 'No lint for SQL package'"
   },
   "devDependencies": {
     "glob": "^11.0.1"

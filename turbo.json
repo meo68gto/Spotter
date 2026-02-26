@@ -14,12 +14,13 @@
       "outputs": []
     },
     "lint": {
-      "dependsOn": ["^lint"],
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test": {
       "dependsOn": ["^test"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["src/**", "tests/**", "*.test.ts"]
     }
   }
 }
