@@ -1,148 +1,154 @@
-import { forbidden, json } from '../_shared/http.ts';
-import { createServiceClient } from '../_shared/client.ts';
-import { getRuntimeEnv } from '../_shared/env.ts';
-import { trackServerEvent } from '../_shared/telemetry.ts';
+// supabase/functions/admin-process-deletion/index.ts
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { requireAdminHmac, HttpError } from '../_shared/guard.ts';
+import { createLogger } from '../_shared/telemetry.ts';
+import { handleCors, ok, error, forbidden } from '../_shared/http.ts';
+import { getEnv } from '../_shared/env.ts';
 
-type DeletionRequestRow = {
-  id: string;
-  user_id: string;
-};
+interface DeletionRequest {
+  userId: string;
+  reason?: string;
+}
 
-const logAudit = async (
-  supabase: ReturnType<typeof createServiceClient>,
-  requestId: string,
-  userId: string,
-  action: string,
-  status: 'success' | 'failed',
-  metadata: Record<string, unknown> = {}
-) => {
-  await supabase.from('deletion_audit_logs').insert({
-    deletion_request_id: requestId,
-    user_id: userId,
-    action,
-    status,
-    metadata
-  });
-};
+Deno.serve(async (req: Request) => {
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
-Deno.serve(async (req) => {
-  const env = getRuntimeEnv();
-  const adminToken = req.headers.get('x-admin-token');
+  const requestId = req.headers.get('x-request-id') ?? crypto.randomUUID();
+  const log = createLogger('admin-process-deletion', requestId);
 
-  if (!env.adminDeletionToken || adminToken !== env.adminDeletionToken) {
-    return forbidden('Invalid admin token', 'invalid_admin_token');
+  // Verify admin HMAC signature before processing any request.
+  // This prevents unauthorized callers from triggering irreversible user deletions.
+  try {
+    await requireAdminHmac(req);
+  } catch (err) {
+    log.warn('admin_hmac_verification_failed', { error: String(err) });
+    return forbidden(err instanceof Error ? err.message : 'Unauthorized');
   }
 
-  const supabase = createServiceClient();
+  let body: DeletionRequest;
+  try {
+    body = await req.json() as DeletionRequest;
+  } catch {
+    return error('Invalid JSON body', 400, 'invalid_body');
+  }
 
-  const { data: requests, error: reqErr } = await supabase
-    .from('user_deletion_requests')
-    .select('id, user_id')
-    .eq('status', 'pending')
-    .order('requested_at', { ascending: true })
-    .limit(25);
+  const { userId, reason } = body;
+  if (!userId) {
+    return error('userId is required', 400, 'missing_user_id');
+  }
 
-  if (reqErr) return json(500, { error: reqErr.message, code: 'deletion_request_query_failed' });
+  log.info('deletion_started', { userId, reason });
 
-  const processed: string[] = [];
-  const failed: Array<{ requestId: string; userId: string; reason: string }> = [];
+  const env = getEnv();
+  const supabase = createClient(env.supabaseUrl, env.serviceRoleKey, {
+    auth: { persistSession: false },
+  });
 
-  for (const row of (requests ?? []) as DeletionRequestRow[]) {
-    try {
+  const errors: string[] = [];
+
+  // Step 1: Cancel any active payment intents
+  try {
+    const { data: intents } = await supabase
+      .from('payment_intents')
+      .select('stripe_payment_intent_id, status')
+      .eq('user_id', userId)
+      .in('status', ['requires_capture', 'requires_payment_method', 'processing']);
+
+    log.info('payment_intents_to_cancel', { count: intents?.length ?? 0 });
+
+    for (const intent of intents ?? []) {
       await supabase
-        .from('user_deletion_requests')
-        .update({ status: 'processing', processing_started_at: new Date().toISOString(), failure_reason: null })
-        .eq('id', row.id)
-        .eq('status', 'pending');
-
-      await logAudit(supabase, row.id, row.user_id, 'request_marked_processing', 'success');
-
-      const { data: ownedSubmissions } = await supabase
-        .from('video_submissions')
-        .select('id')
-        .eq('user_id', row.user_id)
-        .limit(5000);
-
-      const ownedSubmissionIds = (ownedSubmissions ?? []).map((item: { id: string }) => item.id);
-
-      if (ownedSubmissionIds.length > 0) {
-        await supabase.from('video_processing_jobs').delete().in('video_submission_id', ownedSubmissionIds);
-        await logAudit(supabase, row.id, row.user_id, 'video_processing_jobs_deleted', 'success', {
-          count: ownedSubmissionIds.length
-        });
-      }
-
-      await supabase.from('messages').delete().eq('sender_user_id', row.user_id);
-      await logAudit(supabase, row.id, row.user_id, 'messages_deleted', 'success');
-
-      await supabase.from('session_feedback').delete().or(`reviewer_user_id.eq.${row.user_id},reviewee_user_id.eq.${row.user_id}`);
-      await logAudit(supabase, row.id, row.user_id, 'session_feedback_deleted', 'success');
-
-      await supabase.from('coach_reviews').delete().eq('coach_user_id', row.user_id);
-      await logAudit(supabase, row.id, row.user_id, 'coach_reviews_deleted', 'success');
-
-      await supabase.from('video_submissions').delete().eq('user_id', row.user_id);
-      await logAudit(supabase, row.id, row.user_id, 'video_submissions_deleted', 'success', {
-        count: ownedSubmissionIds.length
-      });
-
-      await supabase.from('progress_snapshots').delete().eq('user_id', row.user_id);
-      await supabase.from('skill_profiles').delete().eq('user_id', row.user_id);
-      await supabase.from('availability_slots').delete().eq('user_id', row.user_id);
-      await logAudit(supabase, row.id, row.user_id, 'derived_activity_data_deleted', 'success');
-
-      const anonName = `deleted-${row.user_id.slice(0, 8)}`;
-      await supabase
-        .from('users')
-        .update({
-          display_name: anonName,
-          avatar_url: null,
-          bio: null,
-          home_location: null,
-          availability: {}
-        })
-        .eq('id', row.user_id);
-      await logAudit(supabase, row.id, row.user_id, 'user_profile_scrubbed', 'success');
-
-      try {
-        await supabase.auth.admin.deleteUser(row.user_id, true);
-        await logAudit(supabase, row.id, row.user_id, 'auth_user_deleted', 'success');
-      } catch {
-        await logAudit(supabase, row.id, row.user_id, 'auth_user_deleted', 'failed', {
-          reason: 'auth_delete_failed'
-        });
-      }
-
-      await supabase
-        .from('user_deletion_requests')
-        .update({ status: 'completed', completed_at: new Date().toISOString(), failure_reason: null })
-        .eq('id', row.id);
-
-      await logAudit(supabase, row.id, row.user_id, 'request_completed', 'success');
-      await trackServerEvent('deletion_request_completed', row.user_id, { deletion_request_id: row.id });
-
-      processed.push(row.id);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : 'unknown_error';
-      failed.push({ requestId: row.id, userId: row.user_id, reason });
-
-      await supabase
-        .from('user_deletion_requests')
-        .update({ status: 'failed', failure_reason: reason })
-        .eq('id', row.id);
-
-      await logAudit(supabase, row.id, row.user_id, 'request_failed', 'failed', { reason });
-      await trackServerEvent('deletion_request_failed', row.user_id, {
-        deletion_request_id: row.id,
-        reason
-      });
+        .from('payment_intents')
+        .update({ status: 'canceled', updated_at: new Date().toISOString() })
+        .eq('stripe_payment_intent_id', intent.stripe_payment_intent_id);
     }
+  } catch (err) {
+    const msg = `Failed to cancel payment intents: ${err instanceof Error ? err.message : String(err)}`;
+    log.error('cancel_payment_intents_failed', err);
+    errors.push(msg);
   }
 
-  return json(200, {
-    processed_count: processed.length,
-    processed_ids: processed,
-    failed_count: failed.length,
-    failed
-  });
+  // Step 2: Expire pending engagements
+  try {
+    await supabase
+      .from('engagements')
+      .update({ status: 'expired', updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .in('status', ['pending', 'accepted', 'reschedule_requested']);
+
+    await supabase
+      .from('engagements')
+      .update({ status: 'expired', updated_at: new Date().toISOString() })
+      .eq('expert_id', userId)
+      .in('status', ['pending', 'accepted', 'reschedule_requested']);
+  } catch (err) {
+    const msg = `Failed to expire engagements: ${err instanceof Error ? err.message : String(err)}`;
+    log.error('expire_engagements_failed', err);
+    errors.push(msg);
+  }
+
+  // Step 3: Delete push tokens
+  try {
+    await supabase.from('push_tokens').delete().eq('user_id', userId);
+  } catch (err) {
+    const msg = `Failed to delete push tokens: ${err instanceof Error ? err.message : String(err)}`;
+    log.error('delete_push_tokens_failed', err);
+    errors.push(msg);
+  }
+
+  // Step 4: Anonymize user profile data
+  try {
+    await supabase
+      .from('profiles')
+      .update({
+        display_name: '[Deleted User]',
+        avatar_url: null,
+        bio: null,
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+  } catch (err) {
+    const msg = `Failed to anonymize profile: ${err instanceof Error ? err.message : String(err)}`;
+    log.error('anonymize_profile_failed', err);
+    errors.push(msg);
+  }
+
+  // Step 5: Delete auth user (final, irreversible)
+  try {
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+    if (deleteError) throw deleteError;
+    log.info('auth_user_deleted', { userId });
+  } catch (err) {
+    const msg = `Failed to delete auth user: ${err instanceof Error ? err.message : String(err)}`;
+    log.error('delete_auth_user_failed', err);
+    errors.push(msg);
+  }
+
+  // Step 6: Log deletion audit entry
+  try {
+    await supabase.from('admin_audit_log').insert({
+      action: 'user_deletion',
+      target_user_id: userId,
+      reason: reason ?? 'admin_request',
+      errors: errors.length > 0 ? errors : null,
+      completed_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    log.error('audit_log_failed', err);
+    // Don't add to errors — audit log failure shouldn't fail the deletion response
+  }
+
+  if (errors.length > 0) {
+    log.warn('deletion_completed_with_errors', { userId, errors });
+    return new Response(
+      JSON.stringify({ ok: false, userId, errors }),
+      { status: 207, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  log.info('deletion_complete', { userId });
+  return ok({ userId, deleted: true });
 });

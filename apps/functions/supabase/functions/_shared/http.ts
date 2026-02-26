@@ -1,36 +1,43 @@
-export const json = (status: number, payload: unknown): Response =>
-  new Response(JSON.stringify(payload), {
+// _shared/http.ts
+export const corsHeaders: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-token, x-admin-nonce, x-admin-sig',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
+};
+
+export function handleCors(req: Request): Response | null {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders, status: 200 });
+  }
+  return null;
+}
+
+export function ok<T = unknown>(data: T, status = 200): Response {
+  return new Response(JSON.stringify({ data }), {
     status,
-    headers: {
-      'content-type': 'application/json',
-      'access-control-allow-origin': '*'
-    }
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
   });
+}
 
-export const errorResponse = (
-  status: number,
-  message: string,
-  code: string,
-  details?: Record<string, unknown>
-): Response => json(status, details ? { error: message, code, details } : { error: message, code });
+export function error(message: string, status = 400, code?: string): Response {
+  return new Response(JSON.stringify({ error: message, code: code ?? 'error' }), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
+  });
+}
 
-export const badRequest = (message: string, code = 'bad_request', details?: Record<string, unknown>): Response =>
-  errorResponse(400, message, code, details);
+export function notFound(message = 'Not found'): Response {
+  return error(message, 404, 'not_found');
+}
 
-export const unauthorized = (
-  message = 'Unauthorized',
-  code = 'unauthorized',
-  details?: Record<string, unknown>
-): Response => errorResponse(401, message, code, details);
+export function unauthorized(message = 'Unauthorized'): Response {
+  return error(message, 401, 'unauthorized');
+}
 
-export const forbidden = (message = 'Forbidden', code = 'forbidden', details?: Record<string, unknown>): Response =>
-  errorResponse(403, message, code, details);
+export function forbidden(message = 'Forbidden'): Response {
+  return error(message, 403, 'forbidden');
+}
 
-export const tooMany = (message = 'Too many requests', code = 'rate_limited', details?: Record<string, unknown>): Response =>
-  errorResponse(429, message, code, details);
-
-export const serverError = (
-  message = 'Internal server error',
-  code = 'internal_error',
-  details?: Record<string, unknown>
-): Response => errorResponse(500, message, code, details);
+export function serverError(message = 'Internal server error'): Response {
+  return error(message, 500, 'internal_error');
+}

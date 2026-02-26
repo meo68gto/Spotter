@@ -1,76 +1,135 @@
-import { createServiceClient } from './client.ts';
-import { billableMinutesFromSeconds, mapStripeIntentToOrderStatus } from './engagement-utils.ts';
-import { getRuntimeEnv } from './env.ts';
-import { stripeRequest } from './payments.ts';
+// _shared/engagements.ts
+// Engagement state machine helpers and DB query utilities
+import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
-export const hashToken = async (value: string) => {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+export type EngagementStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'responded'
+  | 'reschedule_requested'
+  | 'reschedule_accepted'
+  | 'expired'
+  | 'completed';
+
+export type EngagementType = 'text' | 'video' | 'call';
+
+export interface Engagement {
+  id: string;
+  user_id: string;
+  expert_id: string;
+  type: EngagementType;
+  status: EngagementStatus;
+  question?: string;
+  response?: string;
+  scheduled_at?: string;
+  expires_at?: string;
+  payment_intent_id?: string;
+  amount_cents: number;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Valid status transitions for the engagement state machine */
+const ALLOWED_TRANSITIONS: Record<EngagementStatus, EngagementStatus[]> = {
+  pending: ['accepted', 'declined', 'expired'],
+  accepted: ['responded', 'reschedule_requested', 'expired'],
+  declined: [],
+  responded: ['completed'],
+  reschedule_requested: ['reschedule_accepted', 'declined', 'expired'],
+  reschedule_accepted: ['responded', 'expired'],
+  expired: [],
+  completed: [],
 };
 
-export const randomToken = () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+/** Check whether a status transition is allowed */
+export function isTransitionAllowed(
+  current: EngagementStatus,
+  next: EngagementStatus
+): boolean {
+  return ALLOWED_TRANSITIONS[current]?.includes(next) ?? false;
+}
 
-export { mapStripeIntentToOrderStatus, billableMinutesFromSeconds };
+/** Get the next allowed statuses from a given status */
+export function getNextStatuses(current: EngagementStatus): EngagementStatus[] {
+  return ALLOWED_TRANSITIONS[current] ?? [];
+}
 
-export const ensureCoachForUser = async (userId: string) => {
-  const service = createServiceClient();
-  const { data, error } = await service.from('coaches').select('id, user_id').eq('user_id', userId).maybeSingle();
-  if (error) throw new Error(error.message);
-  return data;
-};
+/** Fetch a single engagement by ID */
+export async function fetchEngagement(
+  client: SupabaseClient,
+  engagementId: string
+): Promise<Engagement | null> {
+  const { data, error } = await client
+    .from('engagements')
+    .select('*')
+    .eq('id', engagementId)
+    .single();
 
-export const createPaymentAuthorization = async (params: {
-  amountCents: number;
-  currency: string;
-  customerEmail?: string;
-  orderId: string;
-  coachStripeAccountId?: string;
-  applicationFeeCents: number;
-}) => {
-  const env = getRuntimeEnv();
-  if (!env.stripeSecretKey) {
-    return {
-      id: `pi_local_${crypto.randomUUID().replace(/-/g, '')}`,
-      client_secret: `pi_local_secret_${crypto.randomUUID().replace(/-/g, '')}`,
-      status: 'requires_payment_method'
-    };
+  if (error) throw error;
+  return data as Engagement | null;
+}
+
+/** Update engagement status with transition validation */
+export async function updateEngagementStatus(
+  client: SupabaseClient,
+  engagementId: string,
+  currentStatus: EngagementStatus,
+  newStatus: EngagementStatus,
+  extra?: Partial<Engagement>
+): Promise<Engagement> {
+  if (!isTransitionAllowed(currentStatus, newStatus)) {
+    throw new Error(
+      `Invalid engagement transition: ${currentStatus} → ${newStatus}`
+    );
   }
 
-  const intent = await stripeRequest<{ id: string; client_secret: string; status: string }>(
-    '/payment_intents',
-    'POST',
-    {
-      amount: params.amountCents,
-      currency: params.currency,
-      capture_method: 'manual',
-      confirmation_method: 'automatic',
-      'automatic_payment_methods[enabled]': true,
-      receipt_email: params.customerEmail,
-      application_fee_amount: params.applicationFeeCents,
-      'transfer_data[destination]': params.coachStripeAccountId,
-      'metadata[order_id]': params.orderId,
-      'metadata[source]': 'engagements',
-      'metadata[env]': env.flagEnvironment
-    }
-  );
+  const { data, error } = await client
+    .from('engagements')
+    .update({ status: newStatus, updated_at: new Date().toISOString(), ...extra })
+    .eq('id', engagementId)
+    .select()
+    .single();
 
-  return intent;
-};
+  if (error) throw error;
+  return data as Engagement;
+}
 
-export const capturePaymentIntent = async (paymentIntentId: string) => {
-  const env = getRuntimeEnv();
-  if (!env.stripeSecretKey || paymentIntentId.startsWith('pi_local_')) {
-    return { id: paymentIntentId, status: 'succeeded' };
-  }
-  return await stripeRequest<{ id: string; status: string }>(`/payment_intents/${paymentIntentId}/capture`, 'POST', {});
-};
+/** Check if an engagement has expired */
+export function isEngagementExpired(engagement: Engagement): boolean {
+  if (!engagement.expires_at) return false;
+  return new Date(engagement.expires_at) < new Date();
+}
 
-export const cancelPaymentIntent = async (paymentIntentId: string) => {
-  const env = getRuntimeEnv();
-  if (!env.stripeSecretKey || paymentIntentId.startsWith('pi_local_')) {
-    return { id: paymentIntentId, status: 'canceled' };
-  }
-  return await stripeRequest<{ id: string; status: string }>(`/payment_intents/${paymentIntentId}/cancel`, 'POST', {});
-};
+/** Check if a user is the expert of an engagement */
+export function isExpert(engagement: Engagement, userId: string): boolean {
+  return engagement.expert_id === userId;
+}
+
+/** Check if a user is the requester of an engagement */
+export function isRequester(engagement: Engagement, userId: string): boolean {
+  return engagement.user_id === userId;
+}
+
+// ---------------------------------------------------------------------------
+// Engagement utilities (consolidated from engagement-utils.ts)
+// ---------------------------------------------------------------------------
+
+/** Format an engagement for public display (strip private fields) */
+export function formatPublicEngagement(
+  engagement: Engagement
+): Omit<Engagement, 'payment_intent_id'> {
+  const { payment_intent_id: _paymentIntentId, ...publicFields } = engagement;
+  return publicFields;
+}
+
+/** Calculate whether an engagement is within the response window */
+export function isWithinResponseWindow(
+  engagement: Engagement,
+  windowHours = 48
+): boolean {
+  const created = new Date(engagement.created_at);
+  const windowEnd = new Date(created.getTime() + windowHours * 60 * 60 * 1000);
+  return new Date() < windowEnd;
+}

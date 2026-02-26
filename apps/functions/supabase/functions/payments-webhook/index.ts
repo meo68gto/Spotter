@@ -1,149 +1,160 @@
-import { createServiceClient } from '../_shared/client.ts';
-import { json } from '../_shared/http.ts';
-import { sendTransactionalEmail } from '../_shared/notifications.ts';
-import { verifyStripeWebhookSignature } from '../_shared/payments.ts';
-import { getRuntimeEnv } from '../_shared/env.ts';
-import { trackServerEvent } from '../_shared/telemetry.ts';
+// supabase/functions/payments-webhook/index.ts
+import Stripe from 'https://esm.sh/stripe@17.7.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createLogger } from '../_shared/telemetry.ts';
+import { handleCors, ok, error } from '../_shared/http.ts';
+import { getEnv } from '../_shared/env.ts';
 
-type StripeEvent = {
-  id: string;
-  type: string;
-  data: {
-    object: Record<string, unknown>;
-  };
-};
+Deno.serve(async (req: Request) => {
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
-const resolveOrderByPaymentIntent = async (paymentIntentId: string) => {
-  const service = createServiceClient();
-  const { data } = await service
-    .from('review_orders')
-    .select('id, buyer_user_id, status')
-    .eq('stripe_payment_intent_id', paymentIntentId)
-    .maybeSingle();
-  return data;
-};
+  const requestId = req.headers.get('x-request-id') ?? crypto.randomUUID();
+  const log = createLogger('payments-webhook', requestId);
 
-Deno.serve(async (req) => {
-  const env = getRuntimeEnv();
+  const env = getEnv();
+  const stripe = new Stripe(env.stripeSecretKey, { apiVersion: '2024-12-18.acacia' });
+
+  // IMPORTANT: Read raw body BEFORE any JSON parsing.
+  // stripe.webhooks.constructEvent requires the raw request body bytes
+  // to verify the HMAC signature. Using req.json() first would consume
+  // the body and make signature verification impossible.
   const rawBody = await req.text();
-  const signature = req.headers.get('stripe-signature');
+  const sig = req.headers.get('stripe-signature');
 
-  const valid = await verifyStripeWebhookSignature(rawBody, signature, env.stripeWebhookSecret);
-  if (!valid) {
-    return json(401, { error: 'Invalid Stripe webhook signature', code: 'invalid_webhook_signature' });
+  if (!sig) {
+    log.warn('Missing stripe-signature header');
+    return error('Missing stripe-signature header', 400, 'missing_signature');
   }
 
-  const event = JSON.parse(rawBody) as StripeEvent;
-  const service = createServiceClient();
-
-  const { data: existingEvent } = await service
-    .from('payment_events')
-    .select('id')
-    .eq('stripe_event_id', event.id)
-    .maybeSingle();
-
-  if (existingEvent) {
-    return json(200, { received: true, deduped: true });
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(rawBody, sig, env.stripeWebhookSecret);
+  } catch (err) {
+    log.error('Stripe webhook signature verification failed', err);
+    return error(
+      `Webhook signature verification failed: ${err instanceof Error ? err.message : String(err)}`,
+      400,
+      'invalid_signature'
+    );
   }
 
-  await service.from('payment_events').insert({
-    stripe_event_id: event.id,
-    event_type: event.type,
-    payload: event as unknown as Record<string, unknown>
+  log.info('webhook_received', { type: event.type, id: event.id });
+
+  const supabase = createClient(env.supabaseUrl, env.serviceRoleKey, {
+    auth: { persistSession: false },
   });
 
-  if (event.type === 'payment_intent.succeeded') {
-    const paymentIntentId = String(event.data.object.id ?? '');
-    const order = await resolveOrderByPaymentIntent(paymentIntentId);
-    if (order) {
-      await service
-        .from('review_orders')
-        .update({ status: 'paid', paid_at: new Date().toISOString() })
-        .eq('id', order.id)
-        .in('status', ['created', 'requires_payment_method', 'processing']);
+  try {
+    switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        log.info('payment_intent.succeeded', { id: paymentIntent.id });
 
-      const userRecord = await service.auth.admin.getUserById(order.buyer_user_id);
-      const email = userRecord.data.user?.email;
-      if (email) {
-        await sendTransactionalEmail({
-          userId: order.buyer_user_id,
-          to: email,
-          subject: 'Spotter payment receipt',
-          html: '<p>Your coach review payment is complete.</p>',
-          eventType: 'payment_receipt',
-          payload: { order_id: order.id, payment_intent_id: paymentIntentId }
-        });
+        await supabase
+          .from('payment_intents')
+          .update({
+            status: 'succeeded',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_payment_intent_id', paymentIntent.id);
+
+        // Release any matching payment holds
+        const { data: engagement } = await supabase
+          .from('engagements')
+          .select('id, user_id, expert_id')
+          .eq('payment_intent_id', paymentIntent.id)
+          .single();
+
+        if (engagement) {
+          await supabase
+            .from('engagements')
+            .update({
+              payment_captured_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', engagement.id);
+
+          log.info('engagement_payment_captured', { engagementId: engagement.id });
+        }
+        break;
       }
 
-      await trackServerEvent('payment_intent_succeeded', order.buyer_user_id, {
-        review_order_id: order.id,
-        payment_intent_id: paymentIntentId
-      });
-    }
-  }
-
-  if (event.type === 'payment_intent.payment_failed') {
-    const paymentIntentId = String(event.data.object.id ?? '');
-    await service
-      .from('review_orders')
-      .update({ status: 'failed' })
-      .eq('stripe_payment_intent_id', paymentIntentId)
-      .in('status', ['created', 'requires_payment_method', 'processing']);
-    const order = await resolveOrderByPaymentIntent(paymentIntentId);
-    if (order) {
-      await trackServerEvent('payment_intent_failed', order.buyer_user_id, {
-        review_order_id: order.id,
-        payment_intent_id: paymentIntentId
-      });
-    }
-  }
-
-  if (event.type === 'charge.refunded') {
-    const paymentIntentId = String(event.data.object.payment_intent ?? '');
-    const { data: order } = await service
-      .from('review_orders')
-      .select('id, buyer_user_id')
-      .eq('stripe_payment_intent_id', paymentIntentId)
-      .maybeSingle();
-
-    if (order) {
-      await service
-        .from('review_orders')
-        .update({ status: 'refunded', refunded_at: new Date().toISOString() })
-        .eq('id', order.id);
-
-      const userRecord = await service.auth.admin.getUserById(order.buyer_user_id);
-      const email = userRecord.data.user?.email;
-      if (email) {
-        await sendTransactionalEmail({
-          userId: order.buyer_user_id,
-          to: email,
-          subject: 'Spotter refund confirmation',
-          html: '<p>Your refund has been processed.</p>',
-          eventType: 'refund_confirmation',
-          payload: { order_id: order.id, payment_intent_id: paymentIntentId }
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        log.warn('payment_intent.payment_failed', {
+          id: paymentIntent.id,
+          lastError: paymentIntent.last_payment_error?.message,
         });
+
+        await supabase
+          .from('payment_intents')
+          .update({
+            status: 'failed',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_payment_intent_id', paymentIntent.id);
+        break;
       }
 
-      await trackServerEvent('refund_processed', order.buyer_user_id, {
-        review_order_id: order.id,
-        payment_intent_id: paymentIntentId
-      });
+      case 'payment_intent.canceled': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        log.info('payment_intent.canceled', { id: paymentIntent.id });
+
+        await supabase
+          .from('payment_intents')
+          .update({
+            status: 'canceled',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_payment_intent_id', paymentIntent.id);
+        break;
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        log.info('charge.refunded', { id: charge.id, paymentIntentId: charge.payment_intent });
+
+        await supabase
+          .from('payment_intents')
+          .update({
+            status: 'refunded',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_payment_intent_id', charge.payment_intent);
+        break;
+      }
+
+      case 'account.updated': {
+        const account = event.data.object as Stripe.Account;
+        log.info('account.updated', { id: account.id });
+
+        const chargesEnabled = account.charges_enabled ?? false;
+        const payoutsEnabled = account.payouts_enabled ?? false;
+
+        await supabase
+          .from('expert_profiles')
+          .update({
+            stripe_charges_enabled: chargesEnabled,
+            stripe_payouts_enabled: payoutsEnabled,
+            stripe_onboarding_complete: chargesEnabled && payoutsEnabled,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_account_id', account.id);
+        break;
+      }
+
+      default:
+        log.info('unhandled_event_type', { type: event.type });
     }
+
+    return ok({ received: true, type: event.type });
+  } catch (err) {
+    log.error('webhook_handler_error', err, { type: event.type });
+    return error(
+      `Failed to process webhook event: ${err instanceof Error ? err.message : String(err)}`,
+      500,
+      'handler_error'
+    );
   }
-
-  if (event.type === 'account.updated') {
-    const accountId = String(event.data.object.id ?? '');
-    const chargesEnabled = Boolean(event.data.object.charges_enabled);
-    const detailsSubmitted = Boolean(event.data.object.details_submitted);
-
-    await service
-      .from('coaches')
-      .update({
-        onboarding_status: chargesEnabled && detailsSubmitted ? 'active' : 'pending'
-      })
-      .eq('stripe_account_id', accountId);
-  }
-
-  return json(200, { received: true, deduped: false });
 });
