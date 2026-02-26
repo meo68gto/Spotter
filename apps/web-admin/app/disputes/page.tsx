@@ -18,14 +18,20 @@ type RescheduleRow = {
 };
 
 export default async function DisputesPage() {
-  const [refunds, reschedules] = await Promise.all([
-    restFetch<RefundRow[]>(
-      'refund_requests?select=id,review_order_id,requester_user_id,reason,status,created_at&order=created_at.desc&limit=100'
-    ),
-    restFetch<RescheduleRow[]>(
+  const refunds = await restFetch<RefundRow[]>(
+    'refund_requests?select=id,review_order_id,requester_user_id,reason,status,created_at&order=created_at.desc&limit=100'
+  );
+
+  // TODO: reschedule_requests table does not yet exist in the schema.
+  // Wrapped in try-catch to prevent a missing table from breaking the disputes page.
+  let reschedules: RescheduleRow[] = [];
+  try {
+    reschedules = await restFetch<RescheduleRow[]>(
       'reschedule_requests?select=id,engagement_request_id,status,declined_reason,created_at&status=eq.declined&order=created_at.desc&limit=100'
-    )
-  ]);
+    );
+  } catch (err) {
+    console.warn('reschedule_requests query failed (table may not exist yet):', err);
+  }
 
   return (
     <main style={{ padding: 24, fontFamily: 'sans-serif' }}>

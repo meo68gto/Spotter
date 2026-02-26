@@ -40,8 +40,15 @@ async function bulkModerate(formData: FormData) {
   if (confirmText !== 'CONFIRM') return;
 
   const moderationStatus = decision === 'approve' ? 'approved' : 'rejected';
-  for (const id of ids) {
-    await invokeAdminFunction('engagements-moderate', { engagementRequestId: id, moderationStatus });
+  // Use Promise.allSettled for error isolation — individual failures don't abort the batch
+  const results = await Promise.allSettled(
+    ids.map((id) =>
+      invokeAdminFunction('engagements-moderate', { engagementRequestId: id, moderationStatus })
+    )
+  );
+  const failed = results.filter((r) => r.status === 'rejected');
+  if (failed.length > 0) {
+    console.error(`Bulk moderation: ${failed.length}/${ids.length} items failed`);
   }
   revalidatePath('/moderation');
 }
@@ -52,7 +59,9 @@ export default async function ModerationPage({
   searchParams?: { page?: string; q?: string; mode?: string };
 }) {
   const page = Math.max(Number(searchParams?.page ?? '1'), 1);
-  const q = (searchParams?.q ?? '').trim();
+  const rawQ = (searchParams?.q ?? '').trim();
+  // S-6: Sanitize search param to prevent injection via URL query string
+  const safeQ = rawQ.replace(/[^a-zA-Z0-9 .,'!?-]/g, '');
   const mode = (searchParams?.mode ?? '').trim();
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -64,7 +73,7 @@ export default async function ModerationPage({
     limit: String(PAGE_SIZE),
     offset: String(offset)
   });
-  if (q) params.set('question_text', `ilike.*${q.replaceAll('*', '')}*`);
+  if (safeQ) params.set('question_text', `ilike.*${safeQ.replaceAll('*', '')}*`);
   if (mode) params.set('engagement_mode', `eq.${mode}`);
 
   const rows = await restFetch<ModerationRow[]>(`engagement_requests?${params.toString()}`);
@@ -73,7 +82,7 @@ export default async function ModerationPage({
   const buildHref = (nextPage: number) => {
     const p = new URLSearchParams();
     p.set('page', String(nextPage));
-    if (q) p.set('q', q);
+    if (safeQ) p.set('q', safeQ);
     if (mode) p.set('mode', mode);
     return `/moderation?${p.toString()}`;
   };
@@ -84,7 +93,7 @@ export default async function ModerationPage({
       <p>Pending public Coacher posts: {rows.length}</p>
 
       <form method="get" style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <input name="q" defaultValue={q} placeholder="Search question text" />
+        <input name="q" defaultValue={safeQ} placeholder="Search question text" />
         <select name="mode" defaultValue={mode}>
           <option value="">All modes</option>
           <option value="text_answer">Text Answer</option>
