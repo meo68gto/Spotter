@@ -107,9 +107,11 @@ export function SponsoredEventsScreen() {
     }
   };
 
+  // m-4: Only depend on activityId — sport is used client-side only and should not trigger a refetch
   useEffect(() => {
     loadEvents();
-  }, [activityId, sport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityId]); // sport intentionally excluded — used for display mapping only
 
   const createSponsoredEvent = async () => {
     if (!canCreate) return;

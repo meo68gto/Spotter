@@ -1,11 +1,12 @@
 import { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { supabase } from '../../lib/supabase';
 import { shortId } from './ui-utils';
 
+// m-9: Flattened ExpertRow type — coach is a single object instead of a nested array
 type ExpertRow = {
   id: string;
   coach_id: string;
@@ -13,14 +14,45 @@ type ExpertRow = {
   bio: string | null;
   is_dnd: boolean;
   discoverable: boolean;
-  coaches: {
+  coach: {
+    user_id: string;
+    display_name: string | null;
+    home_location: string | null;
+  } | null;
+};
+
+// Raw Supabase shape — coaches is a nested join that returns an array
+type RawExpertRow = {
+  id: string;
+  coach_id: string;
+  headline: string | null;
+  bio: string | null;
+  is_dnd: boolean;
+  discoverable: boolean;
+  coaches: Array<{
     user_id: string;
     users: Array<{
       display_name: string | null;
       home_location: string | null;
     }> | null;
-  }[] | null;
+  }> | null;
 };
+
+const flattenExpert = (raw: RawExpertRow): ExpertRow => ({
+  id: raw.id,
+  coach_id: raw.coach_id,
+  headline: raw.headline,
+  bio: raw.bio,
+  is_dnd: raw.is_dnd,
+  discoverable: raw.discoverable,
+  coach: raw.coaches?.[0]
+    ? {
+        user_id: raw.coaches[0].user_id,
+        display_name: raw.coaches[0].users?.[0]?.display_name ?? null,
+        home_location: raw.coaches[0].users?.[0]?.home_location ?? null
+      }
+    : null
+});
 
 export function ExpertsScreen({ session }: { session: Session }) {
   const [query, setQuery] = useState('');
@@ -48,7 +80,8 @@ export function ExpertsScreen({ session }: { session: Session }) {
       return;
     }
 
-    setExperts((data ?? []) as ExpertRow[]);
+    // m-9: Flatten nested join into a flat coach object
+    setExperts(((data ?? []) as RawExpertRow[]).map(flattenExpert));
   };
 
   useEffect(() => {
@@ -73,7 +106,7 @@ export function ExpertsScreen({ session }: { session: Session }) {
 
       {experts.map((expert) => (
         <Card key={expert.id}>
-          <Text style={styles.name}>{expert.coaches?.[0]?.users?.[0]?.display_name ?? `Coach ${shortId(expert.coach_id)}`}</Text>
+          <Text style={styles.name}>{expert.coach?.display_name ?? `Coach ${shortId(expert.coach_id)}`}</Text>
           <Text style={styles.meta}>{expert.headline ?? 'No headline yet'}</Text>
           {expert.bio ? <Text style={styles.meta}>{expert.bio}</Text> : null}
           <Text style={styles.meta}>Coach ID: {shortId(expert.coach_id)}</Text>

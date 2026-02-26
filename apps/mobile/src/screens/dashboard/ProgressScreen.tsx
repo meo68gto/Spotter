@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { invokeFunction } from '../../lib/api'; // M-1
 import { supabase } from '../../lib/supabase';
-import { env } from '../../types/env';
 
 type Snapshot = {
   id: string;
@@ -13,58 +13,56 @@ type Snapshot = {
   metrics: Array<{ key: string; label?: string; value: number; delta?: number; baseline_value?: number }>;
 };
 
+type ProgressSummary = {
+  count: number;
+  latestSnapshotDate: string | null;
+  latestTrendSummary: string | null;
+  latestMetrics: Array<{ key: string; label: string; value: number; delta: number }>;
+};
+
+type ProgressResponse = {
+  data: Snapshot[];
+  summary: ProgressSummary | null;
+};
+
 export function ProgressScreen({ session }: { session: Session }) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [activityId, setActivityId] = useState<string>('');
-  const [summary, setSummary] = useState<{
-    count: number;
-    latestSnapshotDate: string | null;
-    latestTrendSummary: string | null;
-    latestMetrics: Array<{ key: string; label: string; value: number; delta: number }>;
-  } | null>(null);
+  const [summary, setSummary] = useState<ProgressSummary | null>(null);
 
   const loadSnapshots = async (nextActivityId?: string) => {
     const target = nextActivityId ?? activityId;
     if (!target) return;
 
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
-    if (!token) return;
-
-    const res = await fetch(`${env.apiBaseUrl}/functions/v1/progress-snapshots?activityId=${target}&limit=30`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const payload = await res.json();
-    if (!res.ok) {
-      Alert.alert('Unable to load snapshots', payload.error ?? 'Unknown error');
-      return;
+    try {
+      // M-1: Use invokeFunction with GET + query params
+      const result = await invokeFunction<ProgressResponse>('progress-snapshots', {
+        method: 'GET',
+        query: { activityId: target, limit: 30 }
+      });
+      setSnapshots(result.data ?? []);
+      setSummary(result.summary ?? null);
+    } catch (error) {
+      Alert.alert('Unable to load snapshots', error instanceof Error ? error.message : 'Unknown error');
     }
-    setSnapshots(payload.data ?? []);
-    setSummary(payload.summary ?? null);
   };
 
   const generateSnapshot = async () => {
     if (!activityId) return;
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
-    if (!token) return;
 
-    const res = await fetch(`${env.apiBaseUrl}/functions/v1/progress-generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ activityId })
-    });
-
-    const payload = await res.json();
-    if (!res.ok) {
-      Alert.alert('Generate failed', payload.error ?? 'Unknown error');
-      return;
+    try {
+      // M-1: Use invokeFunction
+      await invokeFunction('progress-generate', {
+        method: 'POST',
+        body: { activityId }
+      });
+      await loadSnapshots();
+    } catch (error) {
+      Alert.alert('Generate failed', error instanceof Error ? error.message : 'Unknown error');
     }
-
-    await loadSnapshots();
   };
 
+  // m-10: async function defined inside useEffect
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase

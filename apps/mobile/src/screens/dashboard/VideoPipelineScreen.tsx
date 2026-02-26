@@ -6,10 +6,13 @@ import * as FileSystem from 'expo-file-system';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { trackEvent } from '../../lib/analytics';
+import { invokeFunction } from '../../lib/api';
+import { getAccessToken } from '../../lib/auth-utils'; // m-1
 import { flags } from '../../lib/flags';
 import { supabase } from '../../lib/supabase';
 import { compressVideoOnDevice } from '../../lib/video-compression';
 import { env } from '../../types/env';
+import { shortId } from './ui-utils'; // m-2
 
 type PipelineStage = 'idle' | 'compressing' | 'presigning' | 'uploading' | 'queueing' | 'done' | 'failed';
 
@@ -36,12 +39,17 @@ const MAX_UPLOAD_ATTEMPTS = 3;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const resolveUploadUrl = (uploadUrl: string) =>
-  uploadUrl
-    .replace('http://kong:8000', env.supabaseUrl)
-    .replace('http://kong', env.supabaseUrl)
-    .replace('https://kong:8000', env.supabaseUrl)
-    .replace('https://kong', env.supabaseUrl);
+// m-8: Only rewrite kong hostnames in local/dev environments, not production
+const resolveUploadUrl = (uploadUrl: string): string => {
+  if (env.apiBaseUrl.includes('localhost') || env.apiBaseUrl.includes('127.0.0.1')) {
+    return uploadUrl
+      .replace('http://kong:8000', env.supabaseUrl)
+      .replace('https://kong:8000', env.supabaseUrl)
+      .replace('http://kong', env.supabaseUrl)
+      .replace('https://kong', env.supabaseUrl);
+  }
+  return uploadUrl;
+};
 
 export function VideoPipelineScreen({ session }: { session: Session }) {
   const [activityId, setActivityId] = useState('');
@@ -57,6 +65,7 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
 
   const canRetry = useMemo(() => stage === 'failed' && Boolean(videoUri) && Boolean(activityId), [stage, videoUri, activityId]);
 
+  // m-10: async function defined inside useEffect
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
@@ -149,20 +158,12 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
     setProgressPct(0);
   };
 
-  const enqueueSubmission = async (videoSubmissionId: string, token: string) => {
-    const queueRes = await fetch(`${env.apiBaseUrl}/functions/v1/videos-enqueue-processing`, {
+  // M-1: Use invokeFunction for videos-enqueue-processing
+  const enqueueSubmission = async (videoSubmissionId: string) => {
+    await invokeFunction('videos-enqueue-processing', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ videoSubmissionId })
+      body: { videoSubmissionId }
     });
-
-    const queuePayload = await queueRes.json();
-    if (!queueRes.ok) {
-      throw new Error(queuePayload.error ?? 'Queue failed');
-    }
   };
 
   const runUpload = async () => {
@@ -175,7 +176,7 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
       return;
     }
 
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const token = await getAccessToken(); // m-1
     if (!token) {
       Alert.alert('Session missing', 'Please sign in again.');
       return;
@@ -210,22 +211,15 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
       setStage('presigning');
       setStatus('Requesting upload URL...');
       setProgressPct(15);
-      const presignRes = await fetch(`${env.apiBaseUrl}/functions/v1/videos-presign`, {
+
+      // M-1: Use invokeFunction for presign
+      const presignData = await invokeFunction<{ upload_url: string; id: string }>('videos-presign', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ activityId, fileExt: ext })
+        body: { activityId, fileExt: ext }
       });
 
-      const presignPayload = await presignRes.json();
-      if (!presignRes.ok) {
-        throw new Error(presignPayload.error ?? 'Presign failed');
-      }
-
-      const uploadUrl = resolveUploadUrl(presignPayload.data.upload_url as string);
-      const videoSubmissionId = presignPayload.data.id as string;
+      const uploadUrl = resolveUploadUrl(presignData.upload_url);
+      const videoSubmissionId = presignData.id;
       setLastSubmissionId(videoSubmissionId);
 
       setStage('uploading');
@@ -279,7 +273,7 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
       setStatus('Queueing processing...');
       setProgressPct(95);
 
-      await enqueueSubmission(videoSubmissionId, token);
+      await enqueueSubmission(videoSubmissionId);
 
       await trackEvent('video_uploaded_and_queued', session.user.id, {
         video_submission_id: videoSubmissionId,
@@ -308,15 +302,9 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
   };
 
   const retryQueueForSubmission = async (submissionId: string) => {
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
-    if (!token) {
-      Alert.alert('Session missing', 'Please sign in again.');
-      return;
-    }
-
     try {
       setStatus('Requeueing submission...');
-      await enqueueSubmission(submissionId, token);
+      await enqueueSubmission(submissionId);
       setStatus('Submission requeued');
       await refreshSubmissions();
     } catch (error) {
@@ -364,7 +352,7 @@ export function VideoPipelineScreen({ session }: { session: Session }) {
           renderItem={({ item }) => (
             <View style={styles.submissionRow}>
               <View style={styles.submissionMeta}>
-                <Text style={styles.submissionId}>{item.id.slice(0, 8)}</Text>
+                <Text style={styles.submissionId}>{shortId(item.id)}</Text>
                 <Text style={styles.submissionStatus}>{item.status}</Text>
                 <Text style={styles.submissionTime}>{new Date(item.created_at).toLocaleString()}</Text>
                 {jobsBySubmissionId[item.id] ? (
