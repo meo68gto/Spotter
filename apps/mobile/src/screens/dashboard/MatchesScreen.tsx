@@ -4,9 +4,12 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacit
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { trackEvent } from '../../lib/analytics';
+import { invokeFunction } from '../../lib/api';
+import { getAccessToken } from '../../lib/auth-utils'; // m-1
 import { flags } from '../../lib/flags';
 import { supabase } from '../../lib/supabase';
-import { env } from '../../types/env';
+import { FeedbackSummary } from '../../types/feedback'; // M-22: shared type
+import { shortId } from './ui-utils'; // m-2: import shortId
 
 type Candidate = {
   candidate_user_id: string;
@@ -17,15 +20,6 @@ type Candidate = {
   availability_overlap_minutes: number;
   reasons: string[];
   match_score?: number;
-};
-
-type FeedbackSummary = {
-  userId: string;
-  totalFeedback: number;
-  thumbsUpCount: number;
-  thumbsDownCount: number;
-  positiveRatio: number;
-  topTags: string[];
 };
 
 type MatchRecord = {
@@ -57,8 +51,6 @@ export function MatchesScreen({ session }: { session: Session }) {
   );
 
   const acceptedMatches = useMemo(() => matches.filter((match) => match.status === 'accepted'), [matches]);
-
-  const getToken = async () => (await supabase.auth.getSession()).data.session?.access_token;
 
   const loadMatches = async () => {
     setLoadingMatches(true);
@@ -95,64 +87,50 @@ export function MatchesScreen({ session }: { session: Session }) {
       return;
     }
 
-    const token = await getToken();
-    if (!token) {
+    try {
+      // M-1: use invokeFunction instead of raw fetch
+      const data = await invokeFunction<Candidate[]>('matching-candidates', {
+        method: 'POST',
+        body: {
+          activityId: profile.activity_id,
+          radiusKm: flags.matchingV2 ? 35 : 25,
+          skillBand: profile.skill_band,
+          limit: 5
+        }
+      });
+
+      const nextCandidates = data ?? [];
+      setCandidates(nextCandidates);
+      await loadCandidateFeedback(nextCandidates);
+    } catch (error) {
+      Alert.alert('Unable to fetch matches', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
       setLoadingCandidates(false);
-      return;
     }
-
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/matching-candidates`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        activityId: profile.activity_id,
-        radiusKm: flags.matchingV2 ? 35 : 25,
-        skillBand: profile.skill_band,
-        limit: 5
-      })
-    });
-
-    const payload = await response.json();
-    setLoadingCandidates(false);
-
-    if (!response.ok) {
-      Alert.alert('Unable to fetch matches', payload.error ?? 'Unknown error');
-      return;
-    }
-
-    const nextCandidates = (payload.data ?? []) as Candidate[];
-    setCandidates(nextCandidates);
-    await loadCandidateFeedback(nextCandidates);
   };
 
   const loadCandidateFeedback = async (targetCandidates: Candidate[]) => {
-    const token = await getToken();
-    if (!token || targetCandidates.length === 0) {
+    if (targetCandidates.length === 0) {
       setFeedbackByUserId({});
       return;
     }
 
     const userIds = Array.from(new Set(targetCandidates.map((candidate) => candidate.candidate_user_id)));
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/profiles-feedback-summary`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ userIds })
-    });
-    const payload = await response.json();
-    if (!response.ok) return;
+    try {
+      const data = await invokeFunction<FeedbackSummary[]>('profiles-feedback-summary', {
+        method: 'POST',
+        body: { userIds }
+      });
 
-    const mapped: Record<string, FeedbackSummary> = {};
-    for (const item of payload.data ?? []) {
-      mapped[item.userId] = item as FeedbackSummary;
+      const mapped: Record<string, FeedbackSummary> = {};
+      for (const item of data ?? []) {
+        mapped[item.userId] = item;
+      }
+      setFeedbackByUserId(mapped);
+    } catch {
+      // Non-critical — feedback summary failure should not block the main UI
     }
-    setFeedbackByUserId(mapped);
   };
 
   const refreshAll = async () => {
@@ -164,68 +142,51 @@ export function MatchesScreen({ session }: { session: Session }) {
   }, []);
 
   const requestMatch = async (candidate: Candidate) => {
-    const token = await getToken();
+    const token = await getAccessToken(); // m-1
     if (!token) {
       Alert.alert('Session missing', 'Please sign in again.');
       return;
     }
 
     setRequestingId(candidate.candidate_user_id);
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/matching-request`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        candidateUserId: candidate.candidate_user_id,
-        activityId: candidate.activity_id
-      })
-    });
-    const payload = await response.json();
-    setRequestingId('');
+    try {
+      await invokeFunction('matching-request', {
+        method: 'POST',
+        body: {
+          candidateUserId: candidate.candidate_user_id,
+          activityId: candidate.activity_id
+        }
+      });
 
-    if (!response.ok) {
-      Alert.alert('Match request failed', payload.error ?? 'Unknown error');
-      return;
+      await trackEvent('match_request_created', session.user.id, {
+        candidate_user_id: candidate.candidate_user_id,
+        activity_id: candidate.activity_id
+      });
+
+      Alert.alert('Request sent', 'Your match request was created.');
+      await loadMatches();
+    } catch (error) {
+      Alert.alert('Match request failed', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setRequestingId('');
     }
-
-    await trackEvent('match_request_created', session.user.id, {
-      candidate_user_id: candidate.candidate_user_id,
-      activity_id: candidate.activity_id
-    });
-
-    Alert.alert('Request sent', 'Your match request was created.');
-    await loadMatches();
   };
 
   const runMatchAction = async (endpoint: 'matching-accept' | 'matching-reject', matchId: string) => {
-    const token = await getToken();
-    if (!token) {
-      Alert.alert('Session missing', 'Please sign in again.');
-      return;
-    }
-
     setActingMatchId(matchId);
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ matchId })
-    });
+    try {
+      await invokeFunction(endpoint, {
+        method: 'POST',
+        body: { matchId }
+      });
 
-    const payload = await response.json();
-    setActingMatchId('');
-
-    if (!response.ok) {
-      Alert.alert('Match action failed', payload.error ?? 'Unknown error');
-      return;
+      await trackEvent('match_action', session.user.id, { match_id: matchId, action: endpoint });
+      await loadMatches();
+    } catch (error) {
+      Alert.alert('Match action failed', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setActingMatchId('');
     }
-
-    await trackEvent('match_action', session.user.id, { match_id: matchId, action: endpoint });
-    await loadMatches();
   };
 
   return (
@@ -241,8 +202,9 @@ export function MatchesScreen({ session }: { session: Session }) {
         {!loadingMatches && incomingPending.length === 0 ? <Text style={styles.empty}>No incoming requests.</Text> : null}
         {incomingPending.map((match) => (
           <View key={match.id} style={styles.rowBlock}>
-            <Text style={styles.name}>Request {match.id.slice(0, 8)}</Text>
-            <Text style={styles.meta}>From user {match.requester_user_id.slice(0, 8)}</Text>
+            {/* m-2: use shortId() helper instead of .slice(0,8) */}
+            <Text style={styles.name}>Request {shortId(match.id)}</Text>
+            <Text style={styles.meta}>From user {shortId(match.requester_user_id)}</Text>
             <View style={styles.actionRow}>
               <TouchableOpacity
                 style={styles.primaryButton}
@@ -268,8 +230,8 @@ export function MatchesScreen({ session }: { session: Session }) {
         {!loadingMatches && outgoingPending.length === 0 ? <Text style={styles.empty}>No outgoing pending requests.</Text> : null}
         {outgoingPending.map((match) => (
           <View key={match.id} style={styles.rowBlock}>
-            <Text style={styles.name}>Request {match.id.slice(0, 8)}</Text>
-            <Text style={styles.meta}>To user {match.candidate_user_id.slice(0, 8)}</Text>
+            <Text style={styles.name}>Request {shortId(match.id)}</Text>
+            <Text style={styles.meta}>To user {shortId(match.candidate_user_id)}</Text>
             <TouchableOpacity
               style={styles.secondaryButton}
               disabled={actingMatchId === match.id}
@@ -286,8 +248,8 @@ export function MatchesScreen({ session }: { session: Session }) {
         {!loadingMatches && acceptedMatches.length === 0 ? <Text style={styles.empty}>No accepted matches yet.</Text> : null}
         {acceptedMatches.map((match) => (
           <View key={match.id} style={styles.rowBlock}>
-            <Text style={styles.name}>Match {match.id.slice(0, 8)}</Text>
-            <Text style={styles.meta}>Activity {match.activity_id.slice(0, 8)}</Text>
+            <Text style={styles.name}>Match {shortId(match.id)}</Text>
+            <Text style={styles.meta}>Activity {shortId(match.activity_id)}</Text>
           </View>
         ))}
       </Card>
@@ -299,7 +261,7 @@ export function MatchesScreen({ session }: { session: Session }) {
 
         {candidates.map((candidate) => (
           <View key={candidate.candidate_user_id} style={styles.rowBlock}>
-            <Text style={styles.name}>User {candidate.candidate_user_id.slice(0, 8)}</Text>
+            <Text style={styles.name}>User {shortId(candidate.candidate_user_id)}</Text>
             <Text style={styles.meta}>
               {candidate.skill_band} • {candidate.distance_km.toFixed(1)} km • overlap {candidate.availability_overlap_minutes}m
             </Text>
