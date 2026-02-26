@@ -4,10 +4,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../types/env';
 
-const fallbackSupabaseUrl = 'https://example.supabase.co';
-const fallbackSupabaseAnonKey = 'public-anon-key-placeholder';
+// M-6: Throw early if env vars are missing instead of using placeholder fallbacks
+if (!env.supabaseUrl) {
+  throw new Error('EXPO_PUBLIC_SUPABASE_URL is not set. Please configure your environment.');
+}
+if (!env.supabaseAnonKey) {
+  throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set. Please configure your environment.');
+}
 
-export const supabase = createClient(env.supabaseUrl || fallbackSupabaseUrl, env.supabaseAnonKey || fallbackSupabaseAnonKey, {
+export const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

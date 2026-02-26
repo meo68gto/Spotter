@@ -12,7 +12,14 @@ export const env = {
   legalCookieUrl: process.env.EXPO_PUBLIC_LEGAL_COOKIE_URL ?? '',
   legalTosVersion: process.env.EXPO_PUBLIC_LEGAL_TOS_VERSION ?? '1.0',
   legalPrivacyVersion: process.env.EXPO_PUBLIC_LEGAL_PRIVACY_VERSION ?? '1.0',
-  legalCookieVersion: process.env.EXPO_PUBLIC_LEGAL_COOKIE_VERSION ?? '1.0'
+  legalCookieVersion: process.env.EXPO_PUBLIC_LEGAL_COOKIE_VERSION ?? '1.0',
+  // Feature flag env vars consolidated here (S-6)
+  flagMatchingV2: process.env.EXPO_PUBLIC_FLAG_MATCHING_V2,
+  flagVideoPipeline: process.env.EXPO_PUBLIC_FLAG_VIDEO_PIPELINE,
+  flagEngagementAsyncAnswers: process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_ASYNC_ANSWERS,
+  flagEngagementGuestCheckout: process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_GUEST_CHECKOUT,
+  flagEngagementPublicFeed: process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_PUBLIC_FEED,
+  flagEngagementVideoCallDaily: process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_VIDEO_CALL_DAILY,
 };
 
 export const validateMobileEnv = (): string[] => {
