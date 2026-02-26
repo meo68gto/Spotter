@@ -20,8 +20,9 @@ export class AppErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, message: error.message };
   }
 
-  componentDidCatch(error: Error) {
-    console.error('Unhandled app error', error);
+  // m-5: Add errorInfo parameter to log component stack
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Unhandled app error', error, errorInfo.componentStack);
   }
 
   private reset = () => {
