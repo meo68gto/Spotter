@@ -1,5 +1,5 @@
 import { Session } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AppErrorBoundary } from './src/components/AppErrorBoundary';
 import { Button } from './src/components/Button';
@@ -12,6 +12,24 @@ import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { validateMobileEnv } from './src/types/env';
 
 type Stage = 'auth' | 'legal' | 'onboarding' | 'map';
+
+// m-7: demoSession moved to module-level constant (not re-created on every render)
+const demoSession: Session = {
+  access_token: 'demo-access-token',
+  refresh_token: 'demo-refresh-token',
+  expires_in: 3600,
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+  token_type: 'bearer',
+  user: {
+    id: 'demo-user',
+    aud: 'authenticated',
+    role: 'authenticated',
+    email: 'demo@spotter.app',
+    app_metadata: { provider: 'email', providers: ['email'] },
+    user_metadata: { name: 'Spotter Demo User' },
+    created_at: new Date().toISOString()
+  }
+};
 
 export default function App() {
   return (
@@ -27,22 +45,21 @@ function RootApp() {
   const [stage, setStage] = useState<Stage>('auth');
   const [envErrors] = useState<string[]>(validateMobileEnv());
 
-  const demoSession: Session = {
-    access_token: 'demo-access-token',
-    refresh_token: 'demo-refresh-token',
-    expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    token_type: 'bearer',
-    user: {
-      id: 'demo-user',
-      aud: 'authenticated',
-      role: 'authenticated',
-      email: 'demo@spotter.app',
-      app_metadata: { provider: 'email', providers: ['email'] },
-      user_metadata: { name: 'Spotter Demo User' },
-      created_at: new Date().toISOString()
+  // C-7: Extracted resolveStage — replaces triplicated auth navigation logic
+  const resolveStage = useCallback(async (nextSession: Session) => {
+    try {
+      const legal = await invokeFunction<{ accepted: boolean }>('legal-status', { method: 'GET' });
+      if (!legal.accepted) { setStage('legal'); return; }
+    } catch {
+      setStage('legal'); return;
     }
-  };
+    const { data: me } = await supabase
+      .from('users')
+      .select('onboarding_complete')
+      .eq('id', nextSession.user.id)
+      .maybeSingle();
+    setStage(me?.onboarding_complete ? 'map' : 'onboarding');
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -51,20 +68,7 @@ function RootApp() {
         setStage('auth');
         return;
       }
-
-      try {
-        const legal = await invokeFunction<{ accepted: boolean }>('legal-status', { method: 'GET' });
-        if (!legal.accepted) {
-          setStage('legal');
-          return;
-        }
-      } catch {
-        setStage('legal');
-        return;
-      }
-
-      const { data: me } = await supabase.from('users').select('onboarding_complete').eq('id', data.session.user.id).maybeSingle();
-      setStage(me?.onboarding_complete ? 'map' : 'onboarding');
+      await resolveStage(data.session);
     });
 
     const { data: authSub } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
@@ -73,22 +77,11 @@ function RootApp() {
         setStage('auth');
         return;
       }
-      try {
-        const legal = await invokeFunction<{ accepted: boolean }>('legal-status', { method: 'GET' });
-        if (!legal.accepted) {
-          setStage('legal');
-          return;
-        }
-      } catch {
-        setStage('legal');
-        return;
-      }
-      const { data: me } = await supabase.from('users').select('onboarding_complete').eq('id', nextSession.user.id).maybeSingle();
-      setStage(me?.onboarding_complete ? 'map' : 'onboarding');
+      await resolveStage(nextSession);
     });
 
     return () => authSub.subscription.unsubscribe();
-  }, []);
+  }, [resolveStage]);
 
   if (envErrors.length) {
     if (demoMode) {
@@ -126,8 +119,8 @@ function RootApp() {
             setStage('auth');
             return;
           }
-          const { data: me } = await supabase.from('users').select('onboarding_complete').eq('id', user.id).maybeSingle();
-          setStage(me?.onboarding_complete ? 'map' : 'onboarding');
+          // C-7: Re-use resolveStage after legal acceptance
+          await resolveStage(session);
         }}
       />
     );

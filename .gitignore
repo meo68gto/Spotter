@@ -14,3 +14,4 @@ apps/mobile/.expo-shared
 supabase/.branches
 supabase/.temp
 .artifacts
+*.tsbuildinfo

@@ -1,4 +1,5 @@
 {
+  "$comment": "Re-exports root tsconfig.base.json. Extend via '../../tsconfig.base.json' or '@spotter/config/tsconfig/base'.",
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true

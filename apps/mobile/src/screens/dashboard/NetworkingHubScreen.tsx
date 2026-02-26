@@ -81,6 +81,8 @@ export function NetworkingHubScreen() {
     loadActivities();
   }, []);
 
+  // M-3: Remove cityFilter and sportFilter from deps — they're only used for client-side filtering.
+  // Only activityId triggers a new MCP booking plan call.
   useEffect(() => {
     if (!activityId) return;
     const runPlan = async () => {
@@ -138,7 +140,8 @@ export function NetworkingHubScreen() {
       }
     };
     runPlan();
-  }, [activityId, cityFilter, sportFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityId]); // M-3: cityFilter and sportFilter intentionally excluded — client-side only
 
   const filtered = useMemo(() => {
     return players.filter((player) => {

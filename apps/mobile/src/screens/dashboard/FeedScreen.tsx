@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { env } from '../../types/env';
+import { invokeFunction } from '../../lib/api';
 import { formatMode } from './ui-utils';
 
 type FeedItem = {
@@ -27,13 +27,13 @@ export function FeedScreen() {
   const load = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/feed-home?limit=20`);
-      const payload = await response.json();
-      if (!response.ok) {
-        Alert.alert('Feed load failed', payload.error ?? 'Unknown error');
-      } else {
-        setItems((payload.data ?? []) as FeedItem[]);
-      }
+      // S-5: Intentionally unauthenticated — feed-home is a public endpoint
+      const data = await invokeFunction<FeedItem[]>('feed-home', {
+        method: 'GET',
+        query: { limit: 20 },
+        requireAuth: false
+      });
+      setItems(data ?? []);
     } catch (error) {
       Alert.alert('Feed load failed', error instanceof Error ? error.message : 'Unknown error');
     } finally {

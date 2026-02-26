@@ -1,8 +1,10 @@
-export const mapStripeIntentToOrderStatus = (status: string): 'created' | 'requires_payment_method' | 'processing' | 'paid' => {
-  if (status === 'succeeded') return 'paid';
-  if (status === 'processing') return 'processing';
-  if (status === 'requires_payment_method') return 'requires_payment_method';
-  return 'created';
-};
-
-export const billableMinutesFromSeconds = (seconds: number) => Math.ceil(Math.max(seconds, 0) / 60);
+// _shared/engagement-utils.ts
+// Re-exports from engagements.ts for backwards compatibility.
+// This file has been consolidated into engagements.ts — import from there directly.
+export {
+  formatPublicEngagement,
+  isWithinResponseWindow,
+  isEngagementExpired,
+  isExpert,
+  isRequester,
+} from './engagements.ts';

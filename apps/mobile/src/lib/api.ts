@@ -7,27 +7,50 @@ export type ApiError = {
   details?: Record<string, unknown>;
 };
 
+// M-1: Extended invokeFunction — supports GET with query params and optional auth
 export const invokeFunction = async <T>(
   path: string,
   options?: {
     method?: 'GET' | 'POST';
     body?: Record<string, unknown>;
+    query?: Record<string, string | number | boolean | undefined>;
+    requireAuth?: boolean;
   }
 ): Promise<T> => {
   const token = (await supabase.auth.getSession()).data.session?.access_token;
   if (token?.startsWith('demo-')) {
     return mockFunctionResponse<T>(path, options?.body);
   }
-  if (!token) {
+
+  // requireAuth defaults to true; pass false only for public endpoints
+  const authRequired = options?.requireAuth !== false;
+  if (authRequired && !token) {
     throw new Error('Session missing. Please sign in again.');
   }
 
-  const response = await fetch(`${env.apiBaseUrl}/functions/v1/${path}`, {
+  // Build URL with optional query params for GET requests
+  let url = `${env.apiBaseUrl}/functions/v1/${path}`;
+  if (options?.query) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(options.query)) {
+      if (value !== undefined) {
+        params.set(key, String(value));
+      }
+    }
+    const qs = params.toString();
+    if (qs) url = `${url}?${qs}`;
+  }
+
+  const headers: Record<string, string> = {
+    'content-type': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, {
     method: options?.method ?? 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'content-type': 'application/json'
-    },
+    headers,
     body: options?.body ? JSON.stringify(options.body) : undefined
   });
 
@@ -155,6 +178,61 @@ const mockFunctionResponse = async <T>(path: string, body?: Record<string, unkno
       invited: 12,
       invites: []
     } as T;
+  }
+
+  if (path === 'matching-candidates') {
+    return {
+      data: []
+    } as T;
+  }
+
+  if (path === 'matching-request') {
+    return { id: `demo-match-${Date.now()}`, status: 'pending', ...body } as T;
+  }
+
+  if (path === 'matching-accept' || path === 'matching-reject') {
+    return { success: true, ...body } as T;
+  }
+
+  if (path === 'profiles-feedback-summary') {
+    return { data: [] } as T;
+  }
+
+  if (path === 'sessions-propose' || path === 'sessions-confirm' || path === 'sessions-cancel') {
+    return {
+      data: { id: `demo-session-${Date.now()}`, status: 'proposed', ...body }
+    } as T;
+  }
+
+  if (path === 'sessions-feedback') {
+    return { success: true } as T;
+  }
+
+  if (path === 'chat-send') {
+    return {
+      data: {
+        id: `demo-msg-${Date.now()}`,
+        sender_user_id: 'demo-user',
+        message: body?.message ?? '',
+        created_at: new Date().toISOString()
+      }
+    } as T;
+  }
+
+  if (path === 'onboarding-profile') {
+    return { success: true } as T;
+  }
+
+  if (path.startsWith('progress-')) {
+    return { data: [], summary: null } as T;
+  }
+
+  if (path === 'videos-presign') {
+    return { data: { id: `demo-submission-${Date.now()}`, upload_url: 'https://example.com/upload' } } as T;
+  }
+
+  if (path === 'videos-enqueue-processing') {
+    return { success: true } as T;
   }
 
   throw new Error(`Function not available in demo mode: ${path}`);

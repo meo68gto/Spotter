@@ -4,8 +4,10 @@ import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { trackEvent } from '../../lib/analytics';
+import { invokeFunction } from '../../lib/api';
+import { getAccessToken } from '../../lib/auth-utils'; // m-1: use shared helper
 import { supabase } from '../../lib/supabase';
-import { env } from '../../types/env';
+import { shortId } from './ui-utils'; // m-2: import shortId
 
 type MatchRecord = {
   id: string;
@@ -92,8 +94,6 @@ export function SessionsScreen({ session }: Props) {
     () => sessions.find((item) => item.id === selectedSessionId),
     [sessions, selectedSessionId]
   );
-
-  const getToken = async () => (await supabase.auth.getSession()).data.session?.access_token;
 
   const refresh = async () => {
     const userId = session.user.id;
@@ -238,13 +238,14 @@ export function SessionsScreen({ session }: Props) {
     };
   }, [selectedSessionId]);
 
+  // C-9: All four async functions wrapped in try/catch/finally
   const proposeSession = async () => {
     if (!selectedMatch) {
       Alert.alert('No match selected', 'Select a match before proposing a session.');
       return;
     }
 
-    const token = await getToken();
+    const token = await getAccessToken(); // m-1
     if (!token) {
       Alert.alert('Session missing', 'Please sign in again.');
       return;
@@ -256,130 +257,103 @@ export function SessionsScreen({ session }: Props) {
         : selectedMatch.requester_user_id;
 
     setLoading(true);
+    try {
+      const result = await invokeFunction<SessionRecord>('sessions-propose', {
+        method: 'POST',
+        body: {
+          matchId: selectedMatch.id,
+          activityId: selectedMatch.activity_id,
+          partnerUserId,
+          proposedStartTime,
+          latitude: Number(latitude),
+          longitude: Number(longitude)
+        }
+      });
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/sessions-propose`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        matchId: selectedMatch.id,
-        activityId: selectedMatch.activity_id,
-        partnerUserId,
-        proposedStartTime,
-        latitude: Number(latitude),
-        longitude: Number(longitude)
-      })
-    });
-
-    setLoading(false);
-
-    const payload = await response.json();
-    if (!response.ok) {
-      Alert.alert('Proposal failed', payload.error ?? 'Unknown error');
-      return;
+      setSessions((prev) => upsertById(prev, result));
+      setSelectedSessionId(result.id);
+      await trackEvent('session_proposed', session.user.id, { session_id: result.id });
+      Alert.alert('Session proposed', 'Your partner can now confirm this session.');
+    } catch (error) {
+      Alert.alert('Proposal failed', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setLoading(false);
     }
-
-    const createdSession = payload.data as SessionRecord;
-    setSessions((prev) => upsertById(prev, createdSession));
-    setSelectedSessionId(createdSession.id);
-
-    await trackEvent('session_proposed', session.user.id, { session_id: createdSession.id });
-
-    Alert.alert('Session proposed', 'Your partner can now confirm this session.');
   };
 
   const confirmSession = async () => {
     if (!selectedSession) return;
-    const token = await getToken();
-    if (!token) return;
 
-    const confirmAt = selectedSession.proposed_start_time || proposedStartTime;
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/sessions-confirm`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sessionId: selectedSession.id,
-        confirmedTime: confirmAt,
-        latitude: Number(latitude),
-        longitude: Number(longitude)
-      })
-    });
+    setLoading(true);
+    try {
+      const confirmAt = selectedSession.proposed_start_time || proposedStartTime;
+      const result = await invokeFunction<SessionRecord>('sessions-confirm', {
+        method: 'POST',
+        body: {
+          sessionId: selectedSession.id,
+          confirmedTime: confirmAt,
+          latitude: Number(latitude),
+          longitude: Number(longitude)
+        }
+      });
 
-    const payload = await response.json();
-    if (!response.ok) {
-      Alert.alert('Confirm failed', payload.error ?? 'Unknown error');
-      return;
+      setSessions((prev) => upsertById(prev, result));
+      await trackEvent('session_confirmed', session.user.id, { session_id: selectedSession.id });
+    } catch (error) {
+      Alert.alert('Confirm failed', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setLoading(false);
     }
-
-    setSessions((prev) => upsertById(prev, payload.data as SessionRecord));
-
-    await trackEvent('session_confirmed', session.user.id, { session_id: selectedSession.id });
   };
 
   const cancelSession = async () => {
     if (!selectedSession) return;
-    const token = await getToken();
-    if (!token) return;
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/sessions-cancel`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ sessionId: selectedSession.id })
-    });
+    setLoading(true);
+    try {
+      const result = await invokeFunction<SessionRecord>('sessions-cancel', {
+        method: 'POST',
+        body: { sessionId: selectedSession.id }
+      });
 
-    const payload = await response.json();
-    if (!response.ok) {
-      Alert.alert('Cancel failed', payload.error ?? 'Unknown error');
-      return;
+      setSessions((prev) => upsertById(prev, result));
+      await trackEvent('session_cancelled', session.user.id, { session_id: selectedSession.id });
+    } catch (error) {
+      Alert.alert('Cancel failed', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setLoading(false);
     }
-
-    setSessions((prev) => upsertById(prev, payload.data as SessionRecord));
-
-    await trackEvent('session_cancelled', session.user.id, { session_id: selectedSession.id });
   };
 
   const submitFeedback = async (thumbsUp: boolean) => {
     if (!selectedSession) return;
-    const token = await getToken();
-    if (!token) return;
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/sessions-feedback`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sessionId: selectedSession.id,
-        thumbsUp,
-        tag: feedbackTag.trim() || undefined
-      })
-    });
+    setLoading(true);
+    try {
+      await invokeFunction('sessions-feedback', {
+        method: 'POST',
+        body: {
+          sessionId: selectedSession.id,
+          thumbsUp,
+          tag: feedbackTag.trim() || undefined
+        }
+      });
 
-    const payload = await response.json();
-    if (!response.ok) {
-      Alert.alert('Feedback failed', payload.error ?? 'Unknown error');
-      return;
+      await trackEvent('session_feedback_submitted', session.user.id, {
+        session_id: selectedSession.id,
+        thumbs_up: thumbsUp
+      });
+      Alert.alert('Feedback submitted', 'Thanks for rating your buddy.');
+    } catch (error) {
+      Alert.alert('Feedback failed', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setLoading(false);
     }
-
-    await trackEvent('session_feedback_submitted', session.user.id, {
-      session_id: selectedSession.id,
-      thumbs_up: thumbsUp
-    });
-    Alert.alert('Feedback submitted', 'Thanks for rating your buddy.');
   };
 
   const sendMessage = async () => {
     if (!selectedSession || !messageText.trim()) return;
-    const token = await getToken();
+    const token = await getAccessToken(); // m-1
     if (!token) return;
 
     const currentMessage = messageText.trim();
@@ -396,30 +370,22 @@ export function SessionsScreen({ session }: Props) {
     setMessages((prev) => mergeMessage(prev, optimistic));
     setMessageText('');
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/chat-send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sessionId: selectedSession.id,
-        message: currentMessage,
-        clientMessageId
-      })
-    });
+    try {
+      const saved = await invokeFunction<MessageRecord>('chat-send', {
+        method: 'POST',
+        body: {
+          sessionId: selectedSession.id,
+          message: currentMessage,
+          clientMessageId
+        }
+      });
 
-    const payload = await response.json();
-
-    if (!response.ok) {
+      setMessages((prev) => mergeMessage(prev, saved));
+      await trackEvent('chat_message_sent', session.user.id, { session_id: selectedSession.id });
+    } catch (error) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      Alert.alert('Message failed', payload.error ?? 'Unknown error');
-      return;
+      Alert.alert('Message failed', error instanceof Error ? error.message : 'Unknown error');
     }
-
-    const saved = payload.data as MessageRecord;
-    setMessages((prev) => mergeMessage(prev, saved));
-    await trackEvent('chat_message_sent', session.user.id, { session_id: selectedSession.id });
   };
 
   const canConfirm = selectedSession?.partner_user_id === session.user.id && selectedSession.status === 'proposed';
@@ -452,7 +418,7 @@ export function SessionsScreen({ session }: Props) {
                         onPress={() => setSelectedMatchId(match.id)}
                       >
                         <Text style={[styles.chipText, isActive ? styles.chipTextActive : null]}>
-                          {match.status} • {match.id.slice(0, 8)}
+                          {match.status} • {shortId(match.id)}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -502,7 +468,7 @@ export function SessionsScreen({ session }: Props) {
                         onPress={() => setSelectedSessionId(item.id)}
                       >
                         <Text style={[styles.chipText, isActive ? styles.chipTextActive : null]}>
-                          {item.status} • {item.id.slice(0, 8)}
+                          {item.status} • {shortId(item.id)}
                         </Text>
                       </TouchableOpacity>
                     );

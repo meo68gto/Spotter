@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { env } from '../../types/env';
-import { supabase } from '../../lib/supabase';
+import { invokeFunction } from '../../lib/api'; // M-1
+import { FeedbackSummary } from '../../types/feedback'; // M-22: shared type
 
 type Props = {
   session: Session;
@@ -12,40 +12,25 @@ type Props = {
   onSignOut: () => void;
 };
 
-type FeedbackSummary = {
-  userId: string;
-  totalFeedback: number;
-  thumbsUpCount: number;
-  thumbsDownCount: number;
-  positiveRatio: number;
-  topTags: string[];
-};
-
 export function ProfileScreen({ session, email, onSignOut }: Props) {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<FeedbackSummary | null>(null);
 
+  // m-10: async function defined inside useEffect
   useEffect(() => {
     const load = async () => {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      if (!token) {
+      try {
+        // M-1: Use invokeFunction instead of raw fetch
+        const data = await invokeFunction<FeedbackSummary[]>('profiles-feedback-summary', {
+          method: 'POST',
+          body: { userIds: [session.user.id] }
+        });
+        setFeedback(data?.[0] ?? null);
+      } catch {
+        // Non-critical — profile can render without feedback summary
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/profiles-feedback-summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ userIds: [session.user.id] })
-      });
-      const payload = await response.json();
-      if (response.ok) {
-        setFeedback((payload.data?.[0] as FeedbackSummary | undefined) ?? null);
-      }
-      setLoading(false);
     };
     load();
   }, [session.user.id]);
