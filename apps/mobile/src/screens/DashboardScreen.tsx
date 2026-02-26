@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { MapScreen } from './MapScreen';
@@ -38,6 +38,24 @@ type Props = {
   onSignOut: () => void;
 };
 
+// m-3: Replace if-chain tab title lookup with a Record
+const TAB_LABELS: Record<TabKey, string> = {
+  map: 'Map',
+  network: 'Networking',
+  events: 'Sponsored Events',
+  experts: 'Experts',
+  ask: 'Ask',
+  feed: 'Feed',
+  requests: 'My Requests',
+  call: 'Call Room',
+  expert: 'Expert Console',
+  sessions: 'Sessions',
+  matches: 'Matches',
+  videos: 'Videos',
+  progress: 'Progress',
+  profile: 'Profile',
+};
+
 export function DashboardScreen({ session, onSignOut }: Props) {
   const [tab, setTab] = useState<TabKey>('map');
 
@@ -50,22 +68,7 @@ export function DashboardScreen({ session, onSignOut }: Props) {
     bootstrapFlags();
   }, [session.access_token]);
 
-  const title = useMemo(() => {
-    if (tab === 'map') return 'Map';
-    if (tab === 'network') return 'Networking';
-    if (tab === 'events') return 'Sponsored Events';
-    if (tab === 'experts') return 'Experts';
-    if (tab === 'ask') return 'Ask';
-    if (tab === 'feed') return 'Feed';
-    if (tab === 'requests') return 'My Requests';
-    if (tab === 'call') return 'Call Room';
-    if (tab === 'expert') return 'Expert Console';
-    if (tab === 'sessions') return 'Sessions';
-    if (tab === 'matches') return 'Matches';
-    if (tab === 'videos') return 'Videos';
-    if (tab === 'progress') return 'Progress';
-    return 'Profile';
-  }, [tab]);
+  const title = TAB_LABELS[tab];
 
   return (
     <View style={styles.container}>
@@ -74,23 +77,52 @@ export function DashboardScreen({ session, onSignOut }: Props) {
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
 
+      {/* M-5: Keep screens mounted using display style instead of conditional rendering.
+          SessionsScreen and VideoPipelineScreen maintain realtime subscriptions so they
+          must stay mounted; other screens are also preserved to avoid re-mount flicker. */}
       <View style={styles.content}>
-        {tab === 'map' ? <MapScreen /> : null}
-        {tab === 'network' ? <NetworkingHubScreen /> : null}
-        {tab === 'events' ? <SponsoredEventsScreen /> : null}
-        {tab === 'experts' ? <ExpertsScreen session={session} /> : null}
-        {tab === 'ask' ? <AskScreen session={session} /> : null}
-        {tab === 'feed' ? <FeedScreen /> : null}
-        {tab === 'requests' ? <MyRequestsScreen session={session} /> : null}
-        {tab === 'call' ? <CallRoomScreen session={session} /> : null}
-        {tab === 'expert' ? <ExpertConsoleScreen session={session} /> : null}
-        {tab === 'sessions' ? <SessionsScreen session={session} /> : null}
-        {tab === 'matches' ? <MatchesScreen session={session} /> : null}
-        {tab === 'videos' ? <VideoPipelineScreen session={session} /> : null}
-        {tab === 'progress' ? <ProgressScreen session={session} /> : null}
-        {tab === 'profile' ? (
+        <View style={[styles.screen, tab === 'map' ? styles.screenVisible : styles.screenHidden]}>
+          <MapScreen />
+        </View>
+        <View style={[styles.screen, tab === 'network' ? styles.screenVisible : styles.screenHidden]}>
+          <NetworkingHubScreen />
+        </View>
+        <View style={[styles.screen, tab === 'events' ? styles.screenVisible : styles.screenHidden]}>
+          <SponsoredEventsScreen />
+        </View>
+        <View style={[styles.screen, tab === 'experts' ? styles.screenVisible : styles.screenHidden]}>
+          <ExpertsScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'ask' ? styles.screenVisible : styles.screenHidden]}>
+          <AskScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'feed' ? styles.screenVisible : styles.screenHidden]}>
+          <FeedScreen />
+        </View>
+        <View style={[styles.screen, tab === 'requests' ? styles.screenVisible : styles.screenHidden]}>
+          <MyRequestsScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'call' ? styles.screenVisible : styles.screenHidden]}>
+          <CallRoomScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'expert' ? styles.screenVisible : styles.screenHidden]}>
+          <ExpertConsoleScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'sessions' ? styles.screenVisible : styles.screenHidden]}>
+          <SessionsScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'matches' ? styles.screenVisible : styles.screenHidden]}>
+          <MatchesScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'videos' ? styles.screenVisible : styles.screenHidden]}>
+          <VideoPipelineScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'progress' ? styles.screenVisible : styles.screenHidden]}>
+          <ProgressScreen session={session} />
+        </View>
+        <View style={[styles.screen, tab === 'profile' ? styles.screenVisible : styles.screenHidden]}>
           <ProfileScreen session={session} email={session.user.email ?? 'unknown'} onSignOut={onSignOut} />
-        ) : null}
+        </View>
       </View>
 
       <ScrollView horizontal style={styles.tabBar} contentContainerStyle={styles.tabBarContent} showsHorizontalScrollIndicator={false}>
@@ -156,6 +188,21 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1
+  },
+  // M-5: display:flex/none pattern for keeping screens mounted
+  screen: {
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0
+  },
+  screenVisible: {
+    display: 'flex'
+  },
+  screenHidden: {
+    display: 'none'
   },
   tabBar: {
     borderTopWidth: 1,

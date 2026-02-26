@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../components/Button';
 import { trackEvent } from '../lib/analytics';
+import { invokeFunction } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { env } from '../types/env'; // M-12: use env.apiBaseUrl throughout
 
 const STORAGE_KEY = 'spotter:onboarding-draft';
 
@@ -44,30 +46,30 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   const [activityError, setActivityError] = useState<string>('');
 
   const loadDraftAndActivities = async () => {
-      setActivityLoading(true);
-      setActivityError('');
-      const value = await AsyncStorage.getItem(STORAGE_KEY);
-      if (value) setDraft(JSON.parse(value));
+    setActivityLoading(true);
+    setActivityError('');
+    const value = await AsyncStorage.getItem(STORAGE_KEY);
+    if (value) setDraft(JSON.parse(value));
 
-      const { data, error } = await supabase
-        .from('activities')
-        .select('id,name,slug')
-        .order('name', { ascending: true });
+    const { data, error } = await supabase
+      .from('activities')
+      .select('id,name,slug')
+      .order('name', { ascending: true });
 
-      if (error) {
-        setActivityError(error.message);
-        setActivityLoading(false);
-        return;
-      }
-
-      const options = (data ?? []) as ActivityOption[];
-      setActivities(options);
-
-      if (!value && options.length) {
-        setDraft((prev) => ({ ...prev, activityId: options[0].id }));
-      }
+    if (error) {
+      setActivityError(error.message);
       setActivityLoading(false);
-    };
+      return;
+    }
+
+    const options = (data ?? []) as ActivityOption[];
+    setActivities(options);
+
+    if (!value && options.length) {
+      setDraft((prev) => ({ ...prev, activityId: options[0].id }));
+    }
+    setActivityLoading(false);
+  };
 
   useEffect(() => {
     loadDraftAndActivities();
@@ -89,52 +91,40 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
     }
 
     setLoading(true);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-
-    if (!token) {
-      setLoading(false);
-      Alert.alert('Session missing', 'Please sign in again.');
-      return;
-    }
-
-    const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/functions/v1/onboarding-profile`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        ...draft,
-        canonicalScore: Number(draft.canonicalScore),
-        availabilitySlots: [
-          { weekday: 1, startMinute: 480, endMinute: 1080 },
-          { weekday: 2, startMinute: 480, endMinute: 1080 },
-          { weekday: 3, startMinute: 480, endMinute: 1080 },
-          { weekday: 4, startMinute: 480, endMinute: 1080 },
-          { weekday: 5, startMinute: 480, endMinute: 1080 }
-        ]
-      })
-    });
-
-    setLoading(false);
-
-    if (!response.ok) {
-      const payload = await response.json();
-      Alert.alert('Onboarding failed', payload.error ?? 'Unknown error');
-      return;
-    }
-
-    const authUser = (await supabase.auth.getUser()).data.user;
-    if (authUser) {
-      await trackEvent('onboarding_completed', authUser.id, {
-        activity_id: draft.activityId,
-        skill_band: draft.skillBand
+    try {
+      // M-12: Use env.apiBaseUrl (via invokeFunction) instead of process.env directly
+      // M-13: availabilitySlots are hardcoded Mon–Fri 8am–6pm as a sensible default.
+      // TODO: Replace with a proper availability picker UI so users can customise their slots.
+      await invokeFunction('onboarding-profile', {
+        method: 'POST',
+        body: {
+          ...draft,
+          canonicalScore: Number(draft.canonicalScore),
+          availabilitySlots: [
+            { weekday: 1, startMinute: 480, endMinute: 1080 },
+            { weekday: 2, startMinute: 480, endMinute: 1080 },
+            { weekday: 3, startMinute: 480, endMinute: 1080 },
+            { weekday: 4, startMinute: 480, endMinute: 1080 },
+            { weekday: 5, startMinute: 480, endMinute: 1080 }
+          ]
+        }
       });
-    }
 
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    onComplete();
+      const authUser = (await supabase.auth.getUser()).data.user;
+      if (authUser) {
+        await trackEvent('onboarding_completed', authUser.id, {
+          activity_id: draft.activityId,
+          skill_band: draft.skillBand
+        });
+      }
+
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      onComplete();
+    } catch (error) {
+      Alert.alert('Onboarding failed', error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
