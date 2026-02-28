@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MOBILE_DIR="$ROOT_DIR/apps/mobile"
 
 echo "==> Spotter launch (web + iOS simulator + Android emulator browser)"
+bash "$ROOT_DIR/scripts/local/sync-mobile-env.sh"
 
 if ! command -v xcrun >/dev/null 2>&1; then
   echo "WARN: Xcode command line tools not found. iOS launch will fail."
@@ -27,15 +28,20 @@ EOF
 fi
 
 cd "$MOBILE_DIR"
-EXPO_NO_DOCTOR=1 EXPO_NO_DEPENDENCY_VALIDATION=1 /Users/brucewayne/homebrew/opt/node@22/bin/node node_modules/expo/bin/cli start --web --clear --port 8081 &
-EXPO_PID=$!
+EXPO_PID=""
+if curl -sf "http://127.0.0.1:8081" >/dev/null 2>&1; then
+  echo "==> Reusing existing Expo dev server on http://127.0.0.1:8081"
+else
+  EXPO_NO_DOCTOR=1 EXPO_NO_DEPENDENCY_VALIDATION=1 /Users/brucewayne/homebrew/opt/node@22/bin/node node_modules/expo/bin/cli start --web --clear --port 8081 &
+  EXPO_PID=$!
 
-for _ in {1..30}; do
-  if curl -sf http://127.0.0.1:8081 >/dev/null 2>&1; then
-    break
-  fi
-  sleep 1
-done
+  for _ in {1..30}; do
+    if curl -sf http://127.0.0.1:8081 >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+fi
 
 echo "==> Opening web"
 open "http://127.0.0.1:8081" >/dev/null 2>&1 || true
@@ -61,6 +67,10 @@ if command -v adb >/dev/null 2>&1; then
   fi
 fi
 
-echo "==> Spotter web preview is running (PID: $EXPO_PID)"
-echo "Press Ctrl+C to stop."
-wait "$EXPO_PID"
+if [[ -n "$EXPO_PID" ]]; then
+  echo "==> Spotter web preview is running (PID: $EXPO_PID)"
+  echo "Press Ctrl+C to stop."
+  wait "$EXPO_PID"
+else
+  echo "==> Spotter web preview reused on http://127.0.0.1:8081"
+fi

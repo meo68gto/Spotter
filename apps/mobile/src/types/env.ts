@@ -16,7 +16,7 @@ export const env = {
 };
 
 export const validateMobileEnv = (): string[] => {
-  return requireKeys(
+  const missing = requireKeys(
     {
       EXPO_PUBLIC_SUPABASE_URL: env.supabaseUrl,
       EXPO_PUBLIC_SUPABASE_ANON_KEY: env.supabaseAnonKey,
@@ -40,4 +40,12 @@ export const validateMobileEnv = (): string[] => {
       'EXPO_PUBLIC_LEGAL_COOKIE_VERSION'
     ]
   );
+
+  const invalid: string[] = [];
+  if (env.supabaseUrl.includes('example.supabase.co')) invalid.push('EXPO_PUBLIC_SUPABASE_URL');
+  if (env.supabaseAnonKey.includes('placeholder')) invalid.push('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+  if (env.apiBaseUrl.includes('example.supabase.co')) invalid.push('EXPO_PUBLIC_API_BASE_URL');
+  if (!/^https?:\/\//.test(env.apiBaseUrl)) invalid.push('EXPO_PUBLIC_API_BASE_URL');
+
+  return [...new Set([...missing, ...invalid])];
 };

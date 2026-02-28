@@ -9,7 +9,7 @@ Monorepo for Spotter mobile app, backend functions, and shared packages.
 2. Copy env file:
    - `cp .env.example .env.local`
 3. Start mobile app:
-   - `pnpm --filter @spotter/mobile dev`
+   - `pnpm mobile:dev`
    - or launch web + iOS simulator + Android emulator browser:
      - `pnpm mobile:launch:all`
 4. Run Supabase local stack (if Supabase CLI installed):
@@ -65,6 +65,15 @@ If required env vars are missing, the app now offers `Continue in Demo Mode` so 
 - Networking recommendations
 - Sponsored event creation/listing
 - Local invite + RSVP actions
+
+## Auth reliability notes
+
+1. Mobile runtime env is synced from root `.env.local` before launch via:
+   - `/Users/brucewayne/Documents/Spotter/scripts/local/sync-mobile-env.sh`
+2. `EXPO_PUBLIC_API_BASE_URL` can be either:
+   - `http://127.0.0.1:54321`
+   - or `http://127.0.0.1:54321/functions/v1`
+   Function URL construction is normalized at runtime.
 
 ## Workspace layout
 

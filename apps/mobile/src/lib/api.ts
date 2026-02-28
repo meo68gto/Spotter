@@ -22,7 +22,7 @@ export const invokeFunction = async <T>(
     throw new Error('Session missing. Please sign in again.');
   }
 
-  const response = await fetch(`${env.apiBaseUrl}/functions/v1/${path}`, {
+  const response = await fetch(toFunctionsUrl(path), {
     method: options?.method ?? 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -49,6 +49,15 @@ export const invokeFunction = async <T>(
   }
 
   return payload.data as T;
+};
+
+const toFunctionsUrl = (path: string): string => {
+  const cleanBase = env.apiBaseUrl.replace(/\/+$/, '');
+  const pathClean = path.replace(/^\/+/, '');
+  if (/\/functions\/v1$/.test(cleanBase)) {
+    return `${cleanBase}/${pathClean}`;
+  }
+  return `${cleanBase}/functions/v1/${pathClean}`;
 };
 
 const mockFunctionResponse = async <T>(path: string, body?: Record<string, unknown>): Promise<T> => {
