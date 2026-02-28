@@ -38,6 +38,7 @@ export function AuthScreen({ onDemoMode }: Props) {
   };
 
   const oauth = async (provider: 'google' | 'linkedin_oidc') => {
+    await trackEvent('auth_oauth_start', `oauth-${provider}`, { provider });
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -46,6 +47,11 @@ export function AuthScreen({ onDemoMode }: Props) {
       }
     });
     if (error) {
+      await trackEvent('auth_oauth_failure', `oauth-${provider}`, {
+        provider,
+        stage: 'start',
+        reason: error.message
+      });
       Alert.alert('OAuth failed', error.message);
       return;
     }
@@ -54,15 +60,36 @@ export function AuthScreen({ onDemoMode }: Props) {
       const result = await supported.openAuthSessionAsync(data.url, redirectTo);
       if (result.type === 'success') {
         const code = extractOAuthCode(result.url);
-        if (!code) return;
+        if (!code) {
+          await trackEvent('auth_oauth_failure', `oauth-${provider}`, {
+            provider,
+            stage: 'code_extract',
+            reason: 'missing_code'
+          });
+          return;
+        }
 
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) {
+          await trackEvent('auth_oauth_failure', `oauth-${provider}`, {
+            provider,
+            stage: 'exchange',
+            reason: exchangeError.message
+          });
           Alert.alert('OAuth exchange failed', exchangeError.message);
         } else {
           const user = (await supabase.auth.getUser()).data.user;
-          if (user) await trackEvent('auth_sign_in', user.id, { provider });
+          if (user) {
+            await trackEvent('auth_sign_in', user.id, { provider });
+            await trackEvent('auth_oauth_success', user.id, { provider });
+          }
         }
+      } else {
+        await trackEvent('auth_oauth_failure', `oauth-${provider}`, {
+          provider,
+          stage: 'browser',
+          reason: result.type
+        });
       }
     }
   };

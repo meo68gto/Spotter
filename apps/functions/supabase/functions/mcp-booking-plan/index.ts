@@ -1,6 +1,7 @@
 import { createServiceClient } from '../_shared/client.ts';
 import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
+import { sortRecommendationsStable, type RecommendationRow } from '../_shared/mcp.ts';
 
 type Payload = {
   activityId?: string;
@@ -8,17 +9,6 @@ type Payload = {
   limit?: number;
   includeEvents?: boolean;
   objective?: 'balanced' | 'fast_match' | 'tournament_ready';
-};
-
-type RecommendationRow = {
-  recommendation_type: 'pairing' | 'event';
-  candidate_user_id: string | null;
-  event_id: string | null;
-  score: number;
-  distance_km: number | null;
-  skill_delta: number | null;
-  availability_overlap_minutes: number | null;
-  reasons: unknown;
 };
 
 Deno.serve(async (req) => {
@@ -68,7 +58,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const rows = (recommendations ?? []) as RecommendationRow[];
+  const rows = sortRecommendationsStable((recommendations ?? []) as RecommendationRow[]);
   if (rows.length) {
     const inserts = rows.map((row, idx) => ({
       run_id: run.id,

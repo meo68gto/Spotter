@@ -353,12 +353,14 @@ export interface SponsorEventInviteLocalsDTO {
 
 export interface SponsorEventRSVPDTO {
   eventId: UUID;
+  recommendationId?: UUID;
   action: 'register' | 'cancel' | 'accept_invite' | 'decline_invite';
 }
 
 export interface NetworkingInviteSendDTO {
   receiverUserId: UUID;
   activityId: UUID;
+  recommendationId?: UUID;
   relatedEventId?: UUID;
   purpose?: 'session' | 'tournament' | 'networking';
   message?: string;

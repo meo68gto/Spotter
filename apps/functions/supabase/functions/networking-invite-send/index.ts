@@ -6,6 +6,7 @@ type Payload = {
   receiverUserId?: string;
   activityId?: string;
   relatedEventId?: string;
+  recommendationId?: string;
   purpose?: 'session' | 'tournament' | 'networking';
   message?: string;
 };
@@ -41,6 +42,23 @@ Deno.serve(async (req) => {
       error: error.message,
       code: 'networking_invite_create_failed'
     });
+  }
+
+  if (body.recommendationId) {
+    await service
+      .from('mcp_booking_recommendations')
+      .update({
+        clicked_at: new Date().toISOString(),
+        accepted_at: new Date().toISOString(),
+        conversion_type: 'pairing_invite',
+        conversion_metadata: {
+          source: 'networking_invite_send',
+          invite_id: data.id
+        }
+      })
+      .eq('id', body.recommendationId)
+      .is('event_id', null)
+      .eq('candidate_user_id', body.receiverUserId);
   }
 
   return json(200, { data });

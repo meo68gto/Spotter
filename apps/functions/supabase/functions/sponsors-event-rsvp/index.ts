@@ -4,6 +4,7 @@ import { badRequest, json } from '../_shared/http.ts';
 
 type Payload = {
   eventId?: string;
+  recommendationId?: string;
   action?: 'register' | 'cancel' | 'accept_invite' | 'decline_invite';
 };
 
@@ -36,6 +37,24 @@ Deno.serve(async (req) => {
       .select('*')
       .single();
     if (error) return json(500, { error: error.message, code: 'event_rsvp_failed' });
+
+    if (body.recommendationId && status === 'registered') {
+      await service
+        .from('mcp_booking_recommendations')
+        .update({
+          clicked_at: new Date().toISOString(),
+          accepted_at: new Date().toISOString(),
+          converted_at: new Date().toISOString(),
+          conversion_type: 'event_rsvp',
+          conversion_metadata: {
+            source: 'sponsors_event_rsvp',
+            registration_id: data.id
+          }
+        })
+        .eq('id', body.recommendationId)
+        .eq('event_id', body.eventId);
+    }
+
     return json(200, { data });
   }
 
@@ -67,6 +86,23 @@ Deno.serve(async (req) => {
       },
       { onConflict: 'event_id,user_id' }
     );
+
+    if (body.recommendationId) {
+      await service
+        .from('mcp_booking_recommendations')
+        .update({
+          clicked_at: new Date().toISOString(),
+          accepted_at: new Date().toISOString(),
+          converted_at: new Date().toISOString(),
+          conversion_type: 'event_rsvp',
+          conversion_metadata: {
+            source: 'sponsors_event_accept_invite',
+            invite_id: invite.id
+          }
+        })
+        .eq('id', body.recommendationId)
+        .eq('event_id', body.eventId);
+    }
   }
 
   return json(200, { data: invite });

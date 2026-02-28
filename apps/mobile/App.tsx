@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppErrorBoundary } from './src/components/AppErrorBoundary';
 import { Button } from './src/components/Button';
 import { invokeFunction } from './src/lib/api';
+import { trackEvent } from './src/lib/analytics';
 import { supabase } from './src/lib/supabase';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { DashboardScreen } from './src/screens/DashboardScreen';
@@ -48,9 +49,11 @@ function RootApp() {
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       if (!data.session) {
+        await trackEvent('session_restore_failure', 'anonymous', { reason: 'missing_session' });
         setStage('auth');
         return;
       }
+      await trackEvent('session_restore_success', data.session.user.id);
 
       try {
         const legal = await invokeFunction<{ accepted: boolean }>('legal-status', { method: 'GET' });
@@ -70,6 +73,7 @@ function RootApp() {
     const { data: authSub } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
       if (!nextSession) {
+        await trackEvent('session_restore_failure', 'anonymous', { reason: 'auth_state_no_session' });
         setStage('auth');
         return;
       }
