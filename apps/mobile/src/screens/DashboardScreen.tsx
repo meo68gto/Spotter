@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { MapScreen } from './MapScreen';
 import { AskScreen } from './dashboard/AskScreen';
@@ -43,14 +43,15 @@ type NavItem = {
   key: TabKey;
   label: string;
   group: 'core' | 'growth' | 'ops' | 'account';
+  mobilePrimary?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'map', label: 'Discover', group: 'core' },
-  { key: 'network', label: 'Network', group: 'core' },
-  { key: 'events', label: 'Events', group: 'core' },
+  { key: 'map', label: 'Discover', group: 'core', mobilePrimary: true },
+  { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
+  { key: 'events', label: 'Events', group: 'core', mobilePrimary: true },
+  { key: 'ask', label: 'Ask', group: 'growth', mobilePrimary: true },
   { key: 'experts', label: 'Coaches', group: 'growth' },
-  { key: 'ask', label: 'Ask', group: 'growth' },
   { key: 'feed', label: 'Feed', group: 'growth' },
   { key: 'requests', label: 'Requests', group: 'growth' },
   { key: 'sessions', label: 'Sessions', group: 'ops' },
@@ -62,11 +63,29 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'profile', label: 'Profile', group: 'account' }
 ];
 
-const MOBILE_PRIMARY: TabKey[] = ['map', 'network', 'events', 'experts', 'profile'];
-const MOBILE_SECONDARY: TabKey[] = ['ask', 'feed', 'requests', 'sessions', 'matches', 'videos', 'progress', 'expert', 'call'];
+const WEB_PHOTO_TILES = [
+  {
+    label: 'Golf Pairing',
+    image:
+      'https://images.pexels.com/photos/114972/pexels-photo-114972.jpeg?auto=compress&cs=tinysrgb&w=1200'
+  },
+  {
+    label: 'Pickleball Community',
+    image:
+      'https://images.pexels.com/photos/8224736/pexels-photo-8224736.jpeg?auto=compress&cs=tinysrgb&w=1200'
+  },
+  {
+    label: 'Coaching Progress',
+    image:
+      'https://images.pexels.com/photos/414029/pexels-photo-414029.jpeg?auto=compress&cs=tinysrgb&w=1200'
+  }
+];
+
+const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
 
 export function DashboardScreen({ session, onSignOut }: Props) {
   const [tab, setTab] = useState<TabKey>('map');
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const bootstrapFlags = async () => {
@@ -100,7 +119,7 @@ export function DashboardScreen({ session, onSignOut }: Props) {
     return (
       <View style={styles.webRoot}>
         <View style={styles.webSidebar}>
-          <Text style={styles.brand}>Spotter</Text>
+          <Text style={styles.webBrand}>Spotter</Text>
           <Text style={styles.sidebarSubtitle}>Match, improve, compete.</Text>
 
           <NavGroup title="Core" items={NAV_ITEMS.filter((item) => item.group === 'core')} activeTab={tab} onSelect={setTab} />
@@ -114,6 +133,17 @@ export function DashboardScreen({ session, onSignOut }: Props) {
             <Text style={styles.headerTitle}>{title}</Text>
             <Text style={styles.headerMeta}>{session.user.email ?? 'unknown'}</Text>
           </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.webHeroStrip}>
+            {WEB_PHOTO_TILES.map((tile) => (
+              <ImageBackground key={tile.label} source={{ uri: tile.image }} style={styles.webHeroTile} imageStyle={styles.webHeroTileImage}>
+                <View style={styles.webHeroOverlay}>
+                  <Text style={styles.webHeroLabel}>{tile.label}</Text>
+                </View>
+              </ImageBackground>
+            ))}
+          </ScrollView>
+
           <View style={styles.content}>{renderContent()}</View>
         </View>
       </View>
@@ -122,23 +152,14 @@ export function DashboardScreen({ session, onSignOut }: Props) {
 
   return (
     <View style={styles.mobileRoot}>
-      <View style={styles.header}>
-        <Text style={styles.brand}>Spotter</Text>
-        <Text style={styles.headerTitle}>{title}</Text>
-      </View>
-
-      <View style={styles.secondaryRail}>
-        <ScrollView horizontal contentContainerStyle={styles.secondaryRailContent} showsHorizontalScrollIndicator={false}>
-          {MOBILE_SECONDARY.map((key) => {
-            const label = NAV_ITEMS.find((item) => item.key === key)?.label ?? key;
-            const active = tab === key;
-            return (
-              <TouchableOpacity key={key} onPress={() => setTab(key)} style={[styles.secondaryPill, active ? styles.secondaryPillActive : null]}>
-                <Text style={[styles.secondaryPillText, active ? styles.secondaryPillTextActive : null]}>{label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+      <View style={styles.mobileHeader}>
+        <View>
+          <Text style={styles.mobileBrand}>Spotter</Text>
+          <Text style={styles.mobileTitle}>{title}</Text>
+        </View>
+        <Pressable onPress={() => setMenuOpen(true)} style={styles.hamburgerButton}>
+          <Text style={styles.hamburgerText}>≡</Text>
+        </Pressable>
       </View>
 
       <View style={styles.content}>{renderContent()}</View>
@@ -149,11 +170,38 @@ export function DashboardScreen({ session, onSignOut }: Props) {
           const active = tab === key;
           return (
             <TouchableOpacity key={key} onPress={() => setTab(key)} style={styles.mobileTabButton}>
+              <View style={[styles.mobileTabIcon, active ? styles.mobileTabIconActive : null]}>
+                <Text style={[styles.mobileTabIconText, active ? styles.mobileTabIconTextActive : null]}>{label.charAt(0)}</Text>
+              </View>
               <Text style={[styles.mobileTabText, active ? styles.mobileTabTextActive : null]}>{label}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
+
+      <Modal transparent visible={menuOpen} animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <View style={styles.menuOverlay}>
+          <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} />
+          <View style={styles.menuPanel}>
+            <Text style={styles.menuTitle}>More</Text>
+            {NAV_ITEMS.filter((item) => !item.mobilePrimary).map((item) => {
+              const active = tab === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  onPress={() => {
+                    setTab(item.key);
+                    setMenuOpen(false);
+                  }}
+                  style={[styles.menuItem, active ? styles.menuItemActive : null]}
+                >
+                  <Text style={[styles.menuItemText, active ? styles.menuItemTextActive : null]}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -196,6 +244,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xl
   },
+  webBrand: {
+    color: palette.white,
+    fontSize: 14,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2
+  },
   sidebarSubtitle: {
     color: '#CBE4F3',
     marginTop: 2,
@@ -209,29 +264,85 @@ const styles = StyleSheet.create({
     backgroundColor: palette.sky100
   },
   header: {
-    paddingTop: isWeb ? spacing.lg : spacing.md,
+    paddingTop: spacing.lg,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: palette.sky200,
     backgroundColor: palette.white
   },
-  brand: {
-    color: isWeb ? palette.white : palette.navy600,
-    fontSize: 13,
-    fontWeight: '800',
+  mobileHeader: {
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.sky200,
+    backgroundColor: palette.white,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  mobileBrand: {
+    color: palette.navy600,
+    fontSize: 12,
+    fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1
+  },
+  mobileTitle: {
+    color: palette.ink900,
+    fontFamily: font.display,
+    fontSize: 22,
+    fontWeight: '800'
+  },
+  hamburgerButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.white
+  },
+  hamburgerText: {
+    fontSize: 24,
+    color: palette.navy600,
+    marginTop: -2
   },
   headerTitle: {
     color: palette.ink900,
     fontFamily: font.display,
-    fontSize: isWeb ? 30 : 22,
+    fontSize: 30,
     fontWeight: '800'
   },
   headerMeta: {
     color: palette.ink500,
     marginTop: 3
+  },
+  webHeroStrip: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.md
+  },
+  webHeroTile: {
+    width: 280,
+    height: 124,
+    justifyContent: 'flex-end'
+  },
+  webHeroTileImage: {
+    borderRadius: radius.md
+  },
+  webHeroOverlay: {
+    backgroundColor: 'rgba(8,47,67,0.58)',
+    borderBottomLeftRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs
+  },
+  webHeroLabel: {
+    color: palette.white,
+    fontWeight: '700'
   },
   content: {
     flex: 1
@@ -264,55 +375,91 @@ const styles = StyleSheet.create({
     color: palette.navy700,
     fontWeight: '700'
   },
-  secondaryRail: {
-    paddingVertical: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.sky200,
-    backgroundColor: '#F8FBFD'
-  },
-  secondaryRailContent: {
-    paddingHorizontal: spacing.sm,
-    gap: spacing.xs,
-    alignItems: 'center'
-  },
-  secondaryPill: {
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: palette.sky300,
-    backgroundColor: palette.white
-  },
-  secondaryPillActive: {
-    backgroundColor: palette.navy600,
-    borderColor: palette.navy600
-  },
-  secondaryPillText: {
-    color: palette.ink700,
-    fontWeight: '600',
-    fontSize: 13
-  },
-  secondaryPillTextActive: {
-    color: palette.white
-  },
   mobileTabBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderTopWidth: 1,
     borderTopColor: palette.sky200,
     backgroundColor: palette.white,
-    paddingVertical: spacing.sm
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm
   },
   mobileTabButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6
+    alignItems: 'center',
+    minWidth: 70,
+    gap: 4
+  },
+  mobileTabIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FBFD'
+  },
+  mobileTabIconActive: {
+    backgroundColor: palette.navy600,
+    borderColor: palette.navy600
+  },
+  mobileTabIconText: {
+    color: palette.ink700,
+    fontWeight: '700'
+  },
+  mobileTabIconTextActive: {
+    color: palette.white
   },
   mobileTabText: {
     color: palette.ink500,
     fontWeight: '600',
-    fontSize: 13
+    fontSize: 12
   },
   mobileTabTextActive: {
+    color: palette.navy600,
+    fontWeight: '800'
+  },
+  menuOverlay: {
+    flex: 1,
+    flexDirection: 'row'
+  },
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)'
+  },
+  menuPanel: {
+    width: 280,
+    backgroundColor: palette.white,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xl,
+    borderLeftWidth: 1,
+    borderLeftColor: palette.sky200
+  },
+  menuTitle: {
+    fontFamily: font.display,
+    fontWeight: '800',
+    fontSize: 22,
+    color: palette.ink900,
+    marginBottom: spacing.md
+  },
+  menuItem: {
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    backgroundColor: '#F8FBFD'
+  },
+  menuItemActive: {
+    borderColor: palette.navy600,
+    backgroundColor: palette.sky100
+  },
+  menuItemText: {
+    color: palette.ink700,
+    fontWeight: '600'
+  },
+  menuItemTextActive: {
     color: palette.navy600,
     fontWeight: '800'
   }
