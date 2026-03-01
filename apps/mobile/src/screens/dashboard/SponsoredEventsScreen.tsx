@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View
 import { Button } from '../../components/Button';
 import { invokeFunction } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { font, isWeb, palette, radius, spacing } from '../../theme/design';
 
 type SponsoredEvent = {
   id: string;
@@ -185,99 +186,123 @@ export function SponsoredEventsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Sponsored Events</Text>
-      <Text style={styles.subtitle}>Create tournaments, fund local participation, and invite nearby athletes through Spotter.</Text>
+      <Text style={styles.subtitle}>Create tournaments, activate sponsors, and invite locals based on activity fit.</Text>
 
-      <View style={styles.createCard}>
-        <Text style={styles.sectionTitle}>Create Tournament</Text>
-        <TextInput value={title} onChangeText={setTitle} placeholder="Event title" style={styles.input} />
-        <TextInput
-          value={sport}
-          onChangeText={setSport}
-          placeholder="Sport (Golf, Pickleball, Tennis, Padel)"
-          style={styles.input}
-        />
-        <TextInput value={city} onChangeText={setCity} placeholder="City" style={styles.input} />
-        <TextInput value={sponsor} onChangeText={setSponsor} placeholder="Sponsor name" style={styles.input} />
-        <TextInput value={date} onChangeText={setDate} placeholder="Date (YYYY-MM-DD)" style={styles.input} />
-        <Button title="Publish Sponsored Tournament" onPress={createSponsoredEvent} disabled={!canCreate} />
+      <View style={styles.layout}>
+        <View style={styles.createCard}>
+          <Text style={styles.sectionTitle}>Create Tournament</Text>
+          <TextInput value={title} onChangeText={setTitle} placeholder="Event title" style={styles.input} placeholderTextColor={palette.ink500} />
+          <TextInput
+            value={sport}
+            onChangeText={setSport}
+            placeholder="Sport (Golf, Pickleball, Tennis, Padel)"
+            style={styles.input}
+            placeholderTextColor={palette.ink500}
+          />
+          <TextInput value={city} onChangeText={setCity} placeholder="City" style={styles.input} placeholderTextColor={palette.ink500} />
+          <TextInput value={sponsor} onChangeText={setSponsor} placeholder="Sponsor name" style={styles.input} placeholderTextColor={palette.ink500} />
+          <TextInput value={date} onChangeText={setDate} placeholder="Date (YYYY-MM-DD)" style={styles.input} placeholderTextColor={palette.ink500} />
+          <Button title="Publish Sponsored Tournament" onPress={createSponsoredEvent} disabled={!canCreate} />
+          <Button title={loading ? 'Refreshing...' : 'Refresh Sponsored Events'} onPress={loadEvents} disabled={loading} tone="secondary" />
+        </View>
+
+        <View style={styles.eventsPane}>
+          {loading ? <ActivityIndicator color={palette.navy600} /> : null}
+          {events.map((event) => {
+            const requested = inviteRequests.includes(event.id);
+            return (
+              <View key={event.id} style={styles.eventCard}>
+                <Text style={styles.eventTitle}>{event.title}</Text>
+                <Text style={styles.meta}>
+                  {event.sport} • {event.format} • {event.date}
+                </Text>
+                <Text style={styles.meta}>
+                  {event.city} • Sponsored by {event.sponsor}
+                </Text>
+                <Text style={styles.meta}>
+                  Registered: {event.registrationCount ?? 0}
+                  {event.myRegistrationStatus ? ` • Your status: ${event.myRegistrationStatus}` : ''}
+                </Text>
+                <Button
+                  title={requested ? 'Invite Request Sent' : 'Request Local Invite'}
+                  onPress={() => requestInvite(event.id)}
+                  disabled={requested || !event.invitesOpen || actioningId === event.id}
+                />
+                <Button title="Invite Locals as Sponsor" onPress={() => inviteLocals(event.id)} disabled={actioningId === event.id} tone="secondary" />
+              </View>
+            );
+          })}
+        </View>
       </View>
-
-      <Button title={loading ? 'Refreshing...' : 'Refresh Sponsored Events'} onPress={loadEvents} disabled={loading} />
-      {loading ? <ActivityIndicator color="#0b3a53" /> : null}
-
-      {events.map((event) => {
-        const requested = inviteRequests.includes(event.id);
-        return (
-          <View key={event.id} style={styles.eventCard}>
-            <Text style={styles.eventTitle}>{event.title}</Text>
-            <Text style={styles.meta}>
-              {event.sport} • {event.format} • {event.date}
-            </Text>
-            <Text style={styles.meta}>
-              {event.city} • Sponsored by {event.sponsor}
-            </Text>
-            <Text style={styles.meta}>
-              Registered: {event.registrationCount ?? 0}
-              {event.myRegistrationStatus ? ` • Your status: ${event.myRegistrationStatus}` : ''}
-            </Text>
-            <Button
-              title={requested ? 'Invite Request Sent' : 'Request Local Invite'}
-              onPress={() => requestInvite(event.id)}
-              disabled={requested || !event.invitesOpen || actioningId === event.id}
-            />
-            <Button title="Invite Locals as Sponsor" onPress={() => inviteLocals(event.id)} disabled={actioningId === event.id} />
-          </View>
-        );
-      })}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    gap: 12
+    padding: spacing.lg,
+    gap: spacing.md
+  },
+  layout: {
+    ...(isWeb
+      ? {
+          flexDirection: 'row',
+          gap: spacing.md,
+          alignItems: 'flex-start'
+        }
+      : {
+          gap: spacing.md
+        })
   },
   title: {
     fontSize: 24,
+    fontFamily: font.display,
     fontWeight: '800',
-    color: '#102a43'
+    color: palette.ink900
   },
   subtitle: {
-    color: '#486581'
+    color: palette.ink700
   },
   createCard: {
-    backgroundColor: '#d9e2ec',
-    borderRadius: 12,
-    padding: 12,
-    gap: 8
+    backgroundColor: palette.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    padding: spacing.md,
+    gap: spacing.xs,
+    ...(isWeb ? { flex: 1, maxWidth: 420 } : {})
+  },
+  eventsPane: {
+    gap: spacing.md,
+    ...(isWeb ? { flex: 1.5 } : {})
   },
   sectionTitle: {
     fontWeight: '700',
-    color: '#102a43'
+    color: palette.ink900
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FBFD',
     borderWidth: 1,
-    borderColor: '#d9e2ec',
-    borderRadius: 10,
+    borderColor: palette.sky300,
+    borderRadius: radius.sm,
     paddingHorizontal: 12,
-    paddingVertical: 10
+    paddingVertical: 10,
+    color: palette.ink900
   },
   eventCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: palette.white,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#d9e2ec',
-    padding: 12,
+    borderColor: palette.sky300,
+    padding: spacing.md,
     gap: 6
   },
   eventTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#102a43'
+    color: palette.ink900
   },
   meta: {
-    color: '#486581'
+    color: palette.ink700
   }
 });

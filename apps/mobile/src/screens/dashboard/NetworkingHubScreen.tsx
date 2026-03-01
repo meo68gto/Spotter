@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View
 import { Button } from '../../components/Button';
 import { invokeFunction } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { font, isWeb, palette, radius, spacing } from '../../theme/design';
 
 type ActivityItem = {
   id: string;
@@ -87,13 +88,11 @@ export function NetworkingHubScreen() {
       setLoading(true);
       try {
         const response = await invokeFunction<{
-          run: { id: string };
           pairings: Array<{
             candidateUserId: string | null;
             candidateDisplayName: string;
             score: number;
             distanceKm?: number | null;
-            reasons?: unknown;
           }>;
           events: Array<{ eventId: string | null; title: string; city?: string | null; sponsorName?: string | null }>;
         }>('mcp-booking-plan', {
@@ -212,130 +211,163 @@ export function NetworkingHubScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Local Networking</Text>
-      <Text style={styles.subtitle}>Find local players for coachable sports and invite them to train or compete.</Text>
+      <Text style={styles.subtitle}>Find serious local partners and route them into sponsor-backed events.</Text>
 
-      <View style={styles.filters}>
-        <TextInput
-          value={activityId ? activities.find((activity) => activity.id === activityId)?.name ?? '' : ''}
-          onChangeText={(value) => {
-            const match = activities.find((activity) => activity.name.toLowerCase() === value.toLowerCase());
-            if (match) setActivityId(match.id);
-            setSportFilter(value);
-          }}
-          placeholder="Primary sport (Golf, Pickleball...)"
-          style={styles.input}
-        />
-        <TextInput
-          value={sportFilter}
-          onChangeText={setSportFilter}
-          placeholder="Filter by sport (golf, pickleball...)"
-          style={styles.input}
-        />
-        <TextInput value={cityFilter} onChangeText={setCityFilter} placeholder="Filter by city" style={styles.input} />
-      </View>
-
-      <View style={styles.toolsCard}>
-        <Text style={styles.toolsTitle}>Networking Tools</Text>
-        <Text style={styles.toolsItem}>- Quick local invite to private matches or practice sessions</Text>
-        <Text style={styles.toolsItem}>- Skill-aware intros (keeps match quality high)</Text>
-        <Text style={styles.toolsItem}>- Sponsor-friendly local outreach lists</Text>
-      </View>
-
-      {eventHints.length ? (
-        <View style={styles.toolsCard}>
-          <Text style={styles.toolsTitle}>Suggested Sponsored Tournaments</Text>
-          {eventHints.slice(0, 3).map((event) => (
-            <Text key={event.id} style={styles.toolsItem}>
-              - {event.title}
-              {event.city ? ` (${event.city})` : ''}
-              {event.sponsor ? ` • ${event.sponsor}` : ''}
-            </Text>
-          ))}
-        </View>
-      ) : null}
-
-      <Button title={refreshing ? 'Refreshing...' : 'Refresh MCP Booking Plan'} onPress={refreshPlan} disabled={refreshing} />
-
-      {loading ? <ActivityIndicator color="#0b3a53" /> : null}
-
-      {filtered.map((player) => {
-        const invited = sentInvites.includes(player.id);
-        return (
-          <View key={player.id} style={styles.card}>
-            <Text style={styles.cardName}>{player.name}</Text>
-            <Text style={styles.meta}>
-              {player.sport} • {player.level} • {player.city}
-            </Text>
-            <Text style={styles.note}>{player.note}</Text>
-            {typeof player.score === 'number' ? <Text style={styles.note}>MCP score: {player.score.toFixed(1)}</Text> : null}
-            <Button
-              title={invited ? 'Invite Sent' : player.openToInvite ? 'Invite to Session/Tournament' : 'Not Available'}
-              onPress={() => invite(player.id)}
-              disabled={invited || !player.openToInvite}
+      <View style={styles.layout}>
+        <View style={styles.leftPane}>
+          <View style={styles.filters}>
+            <TextInput
+              value={activityId ? activities.find((activity) => activity.id === activityId)?.name ?? '' : ''}
+              onChangeText={(value) => {
+                const match = activities.find((activity) => activity.name.toLowerCase() === value.toLowerCase());
+                if (match) setActivityId(match.id);
+                setSportFilter(value);
+              }}
+              placeholder="Primary sport (Golf, Pickleball...)"
+              style={styles.input}
+              placeholderTextColor={palette.ink500}
             />
+            <TextInput value={sportFilter} onChangeText={setSportFilter} placeholder="Filter by sport" style={styles.input} placeholderTextColor={palette.ink500} />
+            <TextInput value={cityFilter} onChangeText={setCityFilter} placeholder="Filter by city" style={styles.input} placeholderTextColor={palette.ink500} />
           </View>
-        );
-      })}
+
+          <View style={styles.toolsCard}>
+            <Text style={styles.toolsTitle}>Networking Toolkit</Text>
+            <Text style={styles.toolsItem}>- Partner discovery by skill, distance, and readiness</Text>
+            <Text style={styles.toolsItem}>- One-tap invite to practice or tournament lane</Text>
+            <Text style={styles.toolsItem}>- Sponsor activation for local event turnout</Text>
+          </View>
+
+          {eventHints.length ? (
+            <View style={styles.toolsCard}>
+              <Text style={styles.toolsTitle}>Suggested Sponsored Tournaments</Text>
+              {eventHints.slice(0, 3).map((event) => (
+                <Text key={event.id} style={styles.toolsItem}>
+                  - {event.title}
+                  {event.city ? ` (${event.city})` : ''}
+                  {event.sponsor ? ` • ${event.sponsor}` : ''}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
+          <Button title={refreshing ? 'Refreshing...' : 'Refresh MCP Booking Plan'} onPress={refreshPlan} disabled={refreshing} tone="secondary" />
+          {loading ? <ActivityIndicator color={palette.navy600} /> : null}
+        </View>
+
+        <View style={styles.rightPane}>
+          {filtered.map((player) => {
+            const invited = sentInvites.includes(player.id);
+            return (
+              <View key={player.id} style={styles.card}>
+                <Text style={styles.cardName}>{player.name}</Text>
+                <Text style={styles.meta}>
+                  {player.sport} • {player.level} • {player.city}
+                </Text>
+                <Text style={styles.note}>{player.note}</Text>
+                {typeof player.score === 'number' ? <Text style={styles.score}>MCP score: {player.score.toFixed(1)}</Text> : null}
+                <Button
+                  title={invited ? 'Invite Sent' : player.openToInvite ? 'Invite to Session/Tournament' : 'Not Available'}
+                  onPress={() => invite(player.id)}
+                  disabled={invited || !player.openToInvite}
+                />
+              </View>
+            );
+          })}
+        </View>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    gap: 12
+    padding: spacing.lg,
+    gap: spacing.md
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
+    fontFamily: font.display,
     fontWeight: '800',
-    color: '#102a43'
+    color: palette.ink900
   },
   subtitle: {
-    color: '#486581'
+    color: palette.ink700
+  },
+  layout: {
+    ...(isWeb
+      ? {
+          flexDirection: 'row',
+          gap: spacing.md,
+          alignItems: 'flex-start'
+        }
+      : {
+          gap: spacing.md
+        })
+  },
+  leftPane: {
+    ...(isWeb ? { flex: 1, maxWidth: 420 } : { gap: spacing.md })
+  },
+  rightPane: {
+    gap: spacing.md,
+    ...(isWeb ? { flex: 1.6 } : {})
   },
   filters: {
-    gap: 8
+    backgroundColor: palette.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    padding: spacing.md
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FBFD',
     borderWidth: 1,
-    borderColor: '#d9e2ec',
-    borderRadius: 10,
+    borderColor: palette.sky300,
+    borderRadius: radius.sm,
     paddingHorizontal: 12,
-    paddingVertical: 10
+    paddingVertical: 10,
+    marginBottom: 8,
+    color: palette.ink900
   },
   toolsCard: {
-    backgroundColor: '#d9e2ec',
-    borderRadius: 12,
-    padding: 12
+    backgroundColor: palette.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    padding: spacing.md
   },
   toolsTitle: {
+    fontSize: 15,
     fontWeight: '700',
-    color: '#102a43',
+    color: palette.ink900,
     marginBottom: 6
   },
   toolsItem: {
-    color: '#334e68',
+    color: palette.ink700,
     marginBottom: 4
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: palette.white,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#d9e2ec',
-    padding: 12,
+    borderColor: palette.sky300,
+    padding: spacing.md,
     gap: 8
   },
   cardName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#102a43'
+    color: palette.ink900
   },
   meta: {
-    color: '#486581',
+    color: palette.ink700,
     fontWeight: '600'
   },
   note: {
-    color: '#334e68'
+    color: palette.ink700
+  },
+  score: {
+    color: palette.green500,
+    fontWeight: '700'
   }
 });

@@ -16,6 +16,7 @@ import { SessionsScreen } from './dashboard/SessionsScreen';
 import { SponsoredEventsScreen } from './dashboard/SponsoredEventsScreen';
 import { VideoPipelineScreen } from './dashboard/VideoPipelineScreen';
 import { loadFeatureFlags } from '../lib/flags';
+import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
 type TabKey =
   | 'map'
@@ -38,6 +39,32 @@ type Props = {
   onSignOut: () => void;
 };
 
+type NavItem = {
+  key: TabKey;
+  label: string;
+  group: 'core' | 'growth' | 'ops' | 'account';
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { key: 'map', label: 'Discover', group: 'core' },
+  { key: 'network', label: 'Network', group: 'core' },
+  { key: 'events', label: 'Events', group: 'core' },
+  { key: 'experts', label: 'Coaches', group: 'growth' },
+  { key: 'ask', label: 'Ask', group: 'growth' },
+  { key: 'feed', label: 'Feed', group: 'growth' },
+  { key: 'requests', label: 'Requests', group: 'growth' },
+  { key: 'sessions', label: 'Sessions', group: 'ops' },
+  { key: 'matches', label: 'Matches', group: 'ops' },
+  { key: 'videos', label: 'Videos', group: 'ops' },
+  { key: 'progress', label: 'Progress', group: 'ops' },
+  { key: 'expert', label: 'Expert Console', group: 'ops' },
+  { key: 'call', label: 'Call Room', group: 'ops' },
+  { key: 'profile', label: 'Profile', group: 'account' }
+];
+
+const MOBILE_PRIMARY: TabKey[] = ['map', 'network', 'events', 'experts', 'profile'];
+const MOBILE_SECONDARY: TabKey[] = ['ask', 'feed', 'requests', 'sessions', 'matches', 'videos', 'progress', 'expert', 'call'];
+
 export function DashboardScreen({ session, onSignOut }: Props) {
   const [tab, setTab] = useState<TabKey>('map');
 
@@ -50,139 +77,243 @@ export function DashboardScreen({ session, onSignOut }: Props) {
     bootstrapFlags();
   }, [session.access_token]);
 
-  const title = useMemo(() => {
-    if (tab === 'map') return 'Map';
-    if (tab === 'network') return 'Networking';
-    if (tab === 'events') return 'Sponsored Events';
-    if (tab === 'experts') return 'Experts';
-    if (tab === 'ask') return 'Ask';
-    if (tab === 'feed') return 'Feed';
-    if (tab === 'requests') return 'My Requests';
-    if (tab === 'call') return 'Call Room';
-    if (tab === 'expert') return 'Expert Console';
-    if (tab === 'sessions') return 'Sessions';
-    if (tab === 'matches') return 'Matches';
-    if (tab === 'videos') return 'Videos';
-    if (tab === 'progress') return 'Progress';
-    return 'Profile';
-  }, [tab]);
+  const title = useMemo(() => NAV_ITEMS.find((item) => item.key === tab)?.label ?? 'Spotter', [tab]);
+
+  const renderContent = () => {
+    if (tab === 'map') return <MapScreen />;
+    if (tab === 'network') return <NetworkingHubScreen />;
+    if (tab === 'events') return <SponsoredEventsScreen />;
+    if (tab === 'experts') return <ExpertsScreen session={session} />;
+    if (tab === 'ask') return <AskScreen session={session} />;
+    if (tab === 'feed') return <FeedScreen />;
+    if (tab === 'requests') return <MyRequestsScreen session={session} />;
+    if (tab === 'call') return <CallRoomScreen session={session} />;
+    if (tab === 'expert') return <ExpertConsoleScreen session={session} />;
+    if (tab === 'sessions') return <SessionsScreen session={session} />;
+    if (tab === 'matches') return <MatchesScreen session={session} />;
+    if (tab === 'videos') return <VideoPipelineScreen session={session} />;
+    if (tab === 'progress') return <ProgressScreen session={session} />;
+    return <ProfileScreen session={session} email={session.user.email ?? 'unknown'} onSignOut={onSignOut} />;
+  };
+
+  if (isWeb) {
+    return (
+      <View style={styles.webRoot}>
+        <View style={styles.webSidebar}>
+          <Text style={styles.brand}>Spotter</Text>
+          <Text style={styles.sidebarSubtitle}>Match, improve, compete.</Text>
+
+          <NavGroup title="Core" items={NAV_ITEMS.filter((item) => item.group === 'core')} activeTab={tab} onSelect={setTab} />
+          <NavGroup title="Growth" items={NAV_ITEMS.filter((item) => item.group === 'growth')} activeTab={tab} onSelect={setTab} />
+          <NavGroup title="Operations" items={NAV_ITEMS.filter((item) => item.group === 'ops')} activeTab={tab} onSelect={setTab} />
+          <NavGroup title="Account" items={NAV_ITEMS.filter((item) => item.group === 'account')} activeTab={tab} onSelect={setTab} />
+        </View>
+
+        <View style={styles.webMain}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>{title}</Text>
+            <Text style={styles.headerMeta}>{session.user.email ?? 'unknown'}</Text>
+          </View>
+          <View style={styles.content}>{renderContent()}</View>
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.mobileRoot}>
       <View style={styles.header}>
         <Text style={styles.brand}>Spotter</Text>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
 
-      <View style={styles.content}>
-        {tab === 'map' ? <MapScreen /> : null}
-        {tab === 'network' ? <NetworkingHubScreen /> : null}
-        {tab === 'events' ? <SponsoredEventsScreen /> : null}
-        {tab === 'experts' ? <ExpertsScreen session={session} /> : null}
-        {tab === 'ask' ? <AskScreen session={session} /> : null}
-        {tab === 'feed' ? <FeedScreen /> : null}
-        {tab === 'requests' ? <MyRequestsScreen session={session} /> : null}
-        {tab === 'call' ? <CallRoomScreen session={session} /> : null}
-        {tab === 'expert' ? <ExpertConsoleScreen session={session} /> : null}
-        {tab === 'sessions' ? <SessionsScreen session={session} /> : null}
-        {tab === 'matches' ? <MatchesScreen session={session} /> : null}
-        {tab === 'videos' ? <VideoPipelineScreen session={session} /> : null}
-        {tab === 'progress' ? <ProgressScreen session={session} /> : null}
-        {tab === 'profile' ? (
-          <ProfileScreen session={session} email={session.user.email ?? 'unknown'} onSignOut={onSignOut} />
-        ) : null}
+      <View style={styles.secondaryRail}>
+        <ScrollView horizontal contentContainerStyle={styles.secondaryRailContent} showsHorizontalScrollIndicator={false}>
+          {MOBILE_SECONDARY.map((key) => {
+            const label = NAV_ITEMS.find((item) => item.key === key)?.label ?? key;
+            const active = tab === key;
+            return (
+              <TouchableOpacity key={key} onPress={() => setTab(key)} style={[styles.secondaryPill, active ? styles.secondaryPillActive : null]}>
+                <Text style={[styles.secondaryPillText, active ? styles.secondaryPillTextActive : null]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      <ScrollView horizontal style={styles.tabBar} contentContainerStyle={styles.tabBarContent} showsHorizontalScrollIndicator={false}>
-        <TabButton label="Map" active={tab === 'map'} onPress={() => setTab('map')} />
-        <TabButton label="Network" active={tab === 'network'} onPress={() => setTab('network')} />
-        <TabButton label="Events" active={tab === 'events'} onPress={() => setTab('events')} />
-        <TabButton label="Experts" active={tab === 'experts'} onPress={() => setTab('experts')} />
-        <TabButton label="Ask" active={tab === 'ask'} onPress={() => setTab('ask')} />
-        <TabButton label="Feed" active={tab === 'feed'} onPress={() => setTab('feed')} />
-        <TabButton label="Requests" active={tab === 'requests'} onPress={() => setTab('requests')} />
-        <TabButton label="Call" active={tab === 'call'} onPress={() => setTab('call')} />
-        <TabButton label="Expert" active={tab === 'expert'} onPress={() => setTab('expert')} />
-        <TabButton label="Sessions" active={tab === 'sessions'} onPress={() => setTab('sessions')} />
-        <TabButton label="Matches" active={tab === 'matches'} onPress={() => setTab('matches')} />
-        <TabButton label="Videos" active={tab === 'videos'} onPress={() => setTab('videos')} />
-        <TabButton label="Progress" active={tab === 'progress'} onPress={() => setTab('progress')} />
-        <TabButton label="Profile" active={tab === 'profile'} onPress={() => setTab('profile')} />
-      </ScrollView>
+      <View style={styles.content}>{renderContent()}</View>
+
+      <View style={styles.mobileTabBar}>
+        {MOBILE_PRIMARY.map((key) => {
+          const label = NAV_ITEMS.find((item) => item.key === key)?.label ?? key;
+          const active = tab === key;
+          return (
+            <TouchableOpacity key={key} onPress={() => setTab(key)} style={styles.mobileTabButton}>
+              <Text style={[styles.mobileTabText, active ? styles.mobileTabTextActive : null]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
-function TabButton({
-  label,
-  active,
-  onPress
+function NavGroup({
+  title,
+  items,
+  activeTab,
+  onSelect
 }: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
+  title: string;
+  items: NavItem[];
+  activeTab: TabKey;
+  onSelect: (tab: TabKey) => void;
 }) {
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.tabButton, active ? styles.tabActive : null]}>
-      <Text style={[styles.tabText, active ? styles.tabTextActive : null]}>{label}</Text>
-    </TouchableOpacity>
+    <View style={styles.navGroup}>
+      <Text style={styles.navGroupTitle}>{title}</Text>
+      {items.map((item) => {
+        const active = item.key === activeTab;
+        return (
+          <TouchableOpacity key={item.key} onPress={() => onSelect(item.key)} style={[styles.navItem, active ? styles.navItemActive : null]}>
+            <Text style={[styles.navItemText, active ? styles.navItemTextActive : null]}>{item.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  webRoot: {
     flex: 1,
-    backgroundColor: '#f6f9fc'
+    flexDirection: 'row',
+    backgroundColor: palette.sky100
+  },
+  webSidebar: {
+    width: 280,
+    backgroundColor: palette.navy600,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl
+  },
+  sidebarSubtitle: {
+    color: '#CBE4F3',
+    marginTop: 2,
+    marginBottom: spacing.lg
+  },
+  webMain: {
+    flex: 1
+  },
+  mobileRoot: {
+    flex: 1,
+    backgroundColor: palette.sky100
   },
   header: {
-    paddingTop: 14,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingTop: isWeb ? spacing.lg : spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#e4ecf2',
-    backgroundColor: '#ffffff'
+    borderBottomColor: palette.sky200,
+    backgroundColor: palette.white
   },
   brand: {
-    color: '#0b3a53',
-    fontSize: 12,
+    color: isWeb ? palette.white : palette.navy600,
+    fontSize: 13,
     fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0.8
+    letterSpacing: 1
   },
   headerTitle: {
-    color: '#102a43',
-    fontSize: 24,
+    color: palette.ink900,
+    fontFamily: font.display,
+    fontSize: isWeb ? 30 : 22,
     fontWeight: '800'
+  },
+  headerMeta: {
+    color: palette.ink500,
+    marginTop: 3
   },
   content: {
     flex: 1
   },
-  tabBar: {
-    borderTopWidth: 1,
-    borderTopColor: '#e4ecf2',
-    backgroundColor: '#ffffff',
-    paddingVertical: 8
+  navGroup: {
+    marginBottom: spacing.lg
   },
-  tabBarContent: {
-    paddingHorizontal: 8,
-    gap: 8,
-    alignItems: 'center'
+  navGroupTitle: {
+    color: '#D8EAF5',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+    fontWeight: '700'
   },
-  tabButton: {
-    minWidth: 82,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignItems: 'center'
+  navItem: {
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: 6
   },
-  tabActive: {
-    backgroundColor: '#0b3a53'
+  navItemActive: {
+    backgroundColor: palette.mint500
   },
-  tabText: {
-    color: '#486581',
+  navItemText: {
+    color: '#EAF4FA',
     fontWeight: '600'
   },
-  tabTextActive: {
-    color: '#ffffff'
+  navItemTextActive: {
+    color: palette.navy700,
+    fontWeight: '700'
+  },
+  secondaryRail: {
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.sky200,
+    backgroundColor: '#F8FBFD'
+  },
+  secondaryRailContent: {
+    paddingHorizontal: spacing.sm,
+    gap: spacing.xs,
+    alignItems: 'center'
+  },
+  secondaryPill: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    backgroundColor: palette.white
+  },
+  secondaryPillActive: {
+    backgroundColor: palette.navy600,
+    borderColor: palette.navy600
+  },
+  secondaryPillText: {
+    color: palette.ink700,
+    fontWeight: '600',
+    fontSize: 13
+  },
+  secondaryPillTextActive: {
+    color: palette.white
+  },
+  mobileTabBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: palette.sky200,
+    backgroundColor: palette.white,
+    paddingVertical: spacing.sm
+  },
+  mobileTabButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6
+  },
+  mobileTabText: {
+    color: palette.ink500,
+    fontWeight: '600',
+    fontSize: 13
+  },
+  mobileTabTextActive: {
+    color: palette.navy600,
+    fontWeight: '800'
   }
 });

@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../components/Button';
 import { trackEvent } from '../lib/analytics';
+import { invokeFunction } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { font, palette, radius, spacing } from '../theme/design';
 
 const STORAGE_KEY = 'spotter:onboarding-draft';
 
@@ -98,32 +100,28 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
       return;
     }
 
-    const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/functions/v1/onboarding-profile`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        ...draft,
-        canonicalScore: Number(draft.canonicalScore),
-        availabilitySlots: [
-          { weekday: 1, startMinute: 480, endMinute: 1080 },
-          { weekday: 2, startMinute: 480, endMinute: 1080 },
-          { weekday: 3, startMinute: 480, endMinute: 1080 },
-          { weekday: 4, startMinute: 480, endMinute: 1080 },
-          { weekday: 5, startMinute: 480, endMinute: 1080 }
-        ]
-      })
-    });
-
-    setLoading(false);
-
-    if (!response.ok) {
-      const payload = await response.json();
-      Alert.alert('Onboarding failed', payload.error ?? 'Unknown error');
+    try {
+      await invokeFunction('onboarding-profile', {
+        method: 'POST',
+        body: {
+          ...draft,
+          canonicalScore: Number(draft.canonicalScore),
+          availabilitySlots: [
+            { weekday: 1, startMinute: 480, endMinute: 1080 },
+            { weekday: 2, startMinute: 480, endMinute: 1080 },
+            { weekday: 3, startMinute: 480, endMinute: 1080 },
+            { weekday: 4, startMinute: 480, endMinute: 1080 },
+            { weekday: 5, startMinute: 480, endMinute: 1080 }
+          ]
+        }
+      });
+    } catch (error) {
+      setLoading(false);
+      Alert.alert('Onboarding failed', error instanceof Error ? error.message : 'Unknown error');
       return;
     }
+
+    setLoading(false);
 
     const authUser = (await supabase.auth.getUser()).data.user;
     if (authUser) {
@@ -215,27 +213,28 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f9fc'
+    backgroundColor: palette.sky100
   },
   content: {
-    padding: 20,
-    paddingTop: 40
+    padding: spacing.xl,
+    paddingTop: spacing.xl
   },
   title: {
     fontSize: 30,
+    fontFamily: font.display,
     fontWeight: '800',
-    color: '#102a43'
+    color: palette.ink900
   },
   note: {
-    color: '#627d98',
+    color: palette.ink500,
     marginTop: 8,
-    marginBottom: 20
+    marginBottom: spacing.lg
   },
   section: {
     marginBottom: 10,
     fontSize: 14,
     fontWeight: '700',
-    color: '#334e68',
+    color: palette.ink700,
     textTransform: 'uppercase',
     letterSpacing: 0.7
   },
@@ -246,13 +245,13 @@ const styles = StyleSheet.create({
   },
   loaderText: {
     marginLeft: 8,
-    color: '#486581'
+    color: palette.ink700
   },
   errorWrap: {
     marginBottom: 10
   },
   errorText: {
-    color: '#9f3a38',
+    color: palette.red500,
     marginBottom: 8
   },
   grid: {
@@ -261,43 +260,43 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   option: {
-    backgroundColor: '#ffffff',
-    borderColor: '#d9e2ec',
+    backgroundColor: palette.white,
+    borderColor: palette.sky300,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: radius.sm,
     paddingVertical: 10,
     paddingHorizontal: 14,
     marginRight: 8,
     marginBottom: 8
   },
   optionActive: {
-    backgroundColor: '#0b3a53',
-    borderColor: '#0b3a53'
+    backgroundColor: palette.navy600,
+    borderColor: palette.navy600
   },
   optionText: {
-    color: '#334e68',
+    color: palette.ink700,
     fontWeight: '700'
   },
   optionTextActive: {
     color: '#ffffff'
   },
   summaryBox: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
+    backgroundColor: palette.white,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#d9e2ec',
+    borderColor: palette.sky300,
     padding: 12,
     marginBottom: 12
   },
   summaryLabel: {
-    color: '#627d98',
+    color: palette.ink500,
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.6
   },
   summaryValue: {
     marginTop: 4,
-    color: '#102a43',
+    color: palette.ink900,
     fontSize: 18,
     fontWeight: '700'
   }

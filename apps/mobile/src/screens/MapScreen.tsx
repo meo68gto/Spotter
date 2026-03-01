@@ -8,6 +8,7 @@ import {
   parseCachedCoords,
   type Coords
 } from '../lib/location-utils';
+import { font, palette, radius, spacing } from '../theme/design';
 
 const LAST_COORDS_KEY = 'spotter:last-known-coords';
 
@@ -57,13 +58,13 @@ export function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Nearby Activity Layer</Text>
+      <Text style={styles.header}>Discover Nearby Sessions</Text>
       {error ? <Text style={styles.warning}>{error}</Text> : null}
 
       {coords ? (
         <View style={styles.previewCard}>
-          <Text style={styles.previewTitle}>Map Preview</Text>
-          <Text style={styles.previewMeta}>Native map rendering is disabled in this local build.</Text>
+          <Text style={styles.previewTitle}>Location Ready</Text>
+          <Text style={styles.previewMeta}>Your local activity layer is active.</Text>
           <Text style={styles.previewMeta}>Latitude: {coords.latitude.toFixed(5)}</Text>
           <Text style={styles.previewMeta}>Longitude: {coords.longitude.toFixed(5)}</Text>
           <View style={styles.previewSurface}>
@@ -82,38 +83,41 @@ export function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7fafc',
-    paddingTop: 56
+    backgroundColor: palette.sky100,
+    paddingTop: spacing.xl
   },
   header: {
     fontSize: 20,
+    fontFamily: font.display,
     fontWeight: '700',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    color: '#102a43'
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    color: palette.ink900
   },
   previewCard: {
-    marginHorizontal: 16,
-    borderRadius: 14,
-    padding: 16,
-    backgroundColor: '#d9e2ec'
+    marginHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: palette.sky300
   },
   previewTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#102a43',
+    color: palette.ink900,
     marginBottom: 8
   },
   previewMeta: {
     fontSize: 14,
-    color: '#334e68',
+    color: palette.ink700,
     marginBottom: 4
   },
   previewSurface: {
     marginTop: 14,
     height: 280,
     borderRadius: 12,
-    backgroundColor: '#bcccdc',
+    backgroundColor: palette.sky200,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -123,15 +127,15 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   warning: {
-    color: '#9f3a38',
-    marginHorizontal: 16,
+    color: palette.red500,
+    marginHorizontal: spacing.lg,
     marginBottom: 8
   },
   pin: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#0b3a53',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: palette.navy600,
     borderColor: '#fff',
     borderWidth: 2
   }
