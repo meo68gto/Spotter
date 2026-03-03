@@ -1,23 +1,40 @@
+/**
+ * Spotter — App.tsx (Updated for UI Redesign Week 1-2)
+ *
+ * Changes from original:
+ *   - Wrapped in GestureHandlerRootView (required by react-native-gesture-handler)
+ *   - Wrapped in SafeAreaProvider (required by react-native-safe-area-context)
+ *   - Post-auth renders AppNavigator + SessionProvider instead of DashboardScreen
+ *   - Auth → Legal → Onboarding flow is UNCHANGED
+ */
+
 import { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from './src/components/AppErrorBoundary';
 import { Button } from './src/components/Button';
 import { invokeFunction } from './src/lib/api';
 import { trackEvent } from './src/lib/analytics';
 import { supabase } from './src/lib/supabase';
 import { AuthScreen } from './src/screens/AuthScreen';
-import { DashboardScreen } from './src/screens/DashboardScreen';
 import { LegalConsentScreen } from './src/screens/LegalConsentScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { validateMobileEnv } from './src/types/env';
+import { SessionProvider } from './src/contexts/SessionContext';
+import AppNavigator from './src/navigation/AppNavigator';
 
 type Stage = 'auth' | 'legal' | 'onboarding' | 'map';
 
 export default function App() {
   return (
     <AppErrorBoundary>
-      <RootApp />
+      <GestureHandlerRootView style={styles.root}>
+        <SafeAreaProvider>
+          <RootApp />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     </AppErrorBoundary>
   );
 }
@@ -94,9 +111,16 @@ function RootApp() {
     return () => authSub.subscription.unsubscribe();
   }, []);
 
+  // --- Render main app with navigation ---
+  const renderMainApp = (activeSession: Session) => (
+    <SessionProvider session={activeSession} onSignOut={() => supabase.auth.signOut()}>
+      <AppNavigator />
+    </SessionProvider>
+  );
+
   if (envErrors.length) {
     if (demoMode) {
-      return <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} />;
+      return renderMainApp(demoSession);
     }
 
     return (
@@ -116,7 +140,7 @@ function RootApp() {
 
   if (!session) {
     if (demoMode) {
-      return <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} />;
+      return renderMainApp(demoSession);
     }
     return <AuthScreen onDemoMode={() => setDemoMode(true)} />;
   }
@@ -141,10 +165,13 @@ function RootApp() {
     return <OnboardingScreen onComplete={() => setStage('map')} />;
   }
 
-  return <DashboardScreen session={session} onSignOut={() => supabase.auth.signOut()} />;
+  return renderMainApp(session);
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1
+  },
   container: {
     flex: 1,
     padding: 24,
