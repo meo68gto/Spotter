@@ -1,6 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { trackEvent } from '../../lib/analytics';
@@ -42,6 +42,7 @@ export function MatchesScreen({ session }: { session: Session }) {
   const [loadingMatches, setLoadingMatches] = useState(true);
   const [requestingId, setRequestingId] = useState<string>('');
   const [actingMatchId, setActingMatchId] = useState<string>('');
+  const [refreshing, setRefreshing] = useState(false);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [feedbackByUserId, setFeedbackByUserId] = useState<Record<string, FeedbackSummary>>({});
@@ -159,6 +160,13 @@ export function MatchesScreen({ session }: { session: Session }) {
     await Promise.all([loadMatches(), loadCandidates()]);
   };
 
+  const onRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await refreshAll();
+    setRefreshing(false);
+  };
+
   useEffect(() => {
     refreshAll();
   }, []);
@@ -229,7 +237,11 @@ export function MatchesScreen({ session }: { session: Session }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       <Text style={styles.title}>Matches</Text>
       <Text style={styles.subtitle}>Quality-first suggestions and pending match lifecycle.</Text>
 

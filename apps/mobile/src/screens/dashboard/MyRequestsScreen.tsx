@@ -1,6 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { supabase } from '../../lib/supabase';
@@ -42,7 +42,11 @@ export function MyRequestsScreen({ session }: { session: Session }) {
   }, []);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+    >
       <Text style={styles.title}>My Requests</Text>
       <Text style={styles.subtitle}>Track status across text/video/call engagements.</Text>
       <Button title={loading ? 'Refreshing...' : 'Refresh'} onPress={load} disabled={loading} />

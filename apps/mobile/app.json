@@ -18,6 +18,7 @@
       "package": "com.spotter.app",
       "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
+    "plugins": ["@stripe/stripe-react-native"],
     "extra": {
       "eas": {
         "projectId": "REPLACE_ME"

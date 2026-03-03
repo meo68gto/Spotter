@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { invokeFunction } from '../../lib/api';
+import { stockPhotos } from '../../lib/stockPhotos';
 import { supabase } from '../../lib/supabase';
 import { font, isWeb, palette, radius, spacing } from '../../theme/design';
 
@@ -209,8 +210,13 @@ export function NetworkingHubScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Local Networking</Text>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshPlan} />}
+    >
+      <ImageBackground source={{ uri: stockPhotos.networkHero }} style={styles.hero} imageStyle={styles.heroImage}>
+        <Text style={styles.title}>Local Networking</Text>
+      </ImageBackground>
       <Text style={styles.subtitle}>Find serious local partners and route them into sponsor-backed events.</Text>
 
       <View style={styles.layout}>
@@ -285,11 +291,19 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md
   },
+  hero: {
+    height: 150,
+    justifyContent: 'flex-end',
+    padding: spacing.md
+  },
+  heroImage: {
+    borderRadius: radius.md
+  },
   title: {
     fontSize: 26,
     fontFamily: font.display,
     fontWeight: '800',
-    color: palette.ink900
+    color: palette.white
   },
   subtitle: {
     color: palette.ink700

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
+import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
+import { HomeScreen } from './dashboard/HomeScreen';
 import { MapScreen } from './MapScreen';
 import { AskScreen } from './dashboard/AskScreen';
 import { CallRoomScreen } from './dashboard/CallRoomScreen';
@@ -15,13 +17,18 @@ import { ProfileScreen } from './dashboard/ProfileScreen';
 import { SessionsScreen } from './dashboard/SessionsScreen';
 import { SponsoredEventsScreen } from './dashboard/SponsoredEventsScreen';
 import { VideoPipelineScreen } from './dashboard/VideoPipelineScreen';
+import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
+export type DeepLinkTarget = 'home' | 'discover' | 'ask' | 'requests' | 'sessions' | 'coaches' | 'matches';
+
 type TabKey =
+  | 'home'
   | 'map'
   | 'network'
   | 'events'
+  | 'coaching'
   | 'experts'
   | 'ask'
   | 'feed'
@@ -37,6 +44,7 @@ type TabKey =
 type Props = {
   session: Session;
   onSignOut: () => void;
+  deepLinkTarget?: DeepLinkTarget | null;
 };
 
 type NavItem = {
@@ -47,10 +55,12 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
+  { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
   { key: 'map', label: 'Discover', group: 'core', mobilePrimary: true },
   { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
-  { key: 'events', label: 'Events', group: 'core', mobilePrimary: true },
-  { key: 'ask', label: 'Ask', group: 'growth', mobilePrimary: true },
+  { key: 'coaching', label: 'Coaching', group: 'growth', mobilePrimary: true },
+  { key: 'events', label: 'Events', group: 'core' },
+  { key: 'ask', label: 'Ask', group: 'growth' },
   { key: 'experts', label: 'Coaches', group: 'growth' },
   { key: 'feed', label: 'Feed', group: 'growth' },
   { key: 'requests', label: 'Requests', group: 'growth' },
@@ -64,27 +74,25 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const WEB_PHOTO_TILES = [
-  {
-    label: 'Golf Pairing',
-    image:
-      'https://images.pexels.com/photos/114972/pexels-photo-114972.jpeg?auto=compress&cs=tinysrgb&w=1200'
-  },
-  {
-    label: 'Pickleball Community',
-    image:
-      'https://images.pexels.com/photos/8224736/pexels-photo-8224736.jpeg?auto=compress&cs=tinysrgb&w=1200'
-  },
-  {
-    label: 'Coaching Progress',
-    image:
-      'https://images.pexels.com/photos/414029/pexels-photo-414029.jpeg?auto=compress&cs=tinysrgb&w=1200'
-  }
+  { label: 'Golf Pairing', image: stockPhotos.dashboardHeroGolf },
+  { label: 'Pickleball Community', image: stockPhotos.dashboardHeroPickleball },
+  { label: 'Coaching Progress', image: stockPhotos.dashboardHeroProgress }
 ];
 
 const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
 
-export function DashboardScreen({ session, onSignOut }: Props) {
-  const [tab, setTab] = useState<TabKey>('map');
+const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
+  if (target === 'home') return 'home';
+  if (target === 'discover') return 'map';
+  if (target === 'ask') return 'ask';
+  if (target === 'requests') return 'requests';
+  if (target === 'sessions') return 'sessions';
+  if (target === 'coaches') return 'experts';
+  return 'matches';
+};
+
+export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
+  const [tab, setTab] = useState<TabKey>('home');
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -96,12 +104,21 @@ export function DashboardScreen({ session, onSignOut }: Props) {
     bootstrapFlags();
   }, [session.access_token]);
 
+  useEffect(() => {
+    if (!deepLinkTarget) return;
+    setTab(mapDeepLinkToTab(deepLinkTarget));
+  }, [deepLinkTarget]);
+
   const title = useMemo(() => NAV_ITEMS.find((item) => item.key === tab)?.label ?? 'Spotter', [tab]);
 
+  const jumpToQuickAction = (target: DeepLinkTarget) => setTab(mapDeepLinkToTab(target));
+
   const renderContent = () => {
+    if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
     if (tab === 'map') return <MapScreen />;
     if (tab === 'network') return <NetworkingHubScreen />;
     if (tab === 'events') return <SponsoredEventsScreen />;
+    if (tab === 'coaching') return <CoachingTabScreen />;
     if (tab === 'experts') return <ExpertsScreen session={session} />;
     if (tab === 'ask') return <AskScreen session={session} />;
     if (tab === 'feed') return <FeedScreen />;
@@ -256,13 +273,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: spacing.lg
   },
-  webMain: {
-    flex: 1
-  },
-  mobileRoot: {
-    flex: 1,
-    backgroundColor: palette.sky100
-  },
+  webMain: { flex: 1 },
+  mobileRoot: { flex: 1, backgroundColor: palette.sky100 },
   header: {
     paddingTop: spacing.lg,
     paddingHorizontal: spacing.lg,
@@ -305,162 +317,56 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: palette.white
   },
-  hamburgerText: {
-    fontSize: 24,
-    color: palette.navy600,
-    marginTop: -2
-  },
+  hamburgerText: { fontSize: 24, color: palette.navy600, marginTop: -2 },
   headerTitle: {
     color: palette.ink900,
     fontFamily: font.display,
     fontSize: 30,
     fontWeight: '800'
   },
-  headerMeta: {
-    color: palette.ink500,
-    marginTop: 3
-  },
-  webHeroStrip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.md
-  },
-  webHeroTile: {
-    width: 280,
-    height: 124,
-    justifyContent: 'flex-end'
-  },
-  webHeroTileImage: {
-    borderRadius: radius.md
-  },
-  webHeroOverlay: {
-    backgroundColor: 'rgba(8,47,67,0.58)',
-    borderBottomLeftRadius: radius.md,
-    borderBottomRightRadius: radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs
-  },
-  webHeroLabel: {
-    color: palette.white,
-    fontWeight: '700'
-  },
-  content: {
-    flex: 1
-  },
-  navGroup: {
-    marginBottom: spacing.lg
-  },
-  navGroupTitle: {
-    color: '#D8EAF5',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
-    fontWeight: '700'
-  },
-  navItem: {
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: 6
-  },
-  navItemActive: {
-    backgroundColor: palette.mint500
-  },
-  navItemText: {
-    color: '#EAF4FA',
-    fontWeight: '600'
-  },
-  navItemTextActive: {
-    color: palette.navy700,
-    fontWeight: '700'
-  },
+  headerMeta: { color: palette.ink500 },
+  navGroup: { marginTop: spacing.lg },
+  navGroupTitle: { color: '#D9E8F2', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  navItem: { borderRadius: radius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, marginBottom: 4 },
+  navItemActive: { backgroundColor: '#0F4A6A' },
+  navItemText: { color: '#D9E8F2', fontFamily: font.body, fontWeight: '600' },
+  navItemTextActive: { color: palette.white },
+  content: { flex: 1 },
+  webHeroStrip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md },
+  webHeroTile: { width: 260, height: 120, borderRadius: radius.md, overflow: 'hidden', justifyContent: 'flex-end' },
+  webHeroTileImage: { borderRadius: radius.md },
+  webHeroOverlay: { backgroundColor: 'rgba(8, 47, 67, 0.45)', padding: spacing.sm },
+  webHeroLabel: { color: palette.white, fontWeight: '700', fontSize: 16 },
   mobileTabBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderTopWidth: 1,
-    borderTopColor: palette.sky200,
+    borderTopColor: palette.sky300,
     backgroundColor: palette.white,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs
   },
-  mobileTabButton: {
-    alignItems: 'center',
-    minWidth: 70,
-    gap: 4
-  },
+  mobileTabButton: { alignItems: 'center', flex: 1 },
   mobileTabIcon: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    borderWidth: 1,
-    borderColor: palette.sky300,
+    backgroundColor: palette.sky200,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FBFD'
+    marginBottom: 4
   },
-  mobileTabIconActive: {
-    backgroundColor: palette.navy600,
-    borderColor: palette.navy600
-  },
-  mobileTabIconText: {
-    color: palette.ink700,
-    fontWeight: '700'
-  },
-  mobileTabIconTextActive: {
-    color: palette.white
-  },
-  mobileTabText: {
-    color: palette.ink500,
-    fontWeight: '600',
-    fontSize: 12
-  },
-  mobileTabTextActive: {
-    color: palette.navy600,
-    fontWeight: '800'
-  },
-  menuOverlay: {
-    flex: 1,
-    flexDirection: 'row'
-  },
-  menuBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)'
-  },
-  menuPanel: {
-    width: 280,
-    backgroundColor: palette.white,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
-    borderLeftWidth: 1,
-    borderLeftColor: palette.sky200
-  },
-  menuTitle: {
-    fontFamily: font.display,
-    fontWeight: '800',
-    fontSize: 22,
-    color: palette.ink900,
-    marginBottom: spacing.md
-  },
-  menuItem: {
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.xs,
-    borderWidth: 1,
-    borderColor: palette.sky300,
-    backgroundColor: '#F8FBFD'
-  },
-  menuItemActive: {
-    borderColor: palette.navy600,
-    backgroundColor: palette.sky100
-  },
-  menuItemText: {
-    color: palette.ink700,
-    fontWeight: '600'
-  },
-  menuItemTextActive: {
-    color: palette.navy600,
-    fontWeight: '800'
-  }
+  mobileTabIconActive: { backgroundColor: palette.navy600 },
+  mobileTabIconText: { color: palette.ink700, fontWeight: '700', fontSize: 12 },
+  mobileTabIconTextActive: { color: palette.white },
+  mobileTabText: { color: palette.ink700, fontSize: 12, fontWeight: '600' },
+  mobileTabTextActive: { color: palette.navy600 },
+  menuOverlay: { flex: 1, justifyContent: 'flex-end' },
+  menuBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(16, 42, 67, 0.4)' },
+  menuPanel: { backgroundColor: palette.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, paddingBottom: spacing.xxl },
+  menuTitle: { fontSize: 18, fontWeight: '800', color: palette.ink900, marginBottom: spacing.sm },
+  menuItem: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.sm, marginBottom: 6 },
+  menuItemActive: { backgroundColor: palette.sky100 },
+  menuItemText: { color: palette.ink700, fontWeight: '600' },
+  menuItemTextActive: { color: palette.navy700 }
 });

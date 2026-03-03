@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { env } from '../../types/env';
@@ -46,7 +46,11 @@ export function FeedScreen() {
   }, []);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+    >
       <Text style={styles.title}>Feed</Text>
       <Text style={styles.subtitle}>Public approved Coacher posts.</Text>
       <Button title={loading ? 'Refreshing...' : 'Refresh Feed'} onPress={load} disabled={loading} />

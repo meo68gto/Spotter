@@ -104,6 +104,36 @@ const mockFunctionResponse = async <T>(path: string, body?: Record<string, unkno
     } as T;
   }
 
+  if (path === 'feed-home') {
+    return [
+      {
+        id: `demo-feed-${Date.now()}`,
+        score: 0.91,
+        published_at: now.toISOString(),
+        engagement_requests: {
+          id: 'demo-engagement-1',
+          question_text: 'How do I stabilize my backswing tempo?',
+          engagement_mode: 'video_answer',
+          engagement_responses: [{ response_text: 'Focus on a 3:1 rhythm and lower-body anchoring.', transcript: null }]
+        }
+      }
+    ] as T;
+  }
+
+  if (path === 'payments-review-order-confirm') {
+    return {
+      id: (body?.reviewOrderId as string) ?? `demo-order-${Date.now()}`,
+      status: (body?.status as string) ?? 'paid'
+    } as T;
+  }
+
+  if (path === 'engagements-publish') {
+    return {
+      id: (body?.engagementRequestId as string) ?? `demo-engagement-${Date.now()}`,
+      status: 'awaiting_expert'
+    } as T;
+  }
+
   if (path === 'sponsors-event-list') {
     return [
       {

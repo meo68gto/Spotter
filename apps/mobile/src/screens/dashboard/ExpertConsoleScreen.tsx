@@ -1,6 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { invokeFunction } from '../../lib/api';
@@ -19,6 +19,7 @@ export function ExpertConsoleScreen({ session }: { session: Session }) {
   const [responseText, setResponseText] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [dnd, setDnd] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadQueue = async () => {
     const { data: coach } = await supabase.from('coaches').select('id').eq('user_id', session.user.id).maybeSingle();
@@ -43,6 +44,13 @@ export function ExpertConsoleScreen({ session }: { session: Session }) {
   useEffect(() => {
     loadQueue();
   }, []);
+
+  const onRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await loadQueue();
+    setRefreshing(false);
+  };
 
   const accept = async (id: string) => {
     try {
@@ -94,7 +102,11 @@ export function ExpertConsoleScreen({ session }: { session: Session }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       <Text style={styles.title}>Expert Console</Text>
       <Text style={styles.subtitle}>Accept/decline/respond, then manage DND.</Text>
 

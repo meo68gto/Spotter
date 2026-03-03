@@ -1,6 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { invokeFunction } from '../../lib/api';
@@ -21,6 +21,7 @@ export function AskScreen({ session }: { session: Session }) {
   const [questionText, setQuestionText] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadCoaches = async () => {
     const { data } = await supabase.from('coaches').select('id, user_id').order('created_at', { ascending: false }).limit(20);
@@ -31,6 +32,13 @@ export function AskScreen({ session }: { session: Session }) {
   useEffect(() => {
     loadCoaches();
   }, []);
+
+  const onRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    await loadCoaches();
+    setRefreshing(false);
+  };
 
   const submit = async () => {
     if (!coachId || !questionText.trim()) {
@@ -61,7 +69,11 @@ export function AskScreen({ session }: { session: Session }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       <Text style={styles.title}>Ask</Text>
       <Text style={styles.subtitle}>Create text, video, or live call requests.</Text>
 

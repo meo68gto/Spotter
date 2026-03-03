@@ -82,6 +82,7 @@ export function SessionsScreen({ session }: Props) {
   const [messageText, setMessageText] = useState('');
   const [feedbackTag, setFeedbackTag] = useState('Great teacher');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const selectedMatch = useMemo(
     () => matches.find((match) => match.id === selectedMatchId),
@@ -549,6 +550,13 @@ export function SessionsScreen({ session }: Props) {
           </>
         }
         data={messages}
+        refreshing={refreshing}
+        onRefresh={async () => {
+          if (refreshing) return;
+          setRefreshing(true);
+          await refresh();
+          setRefreshing(false);
+        }}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
         renderItem={({ item }) => {

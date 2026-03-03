@@ -1,16 +1,19 @@
 import { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
+import * as Linking from 'expo-linking';
 import { StyleSheet, Text, View } from 'react-native';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { AppErrorBoundary } from './src/components/AppErrorBoundary';
 import { Button } from './src/components/Button';
 import { invokeFunction } from './src/lib/api';
 import { trackEvent } from './src/lib/analytics';
 import { supabase } from './src/lib/supabase';
+import { isWeb } from './src/theme/design';
 import { AuthScreen } from './src/screens/AuthScreen';
-import { DashboardScreen } from './src/screens/DashboardScreen';
+import { DashboardScreen, DeepLinkTarget } from './src/screens/DashboardScreen';
 import { LegalConsentScreen } from './src/screens/LegalConsentScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
-import { validateMobileEnv } from './src/types/env';
+import { env, validateMobileEnv } from './src/types/env';
 
 type Stage = 'auth' | 'legal' | 'onboarding' | 'map';
 
@@ -26,7 +29,22 @@ function RootApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [demoMode, setDemoMode] = useState(false);
   const [stage, setStage] = useState<Stage>('auth');
+  const [deepLinkTarget, setDeepLinkTarget] = useState<DeepLinkTarget | null>(null);
   const [envErrors] = useState<string[]>(validateMobileEnv());
+
+  const parseTarget = (url: string | null): DeepLinkTarget | null => {
+    if (!url) return null;
+    const parsed = Linking.parse(url);
+    const rawPath = ((parsed.path ?? parsed.hostname ?? '') as string).replace(/^\/+/, '').toLowerCase();
+    if (rawPath === 'home') return 'home';
+    if (rawPath === 'discover') return 'discover';
+    if (rawPath === 'ask') return 'ask';
+    if (rawPath === 'requests') return 'requests';
+    if (rawPath === 'sessions') return 'sessions';
+    if (rawPath === 'coaches') return 'coaches';
+    if (rawPath === 'matches') return 'matches';
+    return null;
+  };
 
   const demoSession: Session = {
     access_token: 'demo-access-token',
@@ -46,6 +64,16 @@ function RootApp() {
   };
 
   useEffect(() => {
+    Linking.getInitialURL().then((url) => {
+      const parsed = parseTarget(url);
+      if (parsed) setDeepLinkTarget(parsed);
+    });
+
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      const parsed = parseTarget(url);
+      if (parsed) setDeepLinkTarget(parsed);
+    });
+
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       if (!data.session) {
@@ -91,12 +119,15 @@ function RootApp() {
       setStage(me?.onboarding_complete ? 'map' : 'onboarding');
     });
 
-    return () => authSub.subscription.unsubscribe();
+    return () => {
+      sub.remove();
+      authSub.subscription.unsubscribe();
+    };
   }, []);
 
   if (envErrors.length) {
     if (demoMode) {
-      return <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} />;
+      return <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} deepLinkTarget={deepLinkTarget} />;
     }
 
     return (
@@ -116,7 +147,7 @@ function RootApp() {
 
   if (!session) {
     if (demoMode) {
-      return <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} />;
+      return <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} deepLinkTarget={deepLinkTarget} />;
     }
     return <AuthScreen onDemoMode={() => setDemoMode(true)} />;
   }
@@ -141,7 +172,9 @@ function RootApp() {
     return <OnboardingScreen onComplete={() => setStage('map')} />;
   }
 
-  return <DashboardScreen session={session} onSignOut={() => supabase.auth.signOut()} />;
+  const app = <DashboardScreen session={session} onSignOut={() => supabase.auth.signOut()} deepLinkTarget={deepLinkTarget} />;
+  if (isWeb) return app;
+  return <StripeProvider publishableKey={env.stripePublishableKey}>{app}</StripeProvider>;
 }
 
 const styles = StyleSheet.create({

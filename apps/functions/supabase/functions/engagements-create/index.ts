@@ -10,6 +10,7 @@ type Payload = {
   attachmentUrls?: string[];
   scheduledTime?: string;
   guestEmail?: string;
+  publishAfterPayment?: boolean;
 };
 
 Deno.serve(async (req) => {
@@ -126,7 +127,7 @@ Deno.serve(async (req) => {
       question_text: body.questionText.trim(),
       attachment_urls: body.attachmentUrls ?? [],
       scheduled_time: body.scheduledTime ?? null,
-      status: 'awaiting_expert',
+      status: body.publishAfterPayment ? 'created' : 'awaiting_expert',
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       moderation_status: 'pending',
       review_order_id: order.id
