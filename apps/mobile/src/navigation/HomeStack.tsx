@@ -1,7 +1,8 @@
 /**
- * Home Tab Stack Navigator
+ * Home Tab Stack Navigator — Week 3 Update
  *
- * Root: HomeScreen — new personalized dashboard
+ * Root: HomeScreen — personalized dashboard
+ * Imports the new HomeScreen (default export) from ../screens/HomeScreen.
  */
 
 import React from 'react';
