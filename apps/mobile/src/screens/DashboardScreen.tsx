@@ -1,44 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
 import { HomeScreen } from './dashboard/HomeScreen';
-import { MapScreen } from './MapScreen';
-import { AskScreen } from './dashboard/AskScreen';
-import { CallRoomScreen } from './dashboard/CallRoomScreen';
-import { ExpertConsoleScreen } from './dashboard/ExpertConsoleScreen';
+import { InboxTabScreen } from './dashboard/InboxTabScreen';
 import { ExpertsScreen } from './dashboard/ExpertsScreen';
-import { FeedScreen } from './dashboard/FeedScreen';
-import { MatchesScreen } from './dashboard/MatchesScreen';
 import { MyRequestsScreen } from './dashboard/MyRequestsScreen';
-import { NetworkingHubScreen } from './dashboard/NetworkingHubScreen';
-import { ProgressScreen } from './dashboard/ProgressScreen';
-import { ProfileScreen } from './dashboard/ProfileScreen';
+import { ProfileTabScreen } from './dashboard/ProfileTabScreen';
 import { SessionsScreen } from './dashboard/SessionsScreen';
-import { SponsoredEventsScreen } from './dashboard/SponsoredEventsScreen';
-import { VideoPipelineScreen } from './dashboard/VideoPipelineScreen';
 import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
-export type DeepLinkTarget = 'home' | 'discover' | 'ask' | 'requests' | 'sessions' | 'coaches' | 'matches';
+export type DeepLinkTarget = 'home' | 'discover' | 'coaching' | 'requests' | 'sessions' | 'inbox' | 'profile';
+
+// BETA SCOPE: 7 primary tabs only
+// Cut from beta: network, events, ask, feed, matches, videos, progress, expert console, call room, coaches (merged)
+// Merged: experts into discover
 
 type TabKey =
   | 'home'
-  | 'map'
-  | 'network'
-  | 'events'
+  | 'discover'
   | 'coaching'
-  | 'experts'
-  | 'ask'
-  | 'feed'
   | 'requests'
-  | 'call'
-  | 'expert'
   | 'sessions'
-  | 'matches'
-  | 'videos'
-  | 'progress'
+  | 'inbox'
   | 'profile';
 
 type Props = {
@@ -54,24 +40,18 @@ type NavItem = {
   mobilePrimary?: boolean;
 };
 
+// BETA NAV: 7 primary tabs only
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
-  { key: 'map', label: 'Discover', group: 'core', mobilePrimary: true },
-  { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
-  { key: 'coaching', label: 'Coaching', group: 'growth', mobilePrimary: true },
-  { key: 'events', label: 'Events', group: 'core' },
-  { key: 'ask', label: 'Ask', group: 'growth' },
-  { key: 'experts', label: 'Coaches', group: 'growth' },
-  { key: 'feed', label: 'Feed', group: 'growth' },
-  { key: 'requests', label: 'Requests', group: 'growth' },
-  { key: 'sessions', label: 'Sessions', group: 'ops' },
-  { key: 'matches', label: 'Matches', group: 'ops' },
-  { key: 'videos', label: 'Videos', group: 'ops' },
-  { key: 'progress', label: 'Progress', group: 'ops' },
-  { key: 'expert', label: 'Expert Console', group: 'ops' },
-  { key: 'call', label: 'Call Room', group: 'ops' },
-  { key: 'profile', label: 'Profile', group: 'account' }
+  { key: 'discover', label: 'Discover', group: 'core', mobilePrimary: true },
+  { key: 'coaching', label: 'Coaching', group: 'core', mobilePrimary: true },
+  { key: 'requests', label: 'Requests', group: 'core', mobilePrimary: true },
+  { key: 'sessions', label: 'Sessions', group: 'core', mobilePrimary: true },
+  { key: 'inbox', label: 'Inbox', group: 'core', mobilePrimary: true },
+  { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true }
 ];
+
+// BETA ONLY - 7 tabs. All other features cut for launch.
 
 const WEB_PHOTO_TILES = [
   { label: 'Golf Pairing', image: stockPhotos.dashboardHeroGolf },
@@ -82,18 +62,19 @@ const WEB_PHOTO_TILES = [
 const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
 
 const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
+  // BETA: Only 7 valid destinations
   if (target === 'home') return 'home';
-  if (target === 'discover') return 'map';
-  if (target === 'ask') return 'ask';
+  if (target === 'discover') return 'discover';
+  if (target === 'coaching') return 'coaching';
   if (target === 'requests') return 'requests';
   if (target === 'sessions') return 'sessions';
-  if (target === 'coaches') return 'experts';
-  return 'matches';
+  if (target === 'inbox') return 'inbox';
+  if (target === 'profile') return 'profile';
+  return 'home';
 };
 
 export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   const [tab, setTab] = useState<TabKey>('home');
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const bootstrapFlags = async () => {
@@ -114,22 +95,14 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   const jumpToQuickAction = (target: DeepLinkTarget) => setTab(mapDeepLinkToTab(target));
 
   const renderContent = () => {
+    // BETA SCOPE: 7 tabs only
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
-    if (tab === 'map') return <MapScreen />;
-    if (tab === 'network') return <NetworkingHubScreen />;
-    if (tab === 'events') return <SponsoredEventsScreen />;
-    if (tab === 'coaching') return <CoachingTabScreen />;
-    if (tab === 'experts') return <ExpertsScreen session={session} />;
-    if (tab === 'ask') return <AskScreen session={session} />;
-    if (tab === 'feed') return <FeedScreen />;
+    if (tab === 'discover') return <ExpertsScreen session={session} />; // Merged: discover shows coaches
+    if (tab === 'coaching') return <CoachingTabScreen session={session} />;
     if (tab === 'requests') return <MyRequestsScreen session={session} />;
-    if (tab === 'call') return <CallRoomScreen session={session} />;
-    if (tab === 'expert') return <ExpertConsoleScreen session={session} />;
     if (tab === 'sessions') return <SessionsScreen session={session} />;
-    if (tab === 'matches') return <MatchesScreen session={session} />;
-    if (tab === 'videos') return <VideoPipelineScreen session={session} />;
-    if (tab === 'progress') return <ProgressScreen session={session} />;
-    return <ProfileScreen session={session} email={session.user.email ?? 'unknown'} onSignOut={onSignOut} />;
+    if (tab === 'inbox') return <InboxTabScreen session={session} />;
+    return <ProfileTabScreen session={session} onSignOut={onSignOut} />;
   };
 
   if (isWeb) {
@@ -174,9 +147,6 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
           <Text style={styles.mobileBrand}>Spotter</Text>
           <Text style={styles.mobileTitle}>{title}</Text>
         </View>
-        <Pressable onPress={() => setMenuOpen(true)} style={styles.hamburgerButton}>
-          <Text style={styles.hamburgerText}>≡</Text>
-        </Pressable>
       </View>
 
       <View style={styles.content}>{renderContent()}</View>
@@ -196,29 +166,7 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
         })}
       </View>
 
-      <Modal transparent visible={menuOpen} animationType="fade" onRequestClose={() => setMenuOpen(false)}>
-        <View style={styles.menuOverlay}>
-          <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} />
-          <View style={styles.menuPanel}>
-            <Text style={styles.menuTitle}>More</Text>
-            {NAV_ITEMS.filter((item) => !item.mobilePrimary).map((item) => {
-              const active = tab === item.key;
-              return (
-                <TouchableOpacity
-                  key={item.key}
-                  onPress={() => {
-                    setTab(item.key);
-                    setMenuOpen(false);
-                  }}
-                  style={[styles.menuItem, active ? styles.menuItemActive : null]}
-                >
-                  <Text style={[styles.menuItemText, active ? styles.menuItemTextActive : null]}>{item.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </Modal>
+      {/* BETA: No "More" menu - all 7 beta tabs are in the tab bar */}
     </View>
   );
 }
