@@ -134,6 +134,65 @@ const mockFunctionResponse = async <T>(path: string, body?: Record<string, unkno
     } as T;
   }
 
+  if (path === 'inbox-conversations') {
+    return {
+      data: [
+        {
+          threadType: 'session',
+          threadId: 'demo-session-1',
+          title: 'Session demo',
+          status: 'confirmed',
+          lastMessage: 'See you at the court at 6pm.',
+          lastMessageAt: now.toISOString(),
+          unreadCount: 1
+        },
+        {
+          threadType: 'engagement',
+          threadId: 'demo-engagement-2',
+          title: 'Request demo',
+          status: 'awaiting_expert',
+          lastMessage: 'Can we focus on serve consistency?',
+          lastMessageAt: now.toISOString(),
+          unreadCount: 0
+        }
+      ],
+      nextCursor: null
+    } as T;
+  }
+
+  if (path === 'inbox-mark-read') {
+    return {
+      id: `demo-read-${Date.now()}`,
+      ...body
+    } as T;
+  }
+
+  if (path === 'engagement-chat-send' || path === 'chat-send') {
+    return {
+      id: `demo-msg-${Date.now()}`,
+      sender_user_id: 'demo-user',
+      message: (body?.message as string) ?? 'demo message',
+      created_at: now.toISOString(),
+      client_message_id: (body?.clientMessageId as string | undefined) ?? null
+    } as T;
+  }
+
+  if (path === 'calls-create-room') {
+    return {
+      roomUrl: 'https://www.daily.co/example-room',
+      id: `demo-call-${Date.now()}`,
+      engagement_request_id: body?.engagementRequestId ?? 'demo-engagement'
+    } as T;
+  }
+
+  if (path === 'calls-start') {
+    return { started: true } as T;
+  }
+
+  if (path === 'calls-end') {
+    return { billableMinutes: 22, durationSeconds: 1310 } as T;
+  }
+
   if (path === 'sponsors-event-list') {
     return [
       {

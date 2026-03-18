@@ -90,12 +90,11 @@ function RootApp() {
     if (rawPath === 'signup') return { authStage: 'signup' };
 
     if (rawPath === 'home') return { tabTarget: 'home' };
-    if (rawPath === 'discover') return { tabTarget: 'discover' };
+    if (rawPath === 'coaching' || rawPath.startsWith('coaching/')) return { tabTarget: 'coaching' };
+    if (rawPath === 'ask') return { tabTarget: 'ask' };
     if (rawPath === 'requests') return { tabTarget: 'requests' };
     if (rawPath === 'sessions') return { tabTarget: 'sessions' };
-    if (rawPath === 'inbox') return { tabTarget: 'inbox' };
     if (rawPath === 'profile') return { tabTarget: 'profile' };
-    if (rawPath === 'coaching' || rawPath.startsWith('coaching/')) return { tabTarget: 'coaching' };
     return {};
   }, []);
 

@@ -34,6 +34,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: QA static checks
+        run: |
+          pnpm qa:screen-index:check
+          pnpm qa:stock-photo-audit
+
+      - name: Lighthouse audit
+        run: pnpm mobile:web:lighthouse
+
       - name: Run ops verification
         run: pnpm ops:verify
         env:
@@ -60,4 +68,12 @@ jobs:
         with:
           name: ops-cutover-${{ github.run_id }}
           path: .artifacts/ops-cutover/**
+          if-no-files-found: warn
+
+      - name: Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-artifacts-${{ github.run_id }}
+          path: .artifacts/qa/**
           if-no-files-found: warn

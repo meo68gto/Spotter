@@ -1,10 +1,10 @@
-import { Session } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
+import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { supabase } from '../../lib/supabase';
-import { formatMode, formatStatus, shortId } from './ui-utils';
+import { formatMode, formatRequestStatus, formatStatus, shortId } from './ui-utils';
 
 type RequestRow = {
   id: string;
@@ -56,7 +56,7 @@ export function MyRequestsScreen({ session }: { session: Session }) {
           <Text style={styles.question}>{row.question_text}</Text>
           <Text style={styles.meta}>Request: {shortId(row.id)}</Text>
           <Text style={styles.meta}>Mode: {formatMode(row.engagement_mode)}</Text>
-          <Text style={styles.meta}>Status: {formatStatus(row.status)}</Text>
+          <Text style={styles.meta}>Status: {formatRequestStatus(row.status)}</Text>
           <Text style={styles.meta}>
             Public: {row.public_opt_in ? 'Yes' : 'No'} ({formatStatus(row.moderation_status)})
           </Text>

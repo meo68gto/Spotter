@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabase';
 
 type QuickAction = {
   label: string;
-  target: 'discover' | 'ask' | 'requests' | 'sessions' | 'coaches' | 'matches';
+  target: 'discover' | 'requests' | 'sessions';
 };
 
 type FeedItem = {
@@ -26,13 +26,12 @@ type PendingItem = {
   status: string;
 };
 
+// BETA: Launch-critical quick actions only
+// Cut: coaches (duplicates discover), matches (not in beta nav), ask (merged into requests flow)
 const QUICK_ACTIONS: QuickAction[] = [
-  { label: 'Discover', target: 'discover' },
-  { label: 'Ask Coach', target: 'ask' },
+  { label: 'Browse Coaches', target: 'discover' },
   { label: 'My Requests', target: 'requests' },
-  { label: 'Sessions', target: 'sessions' },
-  { label: 'Coaches', target: 'coaches' },
-  { label: 'Matches', target: 'matches' }
+  { label: 'My Sessions', target: 'sessions' }
 ];
 
 export function HomeScreen({
@@ -111,12 +110,18 @@ export function HomeScreen({
     >
       <ImageBackground source={{ uri: stockPhotos.homeHero }} style={styles.hero} imageStyle={styles.heroImage}>
         <Text style={styles.heroTitle}>Home</Text>
-        <Text style={styles.heroSubtitle}>Quick actions and coach queue in one place.</Text>
+        <Text style={styles.heroSubtitle}>Browse coaches, track requests, manage sessions.</Text>
       </ImageBackground>
 
       <View style={styles.quickRow}>
         {QUICK_ACTIONS.map((action) => (
-          <TouchableOpacity key={action.target} style={styles.quickAction} onPress={() => onNavigate(action.target)}>
+          <TouchableOpacity
+            key={action.target}
+            style={styles.quickAction}
+            onPress={() => onNavigate(action.target)}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${action.label}`}
+          >
             <Text style={styles.quickLabel}>{action.label}</Text>
           </TouchableOpacity>
         ))}
@@ -143,14 +148,16 @@ export function HomeScreen({
           {pending.map((item) => (
             <View key={item.id} style={styles.pendingCard}>
               <Text style={styles.feedQuestion}>{item.question_text}</Text>
-              <Text style={styles.meta}>Status: {item.status}</Text>
+              <Text style={styles.meta}>Status: {getRequestStatusLabel(item.status)}</Text>
               <Button
                 title={actingId === item.id ? 'Working...' : 'Accept'}
+                accessibilityLabel="Accept coaching request"
                 onPress={() => runAction('engagements-accept', item.id)}
                 disabled={actingId === item.id}
               />
               <Button
                 title="Decline"
+                accessibilityLabel="Decline coaching request"
                 onPress={() => runAction('engagements-decline', item.id)}
                 disabled={actingId === item.id}
                 tone="secondary"
@@ -162,6 +169,19 @@ export function HomeScreen({
     </ScrollView>
   );
 }
+
+// User-friendly status labels for launch clarity
+const getRequestStatusLabel = (status: string): string => {
+  const labels: Record<string, string> = {
+    created: 'Just created',
+    awaiting_expert: 'Looking for coach',
+    accepted: 'Coach matched',
+    declined: 'No coach available',
+    completed: 'Done',
+    cancelled: 'Cancelled'
+  };
+  return labels[status] ?? status.replace(/_/g, ' ');
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f6f9fc' },

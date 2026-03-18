@@ -1,28 +1,42 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { palette, radius, spacing } from '../theme/design';
+import { radius, spacing } from '../theme/design';
+import { useTheme } from '../theme/provider';
 
 type Props = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   tone?: 'primary' | 'secondary' | 'ghost';
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  testID?: string;
 };
 
-export function Button({ title, onPress, disabled, tone = 'primary' }: Props) {
+export function Button({ title, onPress, disabled, tone = 'primary', accessibilityLabel, accessibilityHint, testID }: Props) {
+  const { tokens } = useTheme();
   return (
     <Pressable
-      style={[styles.button, tone === 'secondary' ? styles.secondary : null, tone === 'ghost' ? styles.ghost : null, disabled ? styles.disabled : null]}
+      style={[
+        styles.button,
+        { backgroundColor: tokens.primary },
+        tone === 'secondary' ? [styles.secondary, { backgroundColor: tokens.backgroundMuted, borderColor: tokens.borderStrong }] : null,
+        tone === 'ghost' ? [styles.ghost, { borderColor: tokens.borderStrong }] : null,
+        disabled ? styles.disabled : null
+      ]}
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
+      testID={testID}
     >
-      <Text style={[styles.text, tone === 'secondary' || tone === 'ghost' ? styles.secondaryText : null]}>{title}</Text>
+      <Text style={[styles.text, { color: tokens.primaryContrast }, tone === 'secondary' || tone === 'ghost' ? { color: tokens.text } : null]}>{title}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: palette.navy600,
     borderRadius: radius.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
@@ -30,22 +44,17 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   secondary: {
-    backgroundColor: palette.sky100,
     borderWidth: 1,
-    borderColor: palette.sky300
+    borderColor: '#00000000'
   },
   ghost: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: palette.sky300
+    borderColor: '#00000000'
   },
   text: {
-    color: palette.white,
     fontWeight: '700',
     fontSize: 15
-  },
-  secondaryText: {
-    color: palette.ink900
   },
   disabled: {
     opacity: 0.4

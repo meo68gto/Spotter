@@ -25,9 +25,19 @@
     "ops:verify": "bash ./scripts/ops/verify-cutover.sh",
     "ops:health": "bash ./scripts/ops/launch-health-report.sh",
     "ops:rc:prepare": "bash ./scripts/ops/prepare-rc.sh",
-    "ops:rc:tag": "bash ./scripts/ops/cut-release-tag.sh"
+    "ops:rc:tag": "bash ./scripts/ops/cut-release-tag.sh",
+    "qa:screen-index": "node scripts/qa/generate-mobile-screen-checklist.mjs",
+    "qa:screen-index:check": "node scripts/qa/generate-mobile-screen-checklist.mjs && git diff --exit-code docs/qa/_generated-screen-index.md",
+    "qa:stock-photo-audit": "node scripts/qa/stock-photo-audit.mjs",
+    "qa:mobile-bundle-report": "node scripts/qa/mobile-bundle-report.mjs",
+    "mobile:web:lighthouse": "node scripts/qa/run-mobile-lighthouse.mjs",
+    "mobile:e2e:build:ios": "pnpm --filter @spotter/mobile e2e:build:ios",
+    "mobile:e2e:test:ios": "pnpm --filter @spotter/mobile e2e:test:ios",
+    "mobile:e2e:build:android": "pnpm --filter @spotter/mobile e2e:build:android",
+    "mobile:e2e:test:android": "pnpm --filter @spotter/mobile e2e:test:android"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "turbo": "^2.4.2",
     "typescript": "^5.7.3",
     "eslint": "^9.17.0",

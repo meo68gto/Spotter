@@ -16,7 +16,21 @@ export const stockPhotos = {
   coachBrowseHero:
     'https://images.pexels.com/photos/416778/pexels-photo-416778.jpeg?auto=compress&cs=tinysrgb&w=1400',
   coachProfileHero:
-    'https://images.pexels.com/photos/1552106/pexels-photo-1552106.jpeg?auto=compress&cs=tinysrgb&w=1400'
+    'https://images.pexels.com/photos/1552106/pexels-photo-1552106.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  welcomePanelOne:
+    'https://images.pexels.com/photos/13781/pexels-photo-13781.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  welcomePanelTwo:
+    'https://images.pexels.com/photos/209968/pexels-photo-209968.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  welcomePanelThree:
+    'https://images.pexels.com/photos/1432039/pexels-photo-1432039.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  onboardingSport:
+    'https://images.pexels.com/photos/258179/pexels-photo-258179.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  onboardingSkill:
+    'https://images.pexels.com/photos/1464196/pexels-photo-1464196.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  onboardingLocation:
+    'https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  onboardingAvailability:
+    'https://images.pexels.com/photos/209977/pexels-photo-209977.jpeg?auto=compress&cs=tinysrgb&w=1400'
 } as const;
 
 export type StockPhotoKey = keyof typeof stockPhotos;

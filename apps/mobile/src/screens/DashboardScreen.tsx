@@ -3,8 +3,6 @@ import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View }
 import { Session } from '@supabase/supabase-js';
 import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
 import { HomeScreen } from './dashboard/HomeScreen';
-import { InboxTabScreen } from './dashboard/InboxTabScreen';
-import { ExpertsScreen } from './dashboard/ExpertsScreen';
 import { MyRequestsScreen } from './dashboard/MyRequestsScreen';
 import { ProfileTabScreen } from './dashboard/ProfileTabScreen';
 import { SessionsScreen } from './dashboard/SessionsScreen';
@@ -12,19 +10,18 @@ import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
-export type DeepLinkTarget = 'home' | 'discover' | 'coaching' | 'requests' | 'sessions' | 'inbox' | 'profile';
+export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile';
 
-// BETA SCOPE: 7 primary tabs only
-// Cut from beta: network, events, ask, feed, matches, videos, progress, expert console, call room, coaches (merged)
-// Merged: experts into discover
+// BETA SCOPE: 6 primary tabs only
+// Cut from beta: network, events, discover, feed, matches, videos, progress, expert console, call room, inbox
+// Kept: home, coaching, ask, requests, sessions, profile
 
 type TabKey =
   | 'home'
-  | 'discover'
   | 'coaching'
+  | 'ask'
   | 'requests'
   | 'sessions'
-  | 'inbox'
   | 'profile';
 
 type Props = {
@@ -40,18 +37,17 @@ type NavItem = {
   mobilePrimary?: boolean;
 };
 
-// BETA NAV: 7 primary tabs only
+// BETA NAV: 6 primary tabs only (coaching beta)
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
-  { key: 'discover', label: 'Discover', group: 'core', mobilePrimary: true },
   { key: 'coaching', label: 'Coaching', group: 'core', mobilePrimary: true },
+  { key: 'ask', label: 'Ask', group: 'core', mobilePrimary: true },
   { key: 'requests', label: 'Requests', group: 'core', mobilePrimary: true },
   { key: 'sessions', label: 'Sessions', group: 'core', mobilePrimary: true },
-  { key: 'inbox', label: 'Inbox', group: 'core', mobilePrimary: true },
   { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true }
 ];
 
-// BETA ONLY - 7 tabs. All other features cut for launch.
+// BETA ONLY - 6 tabs. All other features cut for launch.
 
 const WEB_PHOTO_TILES = [
   { label: 'Golf Pairing', image: stockPhotos.dashboardHeroGolf },
@@ -62,13 +58,12 @@ const WEB_PHOTO_TILES = [
 const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
 
 const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
-  // BETA: Only 7 valid destinations
+  // BETA: Only 6 valid destinations
   if (target === 'home') return 'home';
-  if (target === 'discover') return 'discover';
   if (target === 'coaching') return 'coaching';
+  if (target === 'ask') return 'ask';
   if (target === 'requests') return 'requests';
   if (target === 'sessions') return 'sessions';
-  if (target === 'inbox') return 'inbox';
   if (target === 'profile') return 'profile';
   return 'home';
 };
@@ -95,13 +90,12 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   const jumpToQuickAction = (target: DeepLinkTarget) => setTab(mapDeepLinkToTab(target));
 
   const renderContent = () => {
-    // BETA SCOPE: 7 tabs only
+    // BETA SCOPE: 6 tabs only (coaching beta)
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
-    if (tab === 'discover') return <ExpertsScreen session={session} />; // Merged: discover shows coaches
     if (tab === 'coaching') return <CoachingTabScreen session={session} />;
+    if (tab === 'ask') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />; // Placeholder - ask flow
     if (tab === 'requests') return <MyRequestsScreen session={session} />;
     if (tab === 'sessions') return <SessionsScreen session={session} />;
-    if (tab === 'inbox') return <InboxTabScreen session={session} />;
     return <ProfileTabScreen session={session} onSignOut={onSignOut} />;
   };
 

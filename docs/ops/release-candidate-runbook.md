@@ -29,7 +29,12 @@
    - `git push origin v0.1.0-rc1`
 5. Run production dress rehearsal:
    - Trigger `Ops Verify` workflow with `environment=production`.
-6. If any check fails:
+6. Run mobile QA gate for the same tag:
+   - Trigger `Mobile RC QA Gate` workflow with `rc_tag=<candidate-tag>`.
+   - Required outputs:
+     - Detox artifact bundle
+     - Lighthouse artifact bundle
+7. If any check fails:
    - remove tag locally/remotely and cut next RC after fix (`v0.1.0-rc2`).
 
 ## Evidence required for RC sign-off
@@ -37,6 +42,11 @@
   - `.artifacts/ops-cutover/<timestamp>/summary.md`
   - `.artifacts/ops-cutover/<timestamp>/release-preflight.log`
   - `.artifacts/ops-cutover/<timestamp>/smoke-staging.log`
+- Mobile QA artifacts:
+  - `.artifacts/qa/lighthouse/**`
+  - Detox logs/screenshots/videos from workflow artifacts
+- Release evidence template completed:
+  - `/Users/brucewayne/Documents/Spotter/docs/qa/release-evidence-template.md`
 - Screenshot or exported report of Stripe webhook success.
 - Screenshot or exported report of Daily webhook success.
 - Completed device checklist with owner/date fields filled.

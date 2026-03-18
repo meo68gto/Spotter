@@ -5,6 +5,8 @@ export const env = {
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
   mapboxToken: process.env.EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN ?? '',
   stripePublishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '',
+  sentryDsnMobile: process.env.EXPO_PUBLIC_SENTRY_DSN_MOBILE ?? '',
+  appleWebClientId: process.env.EXPO_PUBLIC_APPLE_WEB_CLIENT_ID ?? '',
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
   posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
   posthogHost: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://app.posthog.com',
@@ -50,6 +52,7 @@ export const validateMobileEnv = (): string[] => {
   if (env.apiBaseUrl.includes('example.supabase.co')) invalid.push('EXPO_PUBLIC_API_BASE_URL');
   if (!/^https?:\/\//.test(env.apiBaseUrl)) invalid.push('EXPO_PUBLIC_API_BASE_URL');
   if (env.stripePublishableKey.includes('replace_me')) invalid.push('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+  if (env.appleWebClientId && !env.appleWebClientId.includes('.')) invalid.push('EXPO_PUBLIC_APPLE_WEB_CLIENT_ID');
 
   return [...new Set([...missing, ...invalid])];
 };

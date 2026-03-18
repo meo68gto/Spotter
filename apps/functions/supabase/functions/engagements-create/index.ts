@@ -2,6 +2,7 @@ import { createServiceClient } from '../_shared/client.ts';
 import { createPaymentAuthorization, hashToken, mapStripeIntentToOrderStatus, randomToken } from '../_shared/engagements.ts';
 import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
+import { stripeRequest } from '../_shared/payments.ts';
 
 type Payload = {
   coachId?: string;
@@ -11,6 +12,11 @@ type Payload = {
   scheduledTime?: string;
   guestEmail?: string;
   publishAfterPayment?: boolean;
+  /**
+   * Optional idempotency key. If provided, will return existing engagement if already created.
+   * Should be unique per booking attempt (e.g., coachId-timestamp).
+   */
+  idempotencyKey?: string;
 };
 
 Deno.serve(async (req) => {
@@ -22,6 +28,52 @@ Deno.serve(async (req) => {
   }
 
   const service = createServiceClient();
+
+  // Idempotency check: if idempotencyKey provided, check for existing engagement
+  if (body.idempotencyKey) {
+    const { data: existing } = await service
+      .from('engagement_requests')
+      .select('id, status, review_order_id')
+      .eq('coach_id', body.coachId)
+      .ilike('question_text', body.questionText.trim()) // approximate match
+      .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // within 5 min
+      .maybeSingle();
+
+    if (existing) {
+      // Check if order exists
+      const { data: order } = existing.review_order_id
+        ? await service
+            .from('review_orders')
+            .select('id, status, stripe_payment_intent_id, stripe_payment_intent_id')
+            .eq('id', existing.review_order_id)
+            .single()
+        : null;
+
+      // Re-create client secret if needed
+      let clientSecret: string | null = null;
+      if (order && order.stripe_payment_intent_id) {
+        // Fetch fresh client secret from Stripe
+        try {
+          const intent = await stripeRequest<{ client_secret: string }>(
+            `/payment_intents/${order.stripe_payment_intent_id}`,
+            'GET'
+          );
+          clientSecret = intent.client_secret;
+        } catch {
+          // Intent may be old/expired, proceed without it
+        }
+      }
+
+      return json(200, {
+        data: {
+          request: existing,
+          order: order ? { id: order.id, status: order.status } : undefined,
+          clientSecret,
+          isExisting: true
+        }
+      });
+    }
+  }
 
   const { data: coach, error: coachError } = await service
     .from('coaches')
