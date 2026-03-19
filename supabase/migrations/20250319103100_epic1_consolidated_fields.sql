@@ -62,14 +62,14 @@ ALTER TABLE public.user_networking_preferences
   ALTER COLUMN networking_intent SET NOT NULL;
 
 -- 6. Update user_golf_identities table  
+-- Add columns first
 ALTER TABLE public.user_golf_identities
-  -- Add handicap band for tiered matching
   ADD COLUMN IF NOT EXISTS handicap_band public.handicap_band,
-  -- Add home course area (text alternative to home_course_id reference)
   ADD COLUMN IF NOT EXISTS home_course_area text,
-  -- Add preferred tee times (array for multiple preferences)
-  ADD COLUMN IF NOT EXISTS preferred_tee_times public.tee_time_preference[] DEFAULT '{}',
-  -- Rename playing_frequency to play_frequency for consistency with TypeScript types
+  ADD COLUMN IF NOT EXISTS preferred_tee_times public.tee_time_preference[] DEFAULT '{}';
+
+-- Rename column in a separate statement
+ALTER TABLE public.user_golf_identities
   RENAME COLUMN playing_frequency TO play_frequency;
 
 -- 7. Update user_professional_identities table

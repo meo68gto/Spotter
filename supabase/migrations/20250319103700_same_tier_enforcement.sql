@@ -216,7 +216,7 @@ SELECT
   uc.id as edge_id,
   uc.user_id as source_id,
   uc.connected_user_id as target_id,
-  uc.relationship_state,
+  uc.status as relationship_state,
   uc.strength_score,
   uc.rounds_count,
   uc.last_interaction_at,

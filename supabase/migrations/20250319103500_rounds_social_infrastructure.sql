@@ -72,38 +72,10 @@ CREATE TABLE IF NOT EXISTS public.standing_foursome_members (
   PRIMARY KEY (foursome_id, user_id)
 );
 
--- 5. Create round_ratings table
-CREATE TABLE IF NOT EXISTS public.round_ratings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- References
-  round_id uuid NOT NULL REFERENCES public.rounds(id) ON DELETE CASCADE,
-  rater_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  ratee_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  
-  -- Core ratings (1-5 scale)
-  punctuality INTEGER CHECK (punctuality BETWEEN 1 AND 5),
-  golf_etiquette INTEGER CHECK (golf_etiquette BETWEEN 1 AND 5),
-  enjoyment INTEGER CHECK (enjoyment BETWEEN 1 AND 5),
-  business_value INTEGER CHECK (business_value BETWEEN 1 AND 5),
-  
-  -- Binary signals
-  play_again BOOLEAN DEFAULT false,
-  would_introduce BOOLEAN DEFAULT false,
-  
-  -- Optional text
-  private_note TEXT CHECK (char_length(private_note) <= 500),
-  public_compliment TEXT CHECK (char_length(public_compliment) <= 280),
-  public_compliment_approved BOOLEAN DEFAULT false,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  
-  -- Constraints
-  CONSTRAINT different_rater_ratee CHECK (rater_id != ratee_id),
-  UNIQUE(round_id, rater_id, ratee_id)
-);
+-- 5. Skip round_ratings table creation - already exists from migration 0017
+-- The table from 0017 has: rated_user_id and rater_user_id columns
+-- This migration expects: ratee_id and rater_id columns
+-- For now, skip this and use existing table structure from 0017
 
 -- 6. Add new columns to rounds table
 ALTER TABLE public.rounds 
@@ -131,10 +103,10 @@ CREATE INDEX IF NOT EXISTS idx_standing_foursomes_next_round ON public.standing_
 CREATE INDEX IF NOT EXISTS idx_standing_foursome_members_user ON public.standing_foursome_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_standing_foursome_members_foursome ON public.standing_foursome_members(foursome_id);
 
-CREATE INDEX IF NOT EXISTS idx_round_ratings_round ON public.round_ratings(round_id);
-CREATE INDEX IF NOT EXISTS idx_round_ratings_rater ON public.round_ratings(rater_id);
-CREATE INDEX IF NOT EXISTS idx_round_ratings_ratee ON public.round_ratings(ratee_id);
-CREATE INDEX IF NOT EXISTS idx_round_ratings_play_again ON public.round_ratings(ratee_id, play_again) WHERE play_again = true;
+-- Note: round_ratings table and indexes already exist from migration 0017
+-- Creating only indexes that don't exist yet
+-- (idx_round_ratings_round, idx_round_ratings_rater exist from 0017)
+-- Skipping: idx_round_ratings_ratee, idx_round_ratings_play_again - columns don't exist
 
 CREATE INDEX IF NOT EXISTS idx_rounds_lifecycle_status ON public.rounds(lifecycle_status);
 CREATE INDEX IF NOT EXISTS idx_rounds_standing_foursome ON public.rounds(standing_foursome_id);
@@ -213,25 +185,8 @@ CREATE POLICY standing_foursome_members_delete_member ON public.standing_foursom
     )
   );
 
--- 12. RLS Policies for round_ratings
-
--- Users can see ratings they gave or received
-CREATE POLICY round_ratings_select_involved ON public.round_ratings
-  FOR SELECT USING (
-    rater_id = auth.uid() OR ratee_id = auth.uid()
-  );
-
--- Raters can insert their own ratings
-CREATE POLICY round_ratings_insert_rater ON public.round_ratings
-  FOR INSERT WITH CHECK (rater_id = auth.uid());
-
--- Raters can update their own ratings
-CREATE POLICY round_ratings_update_rater ON public.round_ratings
-  FOR UPDATE USING (rater_id = auth.uid()) WITH CHECK (rater_id = auth.uid());
-
--- Raters can delete their own ratings
-CREATE POLICY round_ratings_delete_rater ON public.round_ratings
-  FOR DELETE USING (rater_id = auth.uid());
+-- 12. Skip RLS Policies for round_ratings - already exists from migration 0017
+-- Using existing policies from 0017
 
 -- 13. Create function to update standing_foursome rounds count
 CREATE OR REPLACE FUNCTION public.update_standing_foursome_stats()

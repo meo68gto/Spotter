@@ -2,11 +2,11 @@
  * Example: Using PremiumMatchCard and FilterPanel Components
  * 
  * This file demonstrates how to use the new Premium Golf Matching UX components
- * introduced in EPIC 3.
+ * introduced in EPIC 3 - with all premium features enabled.
  */
 
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { PremiumMatchCard, PremiumMatchData } from '../../components/PremiumMatchCard';
 import { FilterPanel, FilterState } from '../../components/FilterPanel';
 import { spacing } from '../../theme/design';
@@ -24,6 +24,11 @@ const exampleMatch: PremiumMatchData = {
   overallScore: 87,
   matchTier: 'excellent',
   reputationScore: 92,
+  reliabilityLabel: 'Highly Reliable',
+  trustBadges: [
+    { badge_type: 'verified', display_name: 'Verified' },
+    { badge_type: 'active', display_name: 'Active Player' },
+  ],
   golf: {
     handicap: 12.5,
     homeCourseName: 'TPC Scottsdale',
@@ -74,41 +79,184 @@ const exampleMatch: PremiumMatchData = {
   distanceKm: 15,
 };
 
+const exampleMatchFair: PremiumMatchData = {
+  ...exampleMatch,
+  userId: 'user-456',
+  displayName: 'Sarah Johnson',
+  tier: 'select',
+  overallScore: 52,
+  matchTier: 'fair',
+  reputationScore: 65,
+  golf: {
+    handicap: 28,
+    homeCourseName: 'Grayhawk Golf Club',
+    yearsPlaying: 3,
+    playingFrequency: 'Monthly',
+  },
+  professional: {
+    company: 'Phoenix Realty',
+    title: 'Senior Agent',
+    industry: 'Real Estate',
+  },
+  factors: [
+    {
+      factor: 'location',
+      label: 'Location Proximity',
+      rawScore: 60,
+      description: '32 km away',
+    },
+    {
+      factor: 'networking_intent',
+      label: 'Networking Intent',
+      rawScore: 55,
+      description: 'Open to business connections',
+    },
+  ],
+  mutualConnections: 1,
+  sharedCourses: 0,
+  distanceKm: 32,
+};
+
 export function PremiumMatchExample() {
+  const [savedMatches, setSavedMatches] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
+
+  const handleConnect = async (userId: string) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    Alert.alert('Success', `Connection request sent to ${userId}`);
+  };
+
+  const handleSave = async (userId: string) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setSavedMatches(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+        Alert.alert('Removed', 'Match removed from saved list');
+      } else {
+        next.add(userId);
+        Alert.alert('Saved', 'Match saved for later');
+      }
+      return next;
+    });
+  };
+
+  const handleRequestIntro = (match: PremiumMatchData) => {
+    Alert.alert(
+      'Request Introduction',
+      `Request an introduction to ${match.displayName} through a mutual connection?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Request',
+          onPress: () => {
+            Alert.alert('Sent', 'Introduction request sent!');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleInviteToRound = (match: PremiumMatchData) => {
+    Alert.alert(
+      'Invite to Round',
+      `Invite ${match.displayName} to join your next round?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Invite',
+          onPress: () => {
+            Alert.alert('Sent', 'Round invitation sent!');
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
-      {/* Compact Card (for lists) */}
-      <PremiumMatchCard
-        match={exampleMatch}
-        compact={true}
-        onPress={() => console.log('View profile')}
-        onConnect={() => console.log('Request intro')}
-      />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Excellent Match (Compact)</Text>
+        <PremiumMatchCard
+          match={exampleMatch}
+          compact={true}
+          onPress={() => console.log('View profile')}
+          onConnect={() => handleConnect(exampleMatch.userId)}
+          onSave={() => handleSave(exampleMatch.userId)}
+          onRequestIntro={() => handleRequestIntro(exampleMatch)}
+          onInviteToRound={() => handleInviteToRound(exampleMatch)}
+          saved={savedMatches.has(exampleMatch.userId)}
+        />
+      </View>
 
-      {/* Full Card (for detail views) */}
-      <PremiumMatchCard
-        match={exampleMatch}
-        compact={false}
-        onConnect={() => console.log('Request intro')}
-      />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Fair Match (Compact)</Text>
+        <PremiumMatchCard
+          match={exampleMatchFair}
+          compact={true}
+          onPress={() => console.log('View profile')}
+          onConnect={() => handleConnect(exampleMatchFair.userId)}
+          onSave={() => handleSave(exampleMatchFair.userId)}
+          saved={savedMatches.has(exampleMatchFair.userId)}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Excellent Match (Full Detail)</Text>
+        <PremiumMatchCard
+          match={exampleMatch}
+          compact={false}
+          onConnect={() => handleConnect(exampleMatch.userId)}
+          onSave={() => handleSave(exampleMatch.userId)}
+          onRequestIntro={() => handleRequestIntro(exampleMatch)}
+          onInviteToRound={() => handleInviteToRound(exampleMatch)}
+          saved={savedMatches.has(exampleMatch.userId)}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Loading State</Text>
+        <PremiumMatchCard
+          match={exampleMatch}
+          compact={true}
+          loading={true}
+        />
+      </View>
     </ScrollView>
   );
 }
 
 // ============================================================================
-// Example 2: Filter Panel Usage
+// Example 2: Filter Panel Usage with Persistence
 // ============================================================================
 
 export function DiscoveryWithFiltersExample() {
   const [filters, setFilters] = useState<FilterState>({});
+  const [savedFilters, setSavedFilters] = useState<FilterState | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleApplyFilters = () => {
-    // Call discovery API with filters
-    console.log('Applying filters:', filters);
+    setIsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      console.log('Applying filters:', filters);
+      Alert.alert('Filters Applied', 'Discovery search updated with new filters');
+    }, 1000);
   };
 
   const handleResetFilters = () => {
     setFilters({});
+    Alert.alert('Reset', 'All filters have been cleared');
+  };
+
+  const handleSaveFilters = async (filtersToSave: FilterState) => {
+    // Simulate API call to save filters
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setSavedFilters(filtersToSave);
+    console.log('Saved filters:', filtersToSave);
   };
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -122,9 +270,16 @@ export function DiscoveryWithFiltersExample() {
         onReset={handleResetFilters}
         compact={true}
         activeCount={activeFilterCount}
+        loading={isLoading}
+        savedFilters={savedFilters}
+        onSaveFilters={handleSaveFilters}
       />
       
-      {/* Golfers list would go here */}
+      {</* Golfers list would go here */}>
+      <View style={styles.placeholderList}>
+        <Text style={styles.placeholderText}>Discovery results would appear here</Text>
+        <Text style={styles.placeholderSubtext}>Active filters: {activeFilterCount}</Text>
+      </View>
     </View>
   );
 }
@@ -135,22 +290,38 @@ export function DiscoveryWithFiltersExample() {
 
 export function FullDiscoveryExample() {
   const [filters, setFilters] = useState<FilterState>({});
-  const [matches, setMatches] = useState<PremiumMatchData[]>([]);
+  const [matches, setMatches] = useState<PremiumMatchData>[]([]);
   const [loading, setLoading] = useState(false);
+  const [savedFilters, setSavedFilters] = useState<FilterState | undefined>(undefined);
+  const [savedMatches, setSavedMatches] = useState<Set<string>>(new Set());
 
   const fetchMatches = async () => {
     setLoading(true);
     try {
-      // Call your API
-      // const response = await invokeFunction('discovery-search', {
-      //   method: 'POST',
-      //   body: filters,
-      // });
-      // Transform response to PremiumMatchData[]
-      // setMatches(transformedMatches);
+      // Simulate API response
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setMatches([exampleMatch, exampleMatchFair]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveFilters = async (filtersToSave: FilterState) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setSavedFilters(filtersToSave);
+  };
+
+  const handleSaveMatch = async (userId: string) => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    setSavedMatches(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
   };
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -161,24 +332,45 @@ export function FullDiscoveryExample() {
         filters={filters}
         onFiltersChange={setFilters}
         onApply={fetchMatches}
+        onReset={() => setFilters({})}
         compact={true}
         activeCount={activeFilterCount}
+        savedFilters={savedFilters}
+        onSaveFilters={handleSaveFilters}
       />
 
       <ScrollView>
-        {matches.map((match) => (
-          <PremiumMatchCard
-            key={match.userId}
-            match={match}
-            compact={true}
-            onPress={() => {
-              // Navigate to detail view
-            }}
-            onConnect={() => {
-              // Send connection request
-            }}
-          />
-        ))}
+        {loading ? (
+          <>
+            <PremiumMatchCard match={exampleMatch} compact={true} loading={true} />
+            <PremiumMatchCard match={exampleMatch} compact={true} loading={true} />
+          </>
+        ) : (
+          matches.map((match) => (
+            <PremiumMatchCard
+              key={match.userId}
+              match={match}
+              compact={true}
+              onPress={() => {
+                // Navigate to detail view
+                console.log('View profile:', match.userId);
+              }}
+              onConnect={async () => {
+                await new Promise(r => setTimeout(r, 500));
+                Alert.alert('Connected', `Connected with ${match.displayName}`);
+              }}
+              onSave={() => handleSaveMatch(match.userId)}
+              saved={savedMatches.has(match.userId)}
+            />
+          ))
+        )}
+        
+        {!loading && matches.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No matches found</Text>
+            <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -276,10 +468,50 @@ function transformMatchSuggestionToPremiumMatch(
 // Styles
 // ============================================================================
 
+import { Text } from 'react-native';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: spacing.md,
+  },
+  section: {
+    marginBottom: spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0B3A53',
+    marginBottom: spacing.sm,
+  },
+  placeholderList: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: '#5E6C75',
+  },
+  placeholderSubtext: {
+    fontSize: 12,
+    color: '#8B9599',
+    marginTop: spacing.xs,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5E6C75',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#8B9599',
+    marginTop: spacing.xs,
   },
 });
 

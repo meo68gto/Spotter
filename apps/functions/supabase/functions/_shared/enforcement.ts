@@ -1,7 +1,7 @@
 // Same-Tier Enforcement Utilities - Spotter
 // Centralized helper functions for enforcing same-tier visibility
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 /**
  * Check if two users are in the same tier

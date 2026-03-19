@@ -373,12 +373,12 @@ do $$
 begin
   if not exists (select 1 from pg_proc where proname = 'set_updated_at') then
     create function public.set_updated_at()
-    returns trigger as $$
+    returns trigger as $func$
     begin
       new.updated_at := now();
       return new;
     end;
-    $$ language plpgsql;
+    $func$ language plpgsql;
   end if;
 end $$;
 
