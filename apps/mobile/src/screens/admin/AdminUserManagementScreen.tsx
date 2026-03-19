@@ -165,17 +165,17 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: tokens.background }]}Þ
+    <View style={[styles.container, { backgroundColor: tokens.background }]}>
       {/* Header */}
-      <View style={styles.header}Þ
+      <View style={styles.header}>
         <Button title="← Back" onPress={onBack} tone="ghost" />
-        <Text style={[styles.title, { color: tokens.text }]}ÞUser Management</TextÞ
+        <Text style={[styles.title, { color: tokens.text }]}>User Management</Text>
         <View style={{ width: 60 }} />
-      </ViewÞ
+      </View>
 
-      <ScrollView contentContainerStyle={styles.content}Þ
+      <ScrollView contentContainerStyle={styles.content}>
         {/* Search Section */}
-        <View style={[styles.searchCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}Þ
+        <View style={[styles.searchCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}>
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -192,7 +192,7 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
           />
 
           {/* Status Filter */}
-          <View style={styles.filterRow}Þ
+          <View style={styles.filterRow}>
             {(['all', 'active', 'suspended', 'pending_deletion'] as const).map((status) => (
               <TouchableOpacity
                 key={status}
@@ -207,7 +207,7 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
                     borderColor: tokens.border,
                   },
                 ]}
-              Þ
+              >
                 <Text
                   style={[
                     styles.filterChipText,
@@ -216,12 +216,12 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
                         statusFilter === status ? '#fff' : tokens.textSecondary,
                     },
                   ]}
-                Þ
+                >
                   {getStatusLabel(status)}
-                </TextÞ
-              </TouchableOpacityÞ
+                </Text>
+              </TouchableOpacity>
             ))}
-          </ViewÞ
+          </View>
 
           <Button
             title="Search"
@@ -229,25 +229,25 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
             disabled={isLoading}
             accessibilityLabel="Search users"
           />
-        </ViewÞ
+        </View>
 
         {/* Results Count */}
-        <Text style={[styles.resultsText, { color: tokens.textSecondary }]}Þ
+        <Text style={[styles.resultsText, { color: tokens.textSecondary }]}>
           {isLoading ? 'Searching...' : `${totalCount} users found`}
-        </TextÞ
+        </Text>
 
         {/* User List */}
-        <View style={styles.userList}Þ
+        <View style={styles.userList}>
           {isLoading ? (
             <ActivityIndicator size="large" color={tokens.primary} />
           ) : error ? (
-            <Text style={[styles.errorText, { color: tokens.error }]}Þ{error}</TextÞ
+            <Text style={[styles.errorText, { color: tokens.error }]}>{error}</Text>
           ) : users.length === 0 ? (
-            <View style={styles.emptyState}Þ
-              <Text style={[styles.emptyText, { color: tokens.textMuted }]}Þ
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyText, { color: tokens.textMuted }]}>
                 No users found
-              </TextÞ
-            </ViewÞ
+              </Text>
+            </View>
           ) : (
             users.map((user) => (
               <TouchableOpacity
@@ -257,41 +257,41 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
                   styles.userCard,
                   { backgroundColor: tokens.surface, borderColor: tokens.border },
                 ]}
-              Þ
-                <View style={styles.userHeader}Þ
-                  <View style={styles.userInfo}Þ
-                    <Text style={[styles.userName, { color: tokens.text }]}Þ
+              >
+                <View style={styles.userHeader}>
+                  <View style={styles.userInfo}>
+                    <Text style={[styles.userName, { color: tokens.text }]}>
                       {user.display_name || 'No name'}
-                    </TextÞ
-                    <Text style={[styles.userEmail, { color: tokens.textSecondary }]}Þ
+                    </Text>
+                    <Text style={[styles.userEmail, { color: tokens.textSecondary }]}>
                       {user.email || 'No email'}
-                    </TextÞ
-                  </ViewÞ
+                    </Text>
+                  </View>
                   <View
                     style={[
                       styles.statusBadge,
                       { backgroundColor: getStatusColor(user.status) + '20' },
                     ]}
-                  Þ
+                  >
                     <Text
                       style={[
                         styles.statusText,
                         { color: getStatusColor(user.status) },
                       ]}
-                    Þ
+                    >
                       {getStatusLabel(user.status)}
-                    </TextÞ
-                  </ViewÞ
-                </ViewÞ
+                    </Text>
+                  </View>
+                </View>
 
-                <View style={styles.userStats}Þ
-                  <Text style={[styles.userStat, { color: tokens.textMuted }]}Þ
+                <View style={styles.userStats}>
+                  <Text style={[styles.userStat, { color: tokens.textMuted }]}>
                     Created: {new Date(user.created_at).toLocaleDateString()}
-                  </TextÞ
-                  <Text style={[styles.userStat, { color: tokens.textMuted }]}Þ
+                  </Text>
+                  <Text style={[styles.userStat, { color: tokens.textMuted }]}>
                     Matches: {user.matches_count}
-                  </TextÞ
-                </ViewÞ
+                  </Text>
+                </View>
 
                 {user.deletion_request && (
                   <View
@@ -299,18 +299,18 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
                       styles.deletionBanner,
                       { backgroundColor: tokens.error + '10' },
                     ]}
-                  Þ
-                    <Text style={[styles.deletionText, { color: tokens.error }]}Þ
+                  >
+                    <Text style={[styles.deletionText, { color: tokens.error }]}>
                       ⚠️ Deletion requested:{' '}
                       {new Date(user.deletion_request.requested_at).toLocaleDateString()}
-                    </TextÞ
-                  </ViewÞ
+                    </Text>
+                  </View>
                 )}
-              </TouchableOpacityÞ
+              </TouchableOpacity>
             ))
           )}
-        </ViewÞ
-      </ScrollViewÞ
+        </View>
+      </ScrollView>
 
       {/* User Detail Modal */}
       <Modal
@@ -318,9 +318,9 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
         animationType="slide"
         transparent={true}
         onRequestClose={() => setSelectedUser(null)}
-      Þ
-        <View style={[styles.modalOverlay, { backgroundColor: tokens.background + 'ee' }]}Þ
-          <ScrollView style={styles.modalContent}Þ
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: tokens.background + 'ee' }]}>
+          <ScrollView style={styles.modalContent}>
             {userDetailsLoading ? (
               <ActivityIndicator size="large" color={tokens.primary} />
             ) : selectedUser ? (
@@ -329,91 +329,91 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
                   styles.modalCard,
                   { backgroundColor: tokens.surface, borderColor: tokens.border },
                 ]}
-              Þ
-                <View style={styles.modalHeader}Þ
-                  <Text style={[styles.modalTitle, { color: tokens.text }]}Þ
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: tokens.text }]}>
                     User Details
-                  </TextÞ
-                  <TouchableOpacity onPress={() => setSelectedUser(null)}Þ
-                    <Text style={[styles.closeButton, { color: tokens.textSecondary }]}Þ
+                  </Text>
+                  <TouchableOpacity onPress={() => setSelectedUser(null)}>
+                    <Text style={[styles.closeButton, { color: tokens.textSecondary }]}>
                       ✕
-                    </TextÞ
-                  </TouchableOpacityÞ
-                </ViewÞ
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-                <View style={styles.userDetailSection}Þ
-                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}Þ
+                <View style={styles.userDetailSection}>
+                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}>
                     Display Name
-                  </TextÞ
-                  <Text style={[styles.detailValue, { color: tokens.text }]}Þ
+                  </Text>
+                  <Text style={[styles.detailValue, { color: tokens.text }]}>
                     {selectedUser.display_name || 'N/A'}
-                  </TextÞ
-                </ViewÞ
+                  </Text>
+                </View>
 
-                <View style={styles.userDetailSection}Þ
-                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}Þ
+                <View style={styles.userDetailSection}>
+                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}>
                     Email
-                  </TextÞ
-                  <Text style={[styles.detailValue, { color: tokens.text }]}Þ
+                  </Text>
+                  <Text style={[styles.detailValue, { color: tokens.text }]}>
                     {selectedUser.email || 'N/A'}
-                  </TextÞ
-                </ViewÞ
+                  </Text>
+                </View>
 
-                <View style={styles.userDetailSection}Þ
-                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}Þ
+                <View style={styles.userDetailSection}>
+                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}>
                     User ID
-                  </TextÞ
+                  </Text>
                   <Text
-                    style={[styles.detailValue, { color: tokens.text }]}Þ
+                    style={[styles.detailValue, { color: tokens.text }]}>
                     selectable
-                  Þ
+                  >
                     {selectedUser.id}
-                  </TextÞ
-                </ViewÞ
+                  </Text>
+                </View>
 
-                <View style={styles.userDetailSection}Þ
-                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}Þ
+                <View style={styles.userDetailSection}>
+                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}>
                     Status
-                  </TextÞ
-                  <View style={styles.statusRow}Þ
+                  </Text>
+                  <View style={styles.statusRow}>
                     <View
                       style={[
                         styles.statusBadge,
                         { backgroundColor: getStatusColor(selectedUser.status) + '20' },
                       ]}
-                    Þ
+                    >
                       <Text
                         style={[
                           styles.statusText,
                           { color: getStatusColor(selectedUser.status) },
                         ]}
-                      Þ
+                      >
                         {getStatusLabel(selectedUser.status)}
-                      </TextÞ
-                    </ViewÞ
-                  </ViewÞ
-                </ViewÞ
+                      </Text>
+                    </View>
+                  </View>
+                </View>
 
-                <View style={styles.userDetailSection}Þ
-                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}Þ
+                <View style={styles.userDetailSection}>
+                  <Text style={[styles.detailLabel, { color: tokens.textMuted }]}>
                     Activity
-                  </TextÞ
-                  <Text style={[styles.detailValue, { color: tokens.text }]}Þ
+                  </Text>
+                  <Text style={[styles.detailValue, { color: tokens.text }]}>
                     Matches: {selectedUser.matches_count}
-                  </TextÞ
-                  <Text style={[styles.detailValue, { color: tokens.text }]}Þ
+                  </Text>
+                  <Text style={[styles.detailValue, { color: tokens.text }]}>
                     Sessions: {selectedUser.sessions_count}
-                  </TextÞ
-                  <Text style={[styles.detailValue, { color: tokens.text }]}Þ
+                  </Text>
+                  <Text style={[styles.detailValue, { color: tokens.text }]}>
                     Created: {new Date(selectedUser.created_at).toLocaleString()}
-                  </TextÞ
+                  </Text>
                   {selectedUser.last_sign_in_at && (
-                    <Text style={[styles.detailValue, { color: tokens.text }]}Þ
+                    <Text style={[styles.detailValue, { color: tokens.text }]}>
                       Last sign in:{' '}
                       {new Date(selectedUser.last_sign_in_at).toLocaleString()}
-                    </TextÞ
+                    </Text>
                   )}
-                </ViewÞ
+                </View>
 
                 {selectedUser.deletion_request && (
                   <View
@@ -421,27 +421,27 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
                       styles.deletionRequestBox,
                       { backgroundColor: tokens.warning + '15', borderColor: tokens.warning },
                     ]}
-                  Þ
-                    <Text style={[styles.deletionTitle, { color: tokens.warning }]}Þ
+                  >
+                    <Text style={[styles.deletionTitle, { color: tokens.warning }]}>
                       Deletion Request Pending
-                    </TextÞ
-                    <Text style={[styles.deletionDetail, { color: tokens.textSecondary }]}Þ
+                    </Text>
+                    <Text style={[styles.deletionDetail, { color: tokens.textSecondary }]}>
                       Requested:{' '}
                       {new Date(selectedUser.deletion_request.requested_at).toLocaleString()}
-                    </TextÞ
-                    <Text style={[styles.deletionDetail, { color: tokens.textSecondary }]}Þ
+                    </Text>
+                    <Text style={[styles.deletionDetail, { color: tokens.textSecondary }]}>
                       Status: {selectedUser.deletion_request.status}
-                    </TextÞ
+                    </Text>
                     <Button
                       title="Process Deletion"
                       onPress={() => handleProcessDeletion(selectedUser.id)}
                       disabled={actionInProgress === selectedUser.id}
                       accessibilityLabel="Process account deletion"
                     />
-                  </ViewÞ
+                  </View>
                 )}
 
-                <View style={styles.actionButtons}Þ
+                <View style={styles.actionButtons}>
                   {selectedUser.status === 'active' && (
                     <Button
                       title="Suspend User"
@@ -459,13 +459,13 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
                       accessibilityLabel="Activate user account"
                     />
                   )}
-                </ViewÞ
-              </ViewÞ
+                </View>
+              </View>
             ) : null}
-          </ScrollViewÞ
-        </ViewÞ
-      </ModalÞ
-    </ViewÞ
+          </ScrollView>
+        </View>
+      </Modal>
+    </View>
   );
 }
 

@@ -188,21 +188,21 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: tokens.background }]}Þ
+    <View style={[styles.container, { backgroundColor: tokens.background }]}>
       {/* Header */}
-      <View style={styles.header}Þ
+      <View style={styles.header}>
         <Button title="← Back" onPress={onBack} tone="ghost" />
-        <Text style={[styles.title, { color: tokens.text }]}ÞFeature Flags</TextÞ
-        <TouchableOpacity onPress={refresh} disabled={isLoading}Þ
-          <Text style={[styles.refreshButton, { color: tokens.primary }]}Þ
+        <Text style={[styles.title, { color: tokens.text }]}>Feature Flags</Text>
+        <TouchableOpacity onPress={refresh} disabled={isLoading}>
+          <Text style={[styles.refreshButton, { color: tokens.primary }]}>
             {isLoading ? '⟳' : '↻'}
-          </TextÞ
-        </TouchableOpacityÞ
-      </ViewÞ
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-      <ScrollView contentContainerStyle={styles.content}Þ
+      <ScrollView contentContainerStyle={styles.content}>
         {/* Controls */}
-        <View style={[styles.controlsCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}Þ
+        <View style={[styles.controlsCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}>
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -218,7 +218,7 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
             ]}
           />
 
-          <View style={styles.filterRow}Þ
+          <View style={styles.filterRow}>
             {(['all', 'local', 'staging', 'production'] as const).map((env) => (
               <TouchableOpacity
                 key={env}
@@ -231,37 +231,37 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                     borderColor: tokens.border,
                   },
                 ]}
-              Þ
+              >
                 <Text
                   style={[
                     styles.filterChipText,
                     { color: environmentFilter === env ? '#fff' : tokens.textSecondary },
                   ]}
-                Þ
+                >
                   {env.charAt(0).toUpperCase() + env.slice(1)}
-                </TextÞ
-              </TouchableOpacityÞ
+                </Text>
+              </TouchableOpacity>
             ))}
-          </ViewÞ
+          </View>
 
           <Button
             title="+ Create New Flag"
             onPress={() => setShowCreateModal(true)}
             accessibilityLabel="Create new feature flag"
           />
-        </ViewÞ
+        </View>
 
         {/* Flags List */}
-        <Text style={[styles.countText, { color: tokens.textSecondary }]}Þ
+        <Text style={[styles.countText, { color: tokens.textSecondary }]}>
           {isLoading ? 'Loading...' : `${filteredFlags.length} flags`}
-        </TextÞ
+        </Text>
 
         {isLoading ? (
           <ActivityIndicator size="large" color={tokens.primary} />
         ) : error ? (
-          <Text style={[styles.errorText, { color: tokens.error }]}Þ{error}</TextÞ
+          <Text style={[styles.errorText, { color: tokens.error }]}>{error}</Text>
         ) : (
-          <View style={styles.flagsList}Þ
+          <View style={styles.flagsList}>
             {filteredFlags.map((flag) => (
               <View
                 key={flag.id}
@@ -269,31 +269,31 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                   styles.flagCard,
                   { backgroundColor: tokens.surface, borderColor: tokens.border },
                 ]}
-              Þ
-                <View style={styles.flagHeader}Þ
-                  <View style={styles.flagInfo}Þ
-                    <Text style={[styles.flagKey, { color: tokens.text }]}Þ{flag.key}</TextÞ
-                    <View style={styles.flagMeta}Þ
+              >
+                <View style={styles.flagHeader}>
+                  <View style={styles.flagInfo}>
+                    <Text style={[styles.flagKey, { color: tokens.text }]}>{flag.key}</Text>
+                    <View style={styles.flagMeta}>
                       <View
                         style={[
                           styles.envBadge,
                           { backgroundColor: getEnvironmentColor(flag.environment) + '20' },
                         ]}
-                      Þ
+                      >
                         <Text
                           style={[
                             styles.envText,
                             { color: getEnvironmentColor(flag.environment) },
                           ]}
-                        Þ
+                        >
                           {flag.environment}
-                        </TextÞ
-                      </ViewÞ
-                      <Text style={[styles.updatedText, { color: tokens.textMuted }]}Þ
+                        </Text>
+                      </View>
+                      <Text style={[styles.updatedText, { color: tokens.textMuted }]}>
                         Updated: {new Date(flag.updated_at).toLocaleDateString()}
-                      </TextÞ
-                    </ViewÞ
-                  </ViewÞ
+                      </Text>
+                    </View>
+                  </View>
 
                   <TouchableOpacity
                     onPress={() => handleToggleFlag(flag)}
@@ -304,7 +304,7 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                         backgroundColor: flag.value ? tokens.success : tokens.textMuted,
                       },
                     ]}
-                  Þ
+                  >
                     <View
                       style={[
                         styles.toggleKnob,
@@ -314,12 +314,12 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                         },
                       ]}
                     />
-                  </TouchableOpacityÞ
-                </ViewÞ
+                  </TouchableOpacity>
+                </View>
 
                 {/* Usage Stats */}
                 {flag.usage_stats && (
-                  <View style={styles.statsRow}Þ
+                  <View style={styles.statsRow}>
                     <StatItem
                       label="Enabled"
                       value={flag.usage_stats.enabled_count}
@@ -335,26 +335,26 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                       value={flag.usage_stats.last_7d_requests}
                       tokens={tokens}
                     />
-                  </ViewÞ
+                  </View>
                 )}
 
                 {/* Payload Preview */}
                 {Object.keys(flag.payload || {}).length > 0 && (
-                  <View style={styles.payloadBox}Þ
-                    <Text style={[styles.payloadLabel, { color: tokens.textMuted }]}Þ
+                  <View style={styles.payloadBox}>
+                    <Text style={[styles.payloadLabel, { color: tokens.textMuted }]}>
                       Payload:
-                    </TextÞ
+                    </Text>
                     <Text
                       style={[styles.payloadText, { color: tokens.textSecondary }]}
                       numberOfLines={2}
-                    Þ
+                    >
                       {JSON.stringify(flag.payload)}
-                    </TextÞ
-                  </ViewÞ
+                    </Text>
+                  </View>
                 )}
 
                 {/* Actions */}
-                <View style={styles.flagActions}Þ
+                <View style={styles.flagActions}>
                   <Button
                     title="Edit"
                     tone="secondary"
@@ -367,20 +367,20 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                     onPress={() => handleDeleteFlag(flag)}
                     accessibilityLabel={`Delete ${flag.key}`}
                   />
-                </ViewÞ
-              </ViewÞ
+                </View>
+              </View>
             ))}
 
             {filteredFlags.length === 0 && (
-              <View style={styles.emptyState}Þ
-                <Text style={[styles.emptyText, { color: tokens.textMuted }]}Þ
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyText, { color: tokens.textMuted }]}>
                   No feature flags found
-                </TextÞ
-              </ViewÞ
+                </Text>
+              </View>
             )}
-          </ViewÞ
+          </View>
         )}
-      </ScrollViewÞ
+      </ScrollView>
 
       {/* Create Modal */}
       <Modal
@@ -388,14 +388,14 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
         animationType="slide"
         transparent={true}
         onRequestClose={() => setShowCreateModal(false)}
-      Þ
-        <View style={[styles.modalOverlay, { backgroundColor: tokens.background + 'ee' }]}Þ
-          <View style={[styles.modalCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}Þ
-            <Text style={[styles.modalTitle, { color: tokens.text }]}Þ
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: tokens.background + 'ee' }]}>
+          <View style={[styles.modalCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}>
+            <Text style={[styles.modalTitle, { color: tokens.text }]}>
               Create Feature Flag
-            </TextÞ
+            </Text>
 
-            <Text style={[styles.inputLabel, { color: tokens.textSecondary }]}ÞKey</TextÞ
+            <Text style={[styles.inputLabel, { color: tokens.textSecondary }]}>Key</Text>
             <TextInput
               value={newFlag.key}
               onChangeText={(text) => setNewFlag({ ...newFlag, key: text })}
@@ -411,8 +411,8 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
               ]}
             />
 
-            <Text style={[styles.inputLabel, { color: tokens.textSecondary }]}ÞEnvironment</TextÞ
-            <View style={styles.envSelector}Þ
+            <Text style={[styles.inputLabel, { color: tokens.textSecondary }]}>Environment</Text>
+            <View style={styles.envSelector}>
               {(['local', 'staging', 'production'] as const).map((env) => (
                 <TouchableOpacity
                   key={env}
@@ -425,20 +425,20 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                       borderColor: tokens.border,
                     },
                   ]}
-                Þ
+                >
                   <Text
                     style={[
                       styles.envOptionText,
                       { color: newFlag.environment === env ? '#fff' : tokens.textSecondary },
                     ]}
-                  Þ
+                  >
                     {env.charAt(0).toUpperCase() + env.slice(1)}
-                  </TextÞ
-                </TouchableOpacityÞ
+                  </Text>
+                </TouchableOpacity>
               ))}
-            </ViewÞ
+            </View>
 
-            <Text style={[styles.inputLabel, { color: tokens.textSecondary }]}ÞPayload (JSON)</TextÞ
+            <Text style={[styles.inputLabel, { color: tokens.textSecondary }]}>Payload (JSON)</Text>
             <TextInput
               value={newFlag.payload}
               onChangeText={(text) => setNewFlag({ ...newFlag, payload: text })}
@@ -456,7 +456,7 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
               ]}
             />
 
-            <View style={styles.modalActions}Þ
+            <View style={styles.modalActions}>
               <Button
                 title="Cancel"
                 tone="secondary"
@@ -467,10 +467,10 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                 disabled={actionInProgress || !newFlag.key.trim()}
                 onPress={handleCreateFlag}
               />
-            </ViewÞ
-          </ViewÞ
-        </ViewÞ
-      </ModalÞ
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Modal */}
       <Modal
@@ -478,27 +478,27 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
         animationType="slide"
         transparent={true}
         onRequestClose={() => setEditingFlag(null)}
-      Þ
-        <View style={[styles.modalOverlay, { backgroundColor: tokens.background + 'ee' }]}Þ
-          <View style={[styles.modalCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}Þ
-            <Text style={[styles.modalTitle, { color: tokens.text }]}Þ
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: tokens.background + 'ee' }]}>
+          <View style={[styles.modalCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}>
+            <Text style={[styles.modalTitle, { color: tokens.text }]}>
               Edit Feature Flag
-            </TextÞ
+            </Text>
 
             {editingFlag && (
               <>
-                <Text style={[styles.readOnlyLabel, { color: tokens.textMuted }]}ÞKey</TextÞ
-                <Text style={[styles.readOnlyValue, { color: tokens.text }]}Þ
+                <Text style={[styles.readOnlyLabel, { color: tokens.textMuted }]}>Key</Text>
+                <Text style={[styles.readOnlyValue, { color: tokens.text }]}>
                   {editingFlag.key}
-                </TextÞ
+                </Text>
 
-                <Text style={[styles.readOnlyLabel, { color: tokens.textMuted }]}ÞEnvironment</TextÞ
-                <Text style={[styles.readOnlyValue, { color: tokens.text }]}Þ
+                <Text style={[styles.readOnlyLabel, { color: tokens.textMuted }]}>Environment</Text>
+                <Text style={[styles.readOnlyValue, { color: tokens.text }]}>
                   {editingFlag.environment}
-                </TextÞ
+                </Text>
 
-                <Text style={[styles.inputLabel, { color: tokens.textSecondary }]}ÞValue</TextÞ
-                <View style={styles.editValueRow}Þ
+                <Text style={[styles.inputLabel, { color: tokens.textSecondary }]}>Value</Text>
+                <View style={styles.editValueRow}>
                   <TouchableOpacity
                     onPress={() => setEditingFlag({ ...editingFlag, value: true })}
                     style={[
@@ -508,9 +508,9 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                         borderColor: editingFlag.value ? tokens.success : tokens.border,
                       },
                     ]}
-                  Þ
-                    <Text style={{ color: editingFlag.value ? '#fff' : tokens.text }}ÞON</TextÞ
-                  </TouchableOpacityÞ
+                  >
+                    <Text style={{ color: editingFlag.value ? '#fff' : tokens.text }}>ON</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setEditingFlag({ ...editingFlag, value: false })}
                     style={[
@@ -520,12 +520,12 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                         borderColor: !editingFlag.value ? tokens.textMuted : tokens.border,
                       },
                     ]}
-                  Þ
-                    <Text style={{ color: !editingFlag.value ? '#fff' : tokens.text }}ÞOFF</TextÞ
-                  </TouchableOpacityÞ
-                </ViewÞ
+                  >
+                    <Text style={{ color: !editingFlag.value ? '#fff' : tokens.text }}>OFF</Text>
+                  </TouchableOpacity>
+                </View>
 
-                <View style={styles.modalActions}Þ
+                <View style={styles.modalActions}>
                   <Button
                     title="Cancel"
                     tone="secondary"
@@ -536,13 +536,13 @@ export function AdminFeatureFlagsScreen({ onBack }: AdminFeatureFlagsScreenProps
                     disabled={actionInProgress}
                     onPress={handleSaveEdit}
                   />
-                </ViewÞ
+                </View>
               </>
             )}
-          </ViewÞ
-        </ViewÞ
-      </ModalÞ
-    </ViewÞ
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
@@ -560,12 +560,12 @@ function StatItem({
   tokens: any;
 }) {
   return (
-    <View style={styles.statItem}Þ
-      <Text style={[styles.statValue, { color: tokens.text }]}Þ
+    <View style={styles.statItem}>
+      <Text style={[styles.statValue, { color: tokens.text }]}>
         {value.toLocaleString()}
-      </TextÞ
-      <Text style={[styles.statLabel, { color: tokens.textMuted }]}Þ{label}</TextÞ
-    </ViewÞ
+      </Text>
+      <Text style={[styles.statLabel, { color: tokens.textMuted }]}>{label}</Text>
+    </View>
   );
 }
 

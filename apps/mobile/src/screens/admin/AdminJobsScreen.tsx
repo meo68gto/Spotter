@@ -117,27 +117,27 @@ export function AdminJobsScreen({ onBack }: AdminJobsScreenProps) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: tokens.background }]}Þ
+    <View style={[styles.container, { backgroundColor: tokens.background }]}>
       {/* Header */}
-      <View style={styles.header}Þ
+      <View style={styles.header}>
         <Button title="← Back" onPress={onBack} tone="ghost" />
-        <Text style={[styles.title, { color: tokens.text }]}ÞJobs Management</TextÞ
-        <TouchableOpacity onPress={refreshJobs} disabled={isLoading}Þ
-          <Text style={[styles.refreshButton, { color: tokens.primary }]}Þ
+        <Text style={[styles.title, { color: tokens.text }]}>Jobs Management</Text>
+        <TouchableOpacity onPress={refreshJobs} disabled={isLoading}>
+          <Text style={[styles.refreshButton, { color: tokens.primary }]}>
             {isLoading ? '⟳' : '↻'}
-          </TextÞ
-        </TouchableOpacityÞ
-      </ViewÞ
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-      <ScrollView contentContainerStyle={styles.content}Þn        {/* Jobs List */}
-        <Text style={[styles.sectionTitle, { color: tokens.textSecondary }]}ÞScheduled Jobs</TextÞ
+      <ScrollView contentContainerStyle={styles.content}>n        {/* Jobs List */}
+        <Text style={[styles.sectionTitle, { color: tokens.textSecondary }]}>Scheduled Jobs</Text>
 
         {isLoading && jobs.length === 0 ? (
           <ActivityIndicator size="large" color={tokens.primary} />
         ) : error ? (
-          <Text style={[styles.errorText, { color: tokens.error }]}Þ{error}</TextÞ
+          <Text style={[styles.errorText, { color: tokens.error }]}>{error}</Text>
         ) : (
-          <View style={styles.jobsList}Þ
+          <View style={styles.jobsList}>
             {jobs.map((job) => (
               <View
                 key={job.id}
@@ -146,70 +146,70 @@ export function AdminJobsScreen({ onBack }: AdminJobsScreenProps) {
                   { backgroundColor: tokens.surface, borderColor: tokens.border },
                   selectedJob?.id === job.id && { borderColor: tokens.primary },
                 ]}
-              Þ
-                <TouchableOpacity onPress={() => setSelectedJob(selectedJob?.id === job.id ? null : job)}Þ
-                  <View style={styles.jobHeader}Þ
-                    <View style={styles.jobInfo}Þ
-                      <Text style={[styles.jobName, { color: tokens.text }]}Þ
+              >
+                <TouchableOpacity onPress={() => setSelectedJob(selectedJob?.id === job.id ? null : job)}>
+                  <View style={styles.jobHeader}>
+                    <View style={styles.jobInfo}>
+                      <Text style={[styles.jobName, { color: tokens.text }]}>
                         {job.name}
-                      </TextÞ
-                      <Text style={[styles.jobDescription, { color: tokens.textSecondary }]}Þ
+                      </Text>
+                      <Text style={[styles.jobDescription, { color: tokens.textSecondary }]}>
                         {job.description}
-                      </TextÞ
-                    </ViewÞ
+                      </Text>
+                    </View>
                     <View
                       style={[
                         styles.statusIndicator,
                         { backgroundColor: getStatusColor(job.lastStatus) + '20' },
                       ]}
-                    Þ
+                    >
                       <Text
                         style={[
                           styles.statusIcon,
                           { color: getStatusColor(job.lastStatus) },
                         ]}
-                      Þ
+                      >
                         {getStatusIcon(job.lastStatus)}
-                      </TextÞ
-                    </ViewÞ
-                  </ViewÞ
+                      </Text>
+                    </View>
+                  </View>
 
-                  <View style={styles.jobMeta}Þ
-                    <View style={styles.metaItem}Þ
-                      <Text style={[styles.metaLabel, { color: tokens.textMuted }]}ÞSchedule</TextÞ
-                      <Text style={[styles.metaValue, { color: tokens.text }]}Þ
+                  <View style={styles.jobMeta}>
+                    <View style={styles.metaItem}>
+                      <Text style={[styles.metaLabel, { color: tokens.textMuted }]}>Schedule</Text>
+                      <Text style={[styles.metaValue, { color: tokens.text }]}>
                         {formatCronSchedule(job.schedule)}
-                      </TextÞ
-                    </ViewÞ
+                      </Text>
+                    </View>
 
-                    <View style={styles.metaItem}Þ
-                      <Text style={[styles.metaLabel, { color: tokens.textMuted }]}ÞLast Run</TextÞ
-                      <Text style={[styles.metaValue, { color: tokens.text }]}Þ
+                    <View style={styles.metaItem}>
+                      <Text style={[styles.metaLabel, { color: tokens.textMuted }]}>Last Run</Text>
+                      <Text style={[styles.metaValue, { color: tokens.text }]}>
                         {formatDate(job.lastRun)}
-                      </TextÞ
-                    </ViewÞ
+                      </Text>
+                    </View>
 
-                    <View style={styles.metaItem}Þ
-                      <Text style={[styles.metaLabel, { color: tokens.textMuted }]}ÞStatus</TextÞ
+                    <View style={styles.metaItem}>
+                      <Text style={[styles.metaLabel, { color: tokens.textMuted }]}>Status</Text>
                       <Text
                         style={[
                           styles.metaValue,
                           { color: getStatusColor(job.lastStatus) },
                         ]}
-                      Þ
+                      >
                         {job.lastStatus || 'Never run'}
-                      </TextÞ
-                    </ViewÞ
-                  </ViewÞ
+                      </Text>
+                    </View>
+                  </View>
 
                   {job.runCount !== undefined && (
-                    <Text style={[styles.runCount, { color: tokens.textMuted }]}Þ
+                    <Text style={[styles.runCount, { color: tokens.textMuted }]}>
                       Total runs: {job.runCount}
-                    </TextÞ
+                    </Text>
                   )}
-                </TouchableOpacityÞ
+                </TouchableOpacity>
 
-                <View style={styles.jobActions}Þ
+                <View style={styles.jobActions}>
                   <Button
                     title={triggeringJob === job.id ? 'Triggering...' : 'Trigger Now'}
                     onPress={() => handleTriggerJob(job)}
@@ -217,20 +217,20 @@ export function AdminJobsScreen({ onBack }: AdminJobsScreenProps) {
                     tone="secondary"
                     accessibilityLabel={`Trigger ${job.name}`}
                   />
-                </ViewÞ
-              </ViewÞ
+                </View>
+              </View>
             ))}
-          </ViewÞ
+          </View>
         )}
 
         {/* Job Runs / Logs */}
         {selectedJob && (
-          <View style={styles.logsSection}Þ
-            <Text style={[styles.sectionTitle, { color: tokens.textSecondary }]}Þ
+          <View style={styles.logsSection}>
+            <Text style={[styles.sectionTitle, { color: tokens.textSecondary }]}>
               Recent Runs: {selectedJob.name}
-            </TextÞ
+            </Text>
 
-            <View style={styles.runsList}Þ
+            <View style={styles.runsList}>
               {jobRuns
                 .filter((run) => run.job_id === selectedJob.id)
                 .slice(0, 10)
@@ -241,84 +241,84 @@ export function AdminJobsScreen({ onBack }: AdminJobsScreenProps) {
                       styles.runCard,
                       { backgroundColor: tokens.backgroundElevated },
                     ]}
-                  Þ
-                    <View style={styles.runHeader}Þ
+                  >
+                    <View style={styles.runHeader}>
                       <Text
                         style={[
                           styles.runStatus,
                           { color: getStatusColor(run.status) },
                         ]}
-                      Þ
+                      >
                         {getStatusIcon(run.status)} {run.status.toUpperCase()}
-                      </TextÞ
-                      <Text style={[styles.runTrigger, { color: tokens.textMuted }]}Þ
+                      </Text>
+                      <Text style={[styles.runTrigger, { color: tokens.textMuted }]}>
                         {run.triggered_by === 'manual' ? '👤 Manual' : '⏰ Scheduled'}
-                      </TextÞ
-                    </ViewÞ
+                      </Text>
+                    </View>
 
-                    <Text style={[styles.runTime, { color: tokens.textSecondary }]}Þ
+                    <Text style={[styles.runTime, { color: tokens.textSecondary }]}>
                       Started: {new Date(run.started_at).toLocaleString()}
-                    </TextÞ
+                    </Text>
 
                     {run.completed_at && (
-                      <Text style={[styles.runTime, { color: tokens.textSecondary }]}Þ
+                      <Text style={[styles.runTime, { color: tokens.textSecondary }]}>
                         Completed: {new Date(run.completed_at).toLocaleString()}
-                      </TextÞ
+                      </Text>
                     )}
 
                     {run.output && (
-                      <View style={styles.outputBox}Þ
-                        <Text style={[styles.outputLabel, { color: tokens.textMuted }]}Þ
+                      <View style={styles.outputBox}>
+                        <Text style={[styles.outputLabel, { color: tokens.textMuted }]}>
                           Output:
-                        </TextÞ
+                        </Text>
                         <Text
                           style={[styles.outputText, { color: tokens.text }]}
                           numberOfLines={5}
-                        Þ
+                        >
                           {run.output}
-                        </TextÞ
-                      </ViewÞ
+                        </Text>
+                      </View>
                     )}
 
                     {run.error && (
-                      <View style={[styles.errorBox, { backgroundColor: tokens.error + '10' }]}Þ
-                        <Text style={[styles.errorLabel, { color: tokens.error }]}Þ
+                      <View style={[styles.errorBox, { backgroundColor: tokens.error + '10' }]}>
+                        <Text style={[styles.errorLabel, { color: tokens.error }]}>
                           Error:
-                        </TextÞ
+                        </Text>
                         <Text
                           style={[styles.errorText, { color: tokens.error }]}
                           numberOfLines={3}
-                        Þ
+                        >
                           {run.error}
-                        </TextÞ
-                      </ViewÞ
+                        </Text>
+                      </View>
                     )}
-                  </ViewÞ
+                  </View>
                 ))}
 
               {jobRuns.filter((run) => run.job_id === selectedJob.id).length === 0 && (
-                <Text style={[styles.emptyText, { color: tokens.textMuted }]}Þ
+                <Text style={[styles.emptyText, { color: tokens.textMuted }]}>
                   No run history for this job
-                </TextÞ
+                </Text>
               )}
-            </ViewÞ
-          </ViewÞ
+            </View>
+          </View>
         )}
 
         {/* Instructions */}
-        <View style={styles.instructions}Þ
-          <Text style={[styles.instructionsTitle, { color: tokens.text }]}Þ
+        <View style={styles.instructions}>
+          <Text style={[styles.instructionsTitle, { color: tokens.text }]}>
             About Scheduled Jobs
-          </TextÞ
-          <Text style={[styles.instructionsText, { color: tokens.textSecondary }]}Þ
+          </Text>
+          <Text style={[styles.instructionsText, { color: tokens.textSecondary }]}>
             • Jobs run automatically on their schedules{'\n'}
             • You can manually trigger jobs for immediate execution{'\n'}
             • All job runs are logged for audit purposes{'\n'}
             • Failed jobs will show error details in logs
-          </TextÞ
-        </ViewÞ
-      </ScrollViewÞ
-    </ViewÞ
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 

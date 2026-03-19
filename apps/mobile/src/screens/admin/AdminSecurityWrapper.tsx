@@ -97,36 +97,36 @@ export function AdminSecurityWrapper({ children, onSessionExpired }: AdminSecuri
   };
 
   return (
-    <View style={styles.container}Þ
+    <View style={styles.container}>
       {/* Warning banner */}
       {showWarning && (
-        <View style={[styles.warningBanner, { backgroundColor: tokens.warning }]}Þ
-          <Text style={styles.warningText}Þ
+        <View style={[styles.warningBanner, { backgroundColor: tokens.warning }]}>
+          <Text style={styles.warningText}>
             Session expires in {formatTime(timeRemaining)}
-          </TextÞ
+          </Text>
           <Button
             title="Extend Session"
             onPress={handleExtendSession}
             tone="secondary"
             accessibilityLabel="Extend admin session"
           />
-        </ViewÞ
+        </View>
       )}
 
       {/* Main content with activity wrapper */}
-      <View style={styles.content} onTouchStart={updateActivity}Þ
+      <View style={styles.content} onTouchStart={updateActivity}>
         {children}
-      </ViewÞ
+      </View>
 
       {/* Session indicator */}
-      <View style={[styles.sessionIndicator, { backgroundColor: tokens.success + '20' }]}Þ
+      <View style={[styles.sessionIndicator, { backgroundColor: tokens.success + '20' }]}>
         <View style={[styles.indicatorDot, { backgroundColor: tokens.success }]} />
-        <Text style={[styles.sessionText, { color: tokens.textSecondary }]}Þ
+        <Text style={[styles.sessionText, { color: tokens.textSecondary }]}>
           Admin Session Active
-        </TextÞ
+        </Text>
         <Button title="Logout" onPress={handleLogout} tone="ghost" />
-      </ViewÞ
-    </ViewÞ
+      </View>
+    </View>
   );
 }
 
