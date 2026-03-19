@@ -62,6 +62,48 @@ export interface GolfIdentity {
 }
 
 // ============================================================================
+// Phase 1: Networking & Round Preference Types
+// ============================================================================
+
+/**
+ * Networking intent - what the user wants from the golf network
+ */
+export type NetworkingIntent = 'business' | 'social' | 'competitive' | 'business_social';
+
+/**
+ * Preferred group size for rounds
+ */
+export type PreferredGroupSize = '2' | '3' | '4' | 'any';
+
+/**
+ * Cart preference
+ */
+export type CartPreference = 'walking' | 'cart' | 'either';
+
+/**
+ * User's networking and round preferences
+ * Added in Phase 1 for tiered golf networking
+ */
+export interface NetworkingPreferences {
+  /** Primary intent for joining the network */
+  networkingIntent: NetworkingIntent;
+  /** Whether user is open to receiving introductions */
+  openToIntros: boolean;
+  /** Whether user is open to sending introductions */
+  openToSendingIntros: boolean;
+  /** Whether user wants recurring rounds with the same group */
+  openToRecurringRounds: boolean;
+  /** Preferred playing group size */
+  preferredGroupSize: PreferredGroupSize;
+  /** Walking vs cart preference */
+  cartPreference: CartPreference;
+  /** Preferred geographic area for golf (e.g., "Scottsdale, AZ" or "Phoenix Metro") */
+  preferredGolfArea?: string;
+  /** Additional notes about networking preferences */
+  networkingNotes?: string;
+}
+
+// ============================================================================
 // Extended Profile Types
 // ============================================================================
 
@@ -106,6 +148,8 @@ export interface ExtendedProfile {
   professional?: ProfessionalIdentity;
   /** Golf identity information */
   golf?: GolfIdentity;
+  /** Networking and round preferences (Phase 1) */
+  networkingPreferences?: NetworkingPreferences;
   /** Profile completeness tracking */
   completeness: ProfileCompleteness;
   /** When the profile was created */
@@ -454,6 +498,35 @@ export const PROFILE_SECTIONS: { value: ProfileSection; label: string }[] = [
 ];
 
 /**
+ * Phase 1: Networking intent options with display labels
+ */
+export const NETWORKING_INTENTS: { value: NetworkingIntent; label: string; description: string }[] = [
+  { value: 'business', label: 'Business', description: 'Build professional relationships through golf' },
+  { value: 'social', label: 'Social', description: 'Meet new people and expand your social circle' },
+  { value: 'competitive', label: 'Competitive', description: 'Find serious golfers to compete with' },
+  { value: 'business_social', label: 'Business + Social', description: 'Both professional and social connections' },
+];
+
+/**
+ * Phase 1: Preferred group size options
+ */
+export const PREFERRED_GROUP_SIZES: { value: PreferredGroupSize; label: string }[] = [
+  { value: '2', label: 'Twosome' },
+  { value: '3', label: 'Threesome' },
+  { value: '4', label: 'Foursome' },
+  { value: 'any', label: 'Any size' },
+];
+
+/**
+ * Phase 1: Cart preference options
+ */
+export const CART_PREFERENCES: { value: CartPreference; label: string }[] = [
+  { value: 'walking', label: 'Walking' },
+  { value: 'cart', label: 'Riding' },
+  { value: 'either', label: 'Either' },
+];
+
+/**
  * Reputation score calculation weights
  * Weights should sum to 1.0
  */
@@ -524,4 +597,29 @@ export function isValidIntroStatus(status: string): status is IntroStatus {
  */
 export function isValidReputationComponent(component: string): component is ReputationComponent {
   return ['completion', 'ratings', 'network', 'referrals', 'profile', 'attendance'].includes(component);
+}
+
+// ============================================================================
+// Phase 1: Networking Preference Type Guards
+// ============================================================================
+
+/**
+ * Check if a string is a valid NetworkingIntent
+ */
+export function isValidNetworkingIntent(intent: string): intent is NetworkingIntent {
+  return ['business', 'social', 'competitive', 'business_social'].includes(intent);
+}
+
+/**
+ * Check if a string is a valid PreferredGroupSize
+ */
+export function isValidPreferredGroupSize(size: string): size is PreferredGroupSize {
+  return ['2', '3', '4', 'any'].includes(size);
+}
+
+/**
+ * Check if a string is a valid CartPreference
+ */
+export function isValidCartPreference(pref: string): pref is CartPreference {
+  return ['walking', 'cart', 'either'].includes(pref);
 }

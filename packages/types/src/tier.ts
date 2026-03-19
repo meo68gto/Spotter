@@ -208,12 +208,17 @@ export interface TierChangeRequest {
 /**
  * Complete tier definitions with all configuration.
  * This is the source of truth for tier capabilities.
+ * 
+ * PHASE 1 BUSINESS REQUIREMENTS:
+ * - Free: $0
+ * - Select: $1,000/year
+ * - Summit: $10,000 lifetime
  */
 export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'createdAt' | 'updatedAt'>> = {
   free: {
     name: 'Free',
     slug: 'free',
-    description: 'Get started with basic matching and session scheduling.',
+    description: 'Basic access to connect with other golfers. Limited to same-tier connections.',
     features: {
       matchmaking: true,
       unlimitedSessions: false,
@@ -240,7 +245,7 @@ export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'cre
   select: {
     name: 'Select',
     slug: 'select',
-    description: 'Unlock unlimited matches, video analysis, and priority access.',
+    description: 'Full access to unlimited connections within your tier. $1,000/year membership.',
     features: {
       matchmaking: true,
       unlimitedSessions: true,
@@ -255,8 +260,8 @@ export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'cre
       boostedVisibility: false,
       groupSessions: false,
     },
-    priceCentsMonthly: 999, // $9.99
-    priceCentsYearly: 9990, // $99.90 (2 months free)
+    priceCentsMonthly: 0, // Annual only
+    priceCentsYearly: 100000, // $1,000/year
     currency: 'usd',
     matchLimitMonthly: null,
     sessionLimitMonthly: null,
@@ -267,7 +272,7 @@ export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'cre
   summit: {
     name: 'Summit',
     slug: 'summit',
-    description: 'Elite tier with unlimited everything, early access, and exclusive events.',
+    description: 'Lifetime unlimited access with priority boosts and exclusive features. $10,000 one-time.',
     features: {
       matchmaking: true,
       unlimitedSessions: true,
@@ -282,8 +287,8 @@ export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'cre
       boostedVisibility: true,
       groupSessions: true,
     },
-    priceCentsMonthly: 2999, // $29.99
-    priceCentsYearly: 29990, // $299.90 (2 months free)
+    priceCentsMonthly: 0,
+    priceCentsYearly: 1000000, // $10,000 lifetime (stored as yearly for schema compatibility)
     currency: 'usd',
     matchLimitMonthly: null,
     sessionLimitMonthly: null,
@@ -315,11 +320,16 @@ export const FEATURE_NAMES: Array<keyof TierFeatures> = [
 /**
  * Price mapping by tier and billing interval.
  * Prices are in cents.
+ * 
+ * PHASE 1: Updated for premium tier pricing
+ * - Free: $0
+ * - Select: $1,000/year (no monthly option)
+ * - Summit: $10,000 lifetime
  */
-export const TIER_PRICES: Record<TierSlug, { monthly: number; yearly: number; currency: string }> = {
-  free: { monthly: 0, yearly: 0, currency: 'usd' },
-  select: { monthly: 999, yearly: 9990, currency: 'usd' },
-  summit: { monthly: 2999, yearly: 29990, currency: 'usd' },
+export const TIER_PRICES: Record<TierSlug, { monthly: number | null; yearly: number; currency: string; billingInterval: 'monthly' | 'annual' | 'lifetime' }> = {
+  free: { monthly: 0, yearly: 0, currency: 'usd', billingInterval: 'annual' },
+  select: { monthly: null, yearly: 100000, currency: 'usd', billingInterval: 'annual' },
+  summit: { monthly: null, yearly: 1000000, currency: 'usd', billingInterval: 'lifetime' },
 };
 
 // ----------------------------------------------------------------------------
