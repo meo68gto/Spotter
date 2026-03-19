@@ -679,3 +679,36 @@ export {
 export type {
   Course,
 } from "./golf.js";
+
+// ============================================================================
+// Tier System Types Re-exports
+// ============================================================================
+
+export type {
+  TierSlug,
+  TierVisibility,
+  TierStatus,
+  TierFeatures,
+  MembershipTier,
+  UserTierInfo,
+  TierValidationResult,
+  UserWithTier,
+} from "./tier.js";
+
+export {
+  TIER_DEFINITIONS,
+  TIER_PRICES,
+  TIER_ORDER,
+  FREE_TIER,
+  SELECT_TIER,
+  SUMMIT_TIER,
+  PAID_TIERS,
+  isValidTier,
+  isPaidTier,
+  getTierBySlug,
+  getNextTier,
+  formatTierPrice,
+  getTierFeatures,
+  hasTierFeature,
+  compareTiers,
+} from "./tier.js";

@@ -17,6 +17,7 @@ export type ThemeTokens = {
   warning: string;
   danger: string;
   shadow: string;
+  overlay: string;
 };
 
 export const lightTokens: ThemeTokens = {
@@ -35,7 +36,8 @@ export const lightTokens: ThemeTokens = {
   success: '#2f855a',
   warning: '#b7791f',
   danger: '#c53030',
-  shadow: '#0b3a53'
+  shadow: '#0b3a53',
+  overlay: 'rgba(11, 58, 83, 0.5)'
 };
 
 export const darkTokens: ThemeTokens = {
@@ -54,5 +56,6 @@ export const darkTokens: ThemeTokens = {
   success: '#6ed9a4',
   warning: '#f4c26d',
   danger: '#ff8c8c',
-  shadow: '#03070b'
+  shadow: '#03070b',
+  overlay: 'rgba(0, 0, 0, 0.6)'
 };
