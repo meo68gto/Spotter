@@ -484,3 +484,133 @@ export function getStrengthScoreLabel(score: number): string {
   if (score >= 20) return 'Weak';
   return 'Very Weak';
 }
+
+// ============================================================================
+// State Machine Validation (Epic 4 Finalization)
+// ============================================================================
+
+/**
+ * Valid state transitions for the connection state machine
+ * discovered → saved → invited → connected → played_together → trusted_connection
+ */
+export const VALID_STATE_TRANSITIONS: Record<RelationshipState, RelationshipState[]> = {
+  'matched': ['invited'],
+  'invited': ['played_together', 'matched'], // matched = declined/expired
+  'played_together': ['regular_partner', 'invited'],
+  'regular_partner': ['played_together'],
+};
+
+/**
+ * State transition metadata (for UI/UX)
+ */
+export interface StateTransitionInfo {
+  from: RelationshipState;
+  to: RelationshipState;
+  trigger: string;
+  description: string;
+  autoTransition?: boolean;
+  requiresAction?: 'round_completed' | 'connector_response' | 'target_response';
+}
+
+/**
+ * All valid state transitions with metadata
+ */
+export const STATE_TRANSITIONS: StateTransitionInfo[] = [
+  // From matched
+  { from: 'matched', to: 'invited', trigger: 'invitation_sent', description: 'Invitation sent for round', requiresAction: 'connector_response' },
+  
+  // From invited
+  { from: 'invited', to: 'played_together', trigger: 'round_completed', description: 'Round completed together', requiresAction: 'round_completed' },
+  { from: 'invited', to: 'matched', trigger: 'invitation_declined', description: 'Invitation declined or expired' },
+  
+  // From played_together
+  { from: 'played_together', to: 'regular_partner', trigger: 'rounds_threshold_met', description: 'Played 3+ rounds together', autoTransition: true },
+  { from: 'played_together', to: 'invited', trigger: 'demoted', description: 'Manually demoted' },
+  
+  // From regular_partner
+  { from: 'regular_partner', to: 'played_together', trigger: 'demoted', description: 'Manually demoted' },
+];
+
+/**
+ * Validate if a state transition is allowed
+ * @param fromState Current relationship state
+ * @param toState Desired new state
+ * @param roundsCount Number of rounds played together (for auto-promotion)
+ * @returns boolean indicating if transition is valid
+ */
+export function isValidStateTransition(
+  fromState: RelationshipState,
+  toState: RelationshipState,
+  roundsCount?: number
+): boolean {
+  // Auto-promote: played_together → regular_partner requires 3+ rounds
+  if (fromState === 'played_together' && toState === 'regular_partner') {
+    return roundsCount !== undefined && roundsCount >= 3;
+  }
+  
+  // Check if toState is in valid transitions list
+  return VALID_STATE_TRANSITIONS[fromState]?.includes(toState) ?? false;
+}
+
+/**
+ * Get the next expected state based on rounds count
+ * Handles auto-promotion for regular_partner
+ * @param currentState Current relationship state
+ * @param roundsCount Number of rounds played together
+ * @returns The expected state (may be same as current)
+ */
+export function getExpectedState(
+  currentState: RelationshipState,
+  roundsCount: number
+): RelationshipState {
+  if (currentState === 'played_together' && roundsCount >= 3) {
+    return 'regular_partner';
+  }
+  if (currentState === 'invited' && roundsCount >= 1) {
+    return 'played_together';
+  }
+  return currentState;
+}
+
+/**
+ * Get recommended action for current state
+ * @param state Current relationship state
+ * @returns Recommended next action
+ */
+export function getRecommendedAction(state: RelationshipState): string {
+  switch (state) {
+    case 'matched':
+      return 'Send a round invitation to start playing together';
+    case 'invited':
+      return 'Wait for invitation acceptance or play a round together';
+    case 'played_together':
+      return 'Play more rounds to become regular partners';
+    case 'regular_partner':
+      return 'Keep playing to maintain your trusted connection';
+    default:
+      return 'Explore your network';
+  }
+}
+
+/**
+ * Get visual indicator properties for a relationship state
+ * @param state Relationship state
+ * @returns Visual properties (icon, color, etc.)
+ */
+export function getRelationshipStateVisuals(state: RelationshipState): {
+  icon: string;
+  color: string;
+  bgColor: string;
+} {
+  switch (state) {
+    case 'regular_partner':
+      return { icon: '🏆', color: '#7c3aed', bgColor: '#ede9fe' }; // violet
+    case 'played_together':
+      return { icon: '⛳', color: '#3b82f6', bgColor: '#dbeafe' }; // blue
+    case 'invited':
+      return { icon: '📨', color: '#f59e0b', bgColor: '#fef3c7' }; // amber
+    case 'matched':
+    default:
+      return { icon: '👤', color: '#6b7280', bgColor: '#f3f4f6' }; // gray
+  }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { NetworkConnection, NetworkStats, RelationshipState } from '@spotter/types';
+import { NetworkConnection, NetworkStats, RelationshipState, getRelationshipStateLabel } from '@spotter/types';
 import { ConnectionCard } from '../components/ConnectionCard';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useAuth } from '../hooks/useAuth';
@@ -180,6 +180,24 @@ export function NetworkScreen() {
       : connection.userId;
   };
 
+  // Calculate network breakdown by relationship state
+  const networkBreakdown = useMemo(() => {
+    const breakdown: Record<RelationshipState, number> = {
+      matched: 0,
+      invited: 0,
+      played_together: 0,
+      regular_partner: 0,
+    };
+    
+    connections.forEach(conn => {
+      if (conn.status === 'accepted') {
+        breakdown[conn.relationshipState]++;
+      }
+    });
+    
+    return breakdown;
+  }, [connections]);
+
   if (loading && connections.length === 0) {
     return <LoadingScreen message="Loading your network..." />;
   }
@@ -210,44 +228,70 @@ export function NetworkScreen() {
             label="Connections" 
             value={stats.totalConnections} 
             icon="👥"
+            color={palette.navy600}
           />
           <StatCard 
             label="Regular Partners" 
             value={stats.regularPartners} 
             icon="🏌️"
+            color={palette.green500}
           />
           <StatCard 
             label="Avg Strength" 
             value={`${stats.avgStrengthScore}%`} 
             icon="💪"
+            color={palette.amber500}
           />
           <StatCard 
             label="Pending Intros" 
             value={stats.pendingIntroductions} 
             icon="🤝"
+            color={palette.blue500}
           />
         </ScrollView>
+      )}
+
+      {/* Network Breakdown */}
+      {connections.length > 0 && (
+        <View style={styles.breakdownContainer}>
+          <Text style={styles.breakdownTitle}>Network Breakdown</Text>
+          <View style={styles.breakdownRow}>
+            {Object.entries(networkBreakdown).map(([state, count]) => (
+              count > 0 && (
+                <View key={state} style={styles.breakdownItem}>
+                  <View style={[styles.breakdownDot, { backgroundColor: getStateColor(state as RelationshipState) }]} />
+                  <Text style={styles.breakdownLabel}>{getRelationshipStateLabel(state as RelationshipState)}</Text>
+                  <Text style={styles.breakdownCount}>{count}</Text>
+                </View>
+              )
+            ))}
+          </View>
+        </View>
       )}
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
         <FilterTab 
           label="All" 
+          count={connections.length}
           active={filter === 'all'} 
           onPress={() => setFilter('all')} 
         />
         <FilterTab 
           label="Connections" 
+          count={connections.filter(c => c.status === 'accepted').length}
           active={filter === 'accepted'} 
           onPress={() => setFilter('accepted')} 
         />
         <FilterTab 
           label="Pending" 
+          count={connections.filter(c => c.status === 'pending_sent' || c.status === 'pending_received').length}
           active={filter === 'pending'} 
           onPress={() => setFilter('pending')} 
         />
         <FilterTab 
           label="Saved" 
+          count={connections.filter(c => c.isSavedByMe).length}
           active={filter === 'saved'} 
           onPress={() => setFilter('saved')} 
         />
@@ -288,12 +332,27 @@ export function NetworkScreen() {
         onEndReachedThreshold={0.5}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No connections yet</Text>
+            <View style={styles.emptyIconContainer}>
+              <Text style={styles.emptyIcon}>🌐</Text>
+            </View>
+            <Text style={styles.emptyTitle}>
+              {filter === 'saved' 
+                ? 'No saved members yet'
+                : 'Your network is empty'}
+            </Text>
             <Text style={styles.emptyText}>
               {filter === 'saved' 
-                ? 'Save members to organize your network'
-                : 'Discover and connect with other golfers in your tier'}
+                ? 'Save members to organize your network and prioritize your connections'
+                : 'Discover and connect with other golfers in your tier. Build your private network through warm introductions and shared rounds.'}
             </Text>
+            {filter !== 'saved' && (
+              <TouchableOpacity 
+                style={styles.emptyAction}
+                onPress={() => navigation.navigate('Profile' as never)}
+              >
+                <Text style={styles.emptyActionText}>Discover Members →</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -305,11 +364,12 @@ interface StatCardProps {
   label: string;
   value: string | number;
   icon: string;
+  color?: string;
 }
 
-function StatCard({ label, value, icon }: StatCardProps) {
+function StatCard({ label, value, icon, color = palette.navy600 }: StatCardProps) {
   return (
-    <View style={styles.statCard}>
+    <View style={[styles.statCard, { borderLeftColor: color, borderLeftWidth: 3 }]}>
       <Text style={styles.statIcon}>{icon}</Text>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
@@ -319,11 +379,12 @@ function StatCard({ label, value, icon }: StatCardProps) {
 
 interface FilterTabProps {
   label: string;
+  count?: number;
   active: boolean;
   onPress: () => void;
 }
 
-function FilterTab({ label, active, onPress }: FilterTabProps) {
+function FilterTab({ label, count, active, onPress }: FilterTabProps) {
   return (
     <TouchableOpacity
       style={[styles.filterTab, active && styles.activeFilterTab]}
@@ -332,8 +393,30 @@ function FilterTab({ label, active, onPress }: FilterTabProps) {
       <Text style={[styles.filterText, active && styles.activeFilterText]}>
         {label}
       </Text>
+      {count !== undefined && count > 0 && (
+        <View style={[styles.countBadge, active && styles.activeCountBadge]}>
+          <Text style={[styles.countText, active && styles.activeCountText]}>
+            {count}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
+}
+
+function getStateColor(state: RelationshipState): string {
+  switch (state) {
+    case 'regular_partner':
+      return '#22c55e'; // green-500
+    case 'played_together':
+      return '#3b82f6'; // blue-500
+    case 'invited':
+      return '#f59e0b'; // amber-500
+    case 'matched':
+      return '#6b7280'; // gray-500
+    default:
+      return '#6b7280';
+  }
 }
 
 const styles = StyleSheet.create({
@@ -381,14 +464,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.lg,
     alignItems: 'center',
-    minWidth: 80,
+    minWidth: 90,
   },
   statIcon: {
     fontSize: 24,
     marginBottom: spacing.xs,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: palette.ink900,
   },
@@ -396,6 +479,47 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: palette.ink600,
     marginTop: 2,
+  },
+  breakdownContainer: {
+    backgroundColor: palette.white,
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.ink100,
+  },
+  breakdownTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.ink700,
+    marginBottom: spacing.sm,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  breakdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: palette.ink50,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+  },
+  breakdownDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.pill,
+  },
+  breakdownLabel: {
+    fontSize: 12,
+    color: palette.ink600,
+  },
+  breakdownCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: palette.ink900,
+    marginLeft: spacing.xs,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -407,10 +531,13 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
     backgroundColor: palette.ink100,
-    alignItems: 'center',
   },
   activeFilterTab: {
     backgroundColor: palette.navy600,
@@ -423,6 +550,26 @@ const styles = StyleSheet.create({
   activeFilterText: {
     color: palette.white,
   },
+  countBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: radius.pill,
+    backgroundColor: palette.ink300,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  activeCountBadge: {
+    backgroundColor: palette.navy400,
+  },
+  countText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: palette.ink700,
+  },
+  activeCountText: {
+    color: palette.white,
+  },
   listContent: {
     padding: spacing.lg,
   },
@@ -432,16 +579,45 @@ const styles = StyleSheet.create({
   emptyContainer: {
     padding: spacing.xl,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 300,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.xl,
+    backgroundColor: palette.navy100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyIcon: {
+    fontSize: 40,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: palette.ink700,
+    color: palette.ink800,
     marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
     color: palette.ink500,
     textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 300,
+  },
+  emptyAction: {
+    marginTop: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: palette.navy600,
+    borderRadius: radius.lg,
+  },
+  emptyActionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: palette.white,
   },
 });

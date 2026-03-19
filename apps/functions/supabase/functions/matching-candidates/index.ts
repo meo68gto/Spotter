@@ -4,6 +4,7 @@ import { createAuthedClient, createServiceClient } from '../_shared/client.ts';
 import { resolveBooleanFlag } from '../_shared/flags-db.ts';
 import { trackServerEvent } from '../_shared/telemetry.ts';
 import { requireLegalConsent } from '../_shared/guard.ts';
+import { getUserTierId, checkSameTier, createTierViolationResponse } from '../_shared/enforcement.ts';
 
 interface Payload {
   activityId: string;
@@ -39,6 +40,12 @@ Deno.serve(async (req) => {
 
   const legal = await requireLegalConsent(user.id);
   if (legal) return legal;
+
+  // Same-tier enforcement: Get user's tier for filtering
+  const userTierId = await getUserTierId(supabase, user.id);
+  if (!userTierId) {
+    return json(403, { error: 'User tier not found', code: 'tier_not_found' });
+  }
 
   const matchingV2 = await resolveBooleanFlag(service, 'matching_v2', false);
 

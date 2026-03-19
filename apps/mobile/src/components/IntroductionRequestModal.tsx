@@ -177,6 +177,14 @@ export function IntroductionRequestModal({
                 maxLength={500}
               />
               <Text style={styles.charCount}>{message.length}/500</Text>
+              
+              {/* Timeout Notice */}
+              <View style={styles.timeoutNotice}>
+                <Text style={styles.timeoutIcon}>⏱️</Text>
+                <Text style={styles.timeoutText}>
+                  Introduction requests expire after 48 hours if not accepted
+                </Text>
+              </View>
             </View>
 
             {/* Error Message */}
@@ -358,6 +366,24 @@ const styles = StyleSheet.create({
     color: palette.ink500,
     textAlign: 'right',
     marginTop: spacing.xs,
+  },
+  timeoutNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: palette.amber50,
+    borderRadius: radius.md,
+  },
+  timeoutIcon: {
+    fontSize: 14,
+  },
+  timeoutText: {
+    flex: 1,
+    fontSize: 12,
+    color: palette.amber700,
+    fontStyle: 'italic',
   },
   errorText: {
     fontSize: 14,

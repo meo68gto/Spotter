@@ -428,6 +428,14 @@ export type {
   GolfIdentity,
   PlayFrequency,
   TeeTimePreference,
+  // Epic 1: Golf Identity Extensions (Note: HandicapBand also exported from discovery.js)
+  RoundFrequency,
+  MobilityPreference,
+  // Networking Preferences
+  NetworkingPreferences,
+  NetworkingIntent,
+  PreferredGroupSize,
+  // Note: CartPreference also exported from discovery.js
   // Extended Profile
   ExtendedProfile,
   ProfileCompleteness,
@@ -463,6 +471,9 @@ export {
   CONNECTION_TYPES,
   PROFILE_SECTIONS,
   REPUTATION_WEIGHTS,
+  // Epic 1: Additional Constants (Note: HANDICAP_BANDS also exported from discovery.js)
+  ROUND_FREQUENCIES,
+  MOBILITY_PREFERENCES,
   // Type Guards
   isValidPlayFrequency,
   isValidConnectionStatus,
@@ -472,6 +483,9 @@ export {
   isValidCompanyVerificationStatus,
   isValidIntroStatus,
   isValidReputationComponent,
+  // Epic 1: Additional Type Guards (Note: isValidHandicapBand also exported from discovery.js)
+  isValidRoundFrequency,
+  isValidMobilityPreference,
 } from "./profile.js";
 
 // ============================================================================

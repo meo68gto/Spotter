@@ -27,25 +27,38 @@ import type { TierSlug } from '../../components/TierBadge';
 
 const STORAGE_KEY = 'spotter:onboarding-phase1-draft';
 
-// Tier definitions for display
-const TIER_OPTIONS: { slug: TierSlug; name: string; price: string; description: string }[] = [
+// Tier definitions for display - Epic 1: Enhanced with premium styling
+const TIER_OPTIONS: {
+  slug: TierSlug;
+  name: string;
+  price: string;
+  description: string;
+  features: string[];
+  highlight?: string;
+  gradient?: [string, string];
+}[] = [
   {
     slug: 'free',
     name: 'Free',
     price: '$0',
-    description: 'Connect with other golfers in your area. Limited to same-tier members.',
+    description: 'Connect with other golfers in your area',
+    features: ['Limited to same-tier members', '3 matches/month', 'Basic profile'],
   },
   {
     slug: 'select',
     name: 'Select',
     price: '$1,000/year',
-    description: 'Full access to unlimited connections within your tier. Premium networking.',
+    description: 'Full access to unlimited connections within your tier',
+    features: ['Unlimited connections', 'Video analysis', 'Priority matching', 'Event access'],
+    highlight: 'Most Popular',
   },
   {
     slug: 'summit',
     name: 'Summit',
     price: '$10,000 lifetime',
-    description: 'Lifetime unlimited access with priority boosts and exclusive features.',
+    description: 'The ultimate experience with all features unlocked',
+    features: ['Lifetime access', 'All features unlocked', 'Group sessions', 'Early access', 'Ad-free experience'],
+    gradient: ['#FFD700', '#FFA500'], // Gold gradient for Summit
   },
 ];
 
@@ -73,19 +86,33 @@ const GROUP_SIZES = [
   { value: 'any', label: 'Any size' },
 ];
 
-// Cart preferences
-const CART_PREFS = [
-  { value: 'walking', label: 'Walking' },
-  { value: 'cart', label: 'Riding' },
-  { value: 'either', label: 'Either' },
+// Cart preferences (legacy) + Epic 1 Mobility preferences
+const MOBILITY_PREFERENCES = [
+  { value: 'walking', label: 'Walking', icon: '🚶' },
+  { value: 'walking_preferred', label: 'Walking Preferred', icon: '🚶' },
+  { value: 'cart', label: 'Cart', icon: '🛒' },
+  { value: 'cart_preferred', label: 'Cart Preferred', icon: '🛒' },
+  { value: 'either', label: 'Either', icon: '↔️' },
 ];
 
-// Play frequency
-const PLAY_FREQUENCIES = [
+// Epic 1: Round frequency for onboarding preferences
+const ROUND_FREQUENCIES = [
+  { value: 'multiple_per_week', label: 'Multiple/week' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Bi-weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'occasionally', label: 'Occasionally' },
+  { value: 'rarely', label: 'Rarely' },
+];
+
+// Epic 1: Tee time preferences (expanded)
+const TEE_TIME_PREFERENCES = [
+  { value: 'early_bird', label: 'Early Bird', description: 'Before 9am' },
+  { value: 'mid_morning', label: 'Mid-Morning', description: '9am-12pm' },
+  { value: 'afternoon', label: 'Afternoon', description: '12pm-4pm' },
+  { value: 'twilight', label: 'Twilight', description: 'After 4pm' },
+  { value: 'weekends_only', label: 'Weekends', description: 'Only weekends' },
+  { value: 'flexible', label: 'Flexible', description: 'No preference' },
 ];
 
 // Step configuration
@@ -102,28 +129,32 @@ type StepKey = typeof STEPS[number]['key'];
 interface OnboardingDraft {
   // Tier selection
   tierSlug: TierSlug;
-  
+
   // Golf identity
   handicapBand: string;
   typicalScore: number;
   homeCourse: string;
+  homeCourseArea: string; // Epic 1: Alternative to course ID
   playFrequency: string;
   yearsPlaying: string;
-  
+
   // Professional identity
   role: string;
   company: string;
   industry: string;
   linkedinUrl: string;
-  
+
   // Networking preferences
   networkingIntent: string;
   openToIntros: boolean;
   openToRecurring: boolean;
   preferredGroupSize: string;
   cartPreference: string;
+  mobilityPreference: string; // Epic 1: Enhanced mobility preference
   preferredArea: string;
-  
+  roundFrequency: string; // Epic 1: How often user wants to play
+  preferredTeeTimeWindow: string; // Epic 1: Preferred tee time
+
   // Location
   city: string;
   timezone: string;
@@ -134,6 +165,7 @@ const initialDraft: OnboardingDraft = {
   handicapBand: '',
   typicalScore: 0,
   homeCourse: '',
+  homeCourseArea: '', // Epic 1
   playFrequency: '',
   yearsPlaying: '',
   role: '',
@@ -145,7 +177,10 @@ const initialDraft: OnboardingDraft = {
   openToRecurring: false,
   preferredGroupSize: 'any',
   cartPreference: 'either',
+  mobilityPreference: 'either', // Epic 1
   preferredArea: '',
+  roundFrequency: '', // Epic 1
+  preferredTeeTimeWindow: '', // Epic 1
   city: '',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 };
@@ -186,50 +221,51 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
           return false;
         }
         return true;
-        
+
       case 1: // Golf Identity
         if (!draft.handicapBand) {
           Alert.alert('Select skill level', 'Choose your handicap band to continue.');
           return false;
         }
         return true;
-        
+
       case 2: // Professional
         // Optional step - allow skipping
         return true;
-        
+
       case 3: // Networking
         if (!draft.networkingIntent) {
           Alert.alert('Select networking intent', 'Let us know what you\'re looking for.');
           return false;
         }
         return true;
-        
+
       default:
         return true;
     }
   };
 
-  // Submit onboarding data
+  // Submit onboarding data - Epic 1: Enhanced with all fields
   const submit = async () => {
     if (!validateStep()) return;
     setLoading(true);
-    
+
     try {
-      // Build the onboarding payload
+      // Epic 1: Comprehensive onboarding payload
       const payload = {
         // Tier selection
         tierSlug: draft.tierSlug,
-        
+
         // Golf identity
         golfIdentity: {
           handicapBand: draft.handicapBand,
           typicalScore: draft.typicalScore,
           homeCourse: draft.homeCourse || null,
+          homeCourseArea: draft.homeCourseArea || null, // Epic 1
           playFrequency: draft.playFrequency || null,
           yearsPlaying: draft.yearsPlaying ? parseInt(draft.yearsPlaying, 10) : null,
         },
-        
+
         // Professional identity (if provided)
         professionalIdentity: draft.role || draft.company ? {
           role: draft.role,
@@ -237,18 +273,24 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
           industry: draft.industry || null,
           linkedinUrl: draft.linkedinUrl || null,
         } : null,
-        
-        // Networking preferences
+
+        // Networking preferences - Epic 1: All fields
         networkingPreferences: {
           networkingIntent: draft.networkingIntent,
+          industry: draft.industry || null,
+          company: draft.company || null,
+          titleOrRole: draft.role || null,
           openToIntros: draft.openToIntros,
           openToSendingIntros: draft.openToIntros, // Same for now
           openToRecurringRounds: draft.openToRecurring,
           preferredGroupSize: draft.preferredGroupSize,
           cartPreference: draft.cartPreference,
+          mobilityPreference: draft.mobilityPreference, // Epic 1
+          roundFrequency: draft.roundFrequency, // Epic 1
+          preferredTeeTimeWindow: draft.preferredTeeTimeWindow, // Epic 1
           preferredGolfArea: draft.preferredArea || null,
         },
-        
+
         // Location
         location: {
           city: draft.city,
@@ -303,32 +345,70 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
             <Text style={[styles.stepDescription, { color: tokens.textSecondary }]}>
               Choose your membership tier. You can only connect with members in the same tier.
             </Text>
-            
-            {TIER_OPTIONS.map((tier) => {
+
+            {TIER_OPTIONS.map((tier, index) => {
               const active = draft.tierSlug === tier.slug;
+              const isSummit = tier.slug === 'summit';
+              const isSelect = tier.slug === 'select';
+
               return (
                 <TouchableOpacity
                   key={tier.slug}
                   style={[
                     styles.tierCard,
-                    { 
+                    isSummit && active && styles.tierCardSummitActive,
+                    {
                       borderColor: active ? tokens.primary : tokens.border,
                       backgroundColor: active ? tokens.primary + '15' : tokens.surface,
                     },
                   ]}
                   onPress={() => setDraft((prev) => ({ ...prev, tierSlug: tier.slug }))}
                 >
+                  {/* Epic 1: Premium Summit styling */}
+                  {isSummit && (
+                    <View style={styles.summitBadge}>
+                      <Text style={styles.summitBadgeText}>👑 LIFETIME</Text>
+                    </View>
+                  )}
+                  {isSelect && tier.highlight && (
+                    <View style={[styles.popularBadge, { backgroundColor: tokens.success }]}>
+                      <Text style={styles.popularBadgeText}>{tier.highlight}</Text>
+                    </View>
+                  )}
+
                   <View style={styles.tierHeader}>
-                    <Text style={[styles.tierName, { color: tokens.text }]}>
+                    <Text style={[
+                      styles.tierName,
+                      isSummit && styles.tierNameSummit,
+                      { color: tokens.text }
+                    ]}>
                       {tier.name}
                     </Text>
-                    <Text style={[styles.tierPrice, { color: tokens.primary }]}>
+                    <Text style={[
+                      styles.tierPrice,
+                      isSummit && styles.tierPriceSummit,
+                      { color: tokens.primary }
+                    ]}>
                       {tier.price}
                     </Text>
                   </View>
+
                   <Text style={[styles.tierDescription, { color: tokens.textSecondary }]}>
                     {tier.description}
                   </Text>
+
+                  {/* Epic 1: Features list for better decision making */}
+                  <View style={styles.tierFeatures}>
+                    {tier.features.map((feature, i) => (
+                      <View key={i} style={styles.featureRow}>
+                        <Text style={[styles.featureCheck, { color: tokens.success }]}>✓</Text>
+                        <Text style={[styles.featureText, { color: tokens.textSecondary }]}>
+                          {feature}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
                   {active && (
                     <View style={[styles.selectedBadge, { backgroundColor: tokens.primary }]}>
                       <Text style={styles.selectedText}>Selected</Text>
@@ -339,14 +419,14 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
             })}
           </ScrollView>
         );
-        
+
       case 1:
         return (
           <ScrollView style={styles.panel} showsVerticalScrollIndicator={false}>
             <Text style={[styles.stepDescription, { color: tokens.textSecondary }]}>
               Tell us about your golf game so we can match you with similar players.
             </Text>
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text }]}>
               Skill Level
             </Text>
@@ -357,7 +437,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                   key={band.value}
                   style={[
                     styles.optionRow,
-                    { 
+                    {
                       borderColor: active ? tokens.primary : tokens.border,
                       backgroundColor: active ? tokens.primary + '15' : tokens.surface,
                     },
@@ -376,7 +456,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                 </TouchableOpacity>
               );
             })}
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 20 }]}>
               Play Frequency
             </Text>
@@ -388,7 +468,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                     key={freq.value}
                     style={[
                       styles.gridOption,
-                      { 
+                      {
                         borderColor: active ? tokens.primary : tokens.border,
                         backgroundColor: active ? tokens.primary + '15' : tokens.surface,
                       },
@@ -402,7 +482,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                 );
               })}
             </View>
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 20 }]}>
               Home Course (Optional)
             </Text>
@@ -413,14 +493,14 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               placeholderTextColor={tokens.textMuted}
               style={[
                 styles.input,
-                { 
-                  borderColor: tokens.borderStrong, 
-                  color: tokens.text, 
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
                   backgroundColor: tokens.backgroundElevated,
                 },
               ]}
             />
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 12 }]}>
               Years Playing (Optional)
             </Text>
@@ -432,16 +512,16 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               placeholderTextColor={tokens.textMuted}
               style={[
                 styles.input,
-                { 
-                  borderColor: tokens.borderStrong, 
-                  color: tokens.text, 
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
                   backgroundColor: tokens.backgroundElevated,
                 },
               ]}
             />
           </ScrollView>
         );
-        
+
       case 2:
         return (
           <ScrollView style={styles.panel} showsVerticalScrollIndicator={false}>
@@ -449,7 +529,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               Add your professional information to enable business networking on the course.
               (Optional - you can skip this)
             </Text>
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text }]}>
               Job Title
             </Text>
@@ -460,14 +540,14 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               placeholderTextColor={tokens.textMuted}
               style={[
                 styles.input,
-                { 
-                  borderColor: tokens.borderStrong, 
-                  color: tokens.text, 
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
                   backgroundColor: tokens.backgroundElevated,
                 },
               ]}
             />
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 16 }]}>
               Company
             </Text>
@@ -478,14 +558,14 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               placeholderTextColor={tokens.textMuted}
               style={[
                 styles.input,
-                { 
-                  borderColor: tokens.borderStrong, 
-                  color: tokens.text, 
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
                   backgroundColor: tokens.backgroundElevated,
                 },
               ]}
             />
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 16 }]}>
               Industry
             </Text>
@@ -496,14 +576,14 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               placeholderTextColor={tokens.textMuted}
               style={[
                 styles.input,
-                { 
-                  borderColor: tokens.borderStrong, 
-                  color: tokens.text, 
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
                   backgroundColor: tokens.backgroundElevated,
                 },
               ]}
             />
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 16 }]}>
               LinkedIn (Optional)
             </Text>
@@ -515,23 +595,23 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               autoCapitalize="none"
               style={[
                 styles.input,
-                { 
-                  borderColor: tokens.borderStrong, 
-                  color: tokens.text, 
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
                   backgroundColor: tokens.backgroundElevated,
                 },
               ]}
             />
           </ScrollView>
         );
-        
+
       case 3:
         return (
           <ScrollView style={styles.panel} showsVerticalScrollIndicator={false}>
             <Text style={[styles.stepDescription, { color: tokens.textSecondary }]}>
               Tell us what you're looking for so we can help you find the right golf partners.
             </Text>
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text }]}>
               Networking Intent
             </Text>
@@ -542,7 +622,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                   key={intent.value}
                   style={[
                     styles.intentCard,
-                    { 
+                    {
                       borderColor: active ? tokens.primary : tokens.border,
                       backgroundColor: active ? tokens.primary + '15' : tokens.surface,
                     },
@@ -558,11 +638,11 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                 </TouchableOpacity>
               );
             })}
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 24 }]}>
               Round Preferences
             </Text>
-            
+
             <Text style={[styles.subLabel, { color: tokens.textSecondary }]}>
               Preferred Group Size
             </Text>
@@ -574,7 +654,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                     key={size.value}
                     style={[
                       styles.gridOption,
-                      { 
+                      {
                         borderColor: active ? tokens.primary : tokens.border,
                         backgroundColor: active ? tokens.primary + '15' : tokens.surface,
                       },
@@ -588,37 +668,100 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                 );
               })}
             </View>
-            
+
             <Text style={[styles.subLabel, { color: tokens.textSecondary, marginTop: 16 }]}>
-              Cart Preference
+              Mobility Preference
             </Text>
             <View style={styles.optionsGrid}>
-              {CART_PREFS.map((pref) => {
-                const active = draft.cartPreference === pref.value;
+              {MOBILITY_PREFERENCES.map((pref) => {
+                const active = draft.mobilityPreference === pref.value;
                 return (
                   <TouchableOpacity
                     key={pref.value}
                     style={[
                       styles.gridOption,
-                      { 
+                      {
                         borderColor: active ? tokens.primary : tokens.border,
                         backgroundColor: active ? tokens.primary + '15' : tokens.surface,
                       },
                     ]}
-                    onPress={() => setDraft((prev) => ({ ...prev, cartPreference: pref.value }))}
+                    onPress={() => setDraft((prev) => ({ ...prev, mobilityPreference: pref.value }))}
                   >
                     <Text style={[styles.gridOptionText, { color: tokens.text }]}>
-                      {pref.label}
+                      {pref.icon} {pref.label}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            
+
+            {/* Epic 1: Round Frequency */}
+            <Text style={[styles.subLabel, { color: tokens.textSecondary, marginTop: 16 }]}>
+              Round Frequency
+            </Text>
+            <Text style={[styles.helperText, { color: tokens.textMuted }]}>
+              How often do you want to play?
+            </Text>
+            <View style={styles.optionsGrid}>
+              {ROUND_FREQUENCIES.map((freq) => {
+                const active = draft.roundFrequency === freq.value;
+                return (
+                  <TouchableOpacity
+                    key={freq.value}
+                    style={[
+                      styles.gridOption,
+                      {
+                        borderColor: active ? tokens.primary : tokens.border,
+                        backgroundColor: active ? tokens.primary + '15' : tokens.surface,
+                      },
+                    ]}
+                    onPress={() => setDraft((prev) => ({ ...prev, roundFrequency: freq.value }))}
+                  >
+                    <Text style={[styles.gridOptionText, { color: tokens.text }]}>
+                      {freq.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Epic 1: Preferred Tee Time Window */}
+            <Text style={[styles.subLabel, { color: tokens.textSecondary, marginTop: 16 }]}>
+              Preferred Tee Time
+            </Text>
+            <Text style={[styles.helperText, { color: tokens.textMuted }]}>
+              When do you prefer to tee off?
+            </Text>
+            <View style={styles.teeTimeGrid}>
+              {TEE_TIME_PREFERENCES.map((time) => {
+                const active = draft.preferredTeeTimeWindow === time.value;
+                return (
+                  <TouchableOpacity
+                    key={time.value}
+                    style={[
+                      styles.teeTimeOption,
+                      {
+                        borderColor: active ? tokens.primary : tokens.border,
+                        backgroundColor: active ? tokens.primary + '15' : tokens.surface,
+                      },
+                    ]}
+                    onPress={() => setDraft((prev) => ({ ...prev, preferredTeeTimeWindow: time.value }))}
+                  >
+                    <Text style={[styles.teeTimeLabel, { color: tokens.text }]}>
+                      {time.label}
+                    </Text>
+                    <Text style={[styles.teeTimeDescription, { color: tokens.textMuted }]}>
+                      {time.description}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 24 }]}>
               Preferences
             </Text>
-            
+
             <TouchableOpacity
               style={styles.toggleRow}
               onPress={() => setDraft((prev) => ({ ...prev, openToIntros: !prev.openToIntros }))}
@@ -636,7 +779,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                 Open to introductions
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.toggleRow}
               onPress={() => setDraft((prev) => ({ ...prev, openToRecurring: !prev.openToRecurring }))}
@@ -654,7 +797,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
                 Open to recurring rounds
               </Text>
             </TouchableOpacity>
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 24 }]}>
               Preferred Golf Area (Optional)
             </Text>
@@ -665,14 +808,14 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               placeholderTextColor={tokens.textMuted}
               style={[
                 styles.input,
-                { 
-                  borderColor: tokens.borderStrong, 
-                  color: tokens.text, 
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
                   backgroundColor: tokens.backgroundElevated,
                 },
               ]}
             />
-            
+
             <Text style={[styles.sectionLabel, { color: tokens.text, marginTop: 16 }]}>
               Your City
             </Text>
@@ -683,16 +826,16 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
               placeholderTextColor={tokens.textMuted}
               style={[
                 styles.input,
-                { 
-                  borderColor: tokens.borderStrong, 
-                  color: tokens.text, 
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
                   backgroundColor: tokens.backgroundElevated,
                 },
               ]}
             />
           </ScrollView>
         );
-        
+
       default:
         return null;
     }
@@ -790,10 +933,42 @@ const styles = StyleSheet.create({
   },
   // Tier cards
   tierCard: {
-    borderWidth: 2,
+    borderWidth: 1,
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
+  },
+  tierCardSummitActive: {
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  summitBadge: {
+    position: 'absolute',
+    top: -8,
+    right: 12,
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  summitBadgeText: {
+    color: '#1a1a1a',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  popularBadge: {
+    position: 'absolute',
+    top: -8,
+    right: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  popularBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
   },
   tierHeader: {
     flexDirection: 'row',
@@ -805,13 +980,38 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
   },
+  tierNameSummit: {
+    fontSize: 20,
+    fontWeight: '900',
+  },
   tierPrice: {
     fontSize: 16,
     fontWeight: '700',
   },
+  tierPriceSummit: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
   tierDescription: {
     fontSize: 13,
     lineHeight: 18,
+    marginBottom: 10,
+  },
+  tierFeatures: {
+    marginTop: 8,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  featureCheck: {
+    marginRight: 8,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  featureText: {
+    fontSize: 12,
   },
   selectedBadge: {
     position: 'absolute',
@@ -901,6 +1101,34 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 15,
     fontWeight: '500',
+  },
+  // Epic 1: Helper text for field descriptions
+  helperText: {
+    fontSize: 12,
+    marginTop: -4,
+    marginBottom: 10,
+  },
+  // Epic 1: Tee time grid styles
+  teeTimeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  teeTimeOption: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    width: '48%',
+    alignItems: 'center',
+  },
+  teeTimeLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  teeTimeDescription: {
+    fontSize: 11,
   },
   // Actions
   actions: {

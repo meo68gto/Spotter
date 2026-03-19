@@ -10,12 +10,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============================================================================
+// Epic 1: Phase 1 Onboarding Edge Function - Enhanced Type Definitions
+// ============================================================================
+
 interface OnboardingPayload {
   tierSlug: string;
   golfIdentity: {
-    handicapBand: string;
+    handicapBand: string; // 'beginner', 'intermediate', 'advanced', 'expert'
     typicalScore: number;
     homeCourse: string | null;
+    homeCourseArea: string | null; // Epic 1: Alternative to home_course_id
     playFrequency: string | null;
     yearsPlaying: number | null;
   };
@@ -27,11 +32,18 @@ interface OnboardingPayload {
   } | null;
   networkingPreferences: {
     networkingIntent: string;
+    // Epic 1: Professional identity fields for business networking
+    industry: string | null;
+    company: string | null;
+    titleOrRole: string | null;
     openToIntros: boolean;
     openToSendingIntros: boolean;
     openToRecurringRounds: boolean;
     preferredGroupSize: string;
     cartPreference: string;
+    mobilityPreference: string; // Epic 1: Enhanced mobility preference
+    roundFrequency: string; // Epic 1: How often user wants to play
+    preferredTeeTimeWindow: string; // Epic 1: When they prefer to tee off
     preferredGolfArea: string | null;
   };
   location: {
@@ -158,14 +170,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create or update golf identity
+    // Epic 1: Create or update golf identity with all fields
     const { error: golfIdentityError } = await supabaseClient
       .from('user_golf_identities')
       .upsert({
         user_id: user.id,
         handicap: payload.golfIdentity.typicalScore || null,
+        handicap_band: payload.golfIdentity.handicapBand, // Epic 1
         home_course_id: null, // Would need to look up course ID from name
-        playing_frequency: payload.golfIdentity.playFrequency,
+        home_course_area: payload.golfIdentity.homeCourseArea, // Epic 1
+        play_frequency: payload.golfIdentity.playFrequency, // Epic 1: renamed from playing_frequency
         years_playing: payload.golfIdentity.yearsPlaying,
         updated_at: now.toISOString(),
       }, {
@@ -198,17 +212,24 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create or update networking preferences
+    // Epic 1: Create or update networking preferences with all fields
     const { error: networkingPrefsError } = await supabaseClient
       .from('user_networking_preferences')
       .upsert({
         user_id: user.id,
         networking_intent: payload.networkingPreferences.networkingIntent,
+        // Epic 1: Professional identity fields for discovery/matching
+        industry: payload.networkingPreferences.industry,
+        company: payload.networkingPreferences.company,
+        title_or_role: payload.networkingPreferences.titleOrRole,
         open_to_intros: payload.networkingPreferences.openToIntros,
         open_to_sending_intros: payload.networkingPreferences.openToSendingIntros,
         open_to_recurring_rounds: payload.networkingPreferences.openToRecurringRounds,
         preferred_group_size: payload.networkingPreferences.preferredGroupSize,
         cart_preference: payload.networkingPreferences.cartPreference,
+        mobility_preference: payload.networkingPreferences.mobilityPreference, // Epic 1
+        round_frequency: payload.networkingPreferences.roundFrequency, // Epic 1
+        preferred_tee_time_window: payload.networkingPreferences.preferredTeeTimeWindow, // Epic 1
         preferred_golf_area: payload.networkingPreferences.preferredGolfArea,
         updated_at: now.toISOString(),
       }, {
@@ -243,7 +264,7 @@ Deno.serve(async (req) => {
       // Continue - not critical
     }
 
-    // Log the onboarding completion
+    // Epic 1: Log the onboarding completion with comprehensive metadata
     await supabaseClient
       .from('tier_history')
       .insert({
@@ -257,7 +278,10 @@ Deno.serve(async (req) => {
         metadata: {
           handicap_band: payload.golfIdentity.handicapBand,
           networking_intent: payload.networkingPreferences.networkingIntent,
-          onboarding_version: 'phase1',
+          mobility_preference: payload.networkingPreferences.mobilityPreference, // Epic 1
+          round_frequency: payload.networkingPreferences.roundFrequency, // Epic 1
+          preferred_tee_time: payload.networkingPreferences.preferredTeeTimeWindow, // Epic 1
+          onboarding_version: 'phase1_epic1',
         },
       });
 

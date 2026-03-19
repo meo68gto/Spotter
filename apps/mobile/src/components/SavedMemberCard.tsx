@@ -18,6 +18,7 @@ interface SavedMemberCardProps {
   golf?: {
     handicap?: number;
   };
+  createdAt?: string;
   onPress?: () => void;
   onEdit?: () => void;
 }
@@ -32,11 +33,13 @@ export function SavedMemberCard({
   tags = [],
   professional,
   golf,
+  createdAt,
   onPress,
   onEdit,
 }: SavedMemberCardProps) {
   const tierColor = getTierColor(savedTier);
   const tierLabel = getSavedMemberTierLabel(savedTier);
+  const savedDate = createdAt ? formatSavedDate(createdAt) : null;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
@@ -59,7 +62,14 @@ export function SavedMemberCard({
 
           {/* Info Section */}
           <View style={styles.infoSection}>
-            <Text style={styles.name}>{displayName}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>{displayName}</Text>
+              {tier && (
+                <View style={[styles.membershipBadge, { backgroundColor: getMembershipTierColor(tier) }]}>
+                  <Text style={styles.membershipText}>{tier}</Text>
+                </View>
+              )}
+            </View>
             
             {professional?.role && (
               <Text style={styles.role}>
@@ -92,6 +102,11 @@ export function SavedMemberCard({
                 {notes}
               </Text>
             )}
+
+            {/* Saved Date */}
+            {savedDate && (
+              <Text style={styles.savedDate}>Saved {savedDate}</Text>
+            )}
           </View>
 
           {/* Edit Button */}
@@ -115,6 +130,31 @@ function getTierColor(tier: SavedMemberTier): string {
     default:
       return '#3b82f6'; // blue-500
   }
+}
+
+function getMembershipTierColor(tier: string): string {
+  switch (tier) {
+    case 'summit':
+      return '#8b5cf6'; // violet-500
+    case 'select':
+      return '#3b82f6'; // blue-500
+    default:
+      return '#22c55e'; // green-500
+  }
+}
+
+function formatSavedDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+  return `${Math.floor(diffDays / 365)} years ago`;
 }
 
 const styles = StyleSheet.create({
@@ -160,10 +200,27 @@ const styles = StyleSheet.create({
   infoSection: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
   name: {
     fontSize: 16,
     fontWeight: '700',
     color: palette.ink900,
+  },
+  membershipBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  membershipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: palette.white,
+    textTransform: 'uppercase',
   },
   role: {
     fontSize: 14,
@@ -202,6 +259,11 @@ const styles = StyleSheet.create({
     color: palette.ink500,
     marginTop: spacing.sm,
     fontStyle: 'italic',
+  },
+  savedDate: {
+    fontSize: 12,
+    color: palette.ink400,
+    marginTop: spacing.sm,
   },
   editButton: {
     padding: spacing.sm,

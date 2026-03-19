@@ -37,25 +37,45 @@ export interface ProfessionalIdentity {
 
 /**
  * Frequency of play - how often the user plays golf
+ * Legacy type - prefer RoundFrequency for new code
  */
 export type PlayFrequency = 'weekly' | 'biweekly' | 'monthly' | 'occasionally';
 
 /**
- * Preferred tee time preferences
+ * Epic 1: Round frequency for onboarding preferences
  */
-export type TeeTimePreference = 'early_bird' | 'mid_morning' | 'afternoon' | 'twilight';
+export type RoundFrequency = 'multiple_per_week' | 'weekly' | 'biweekly' | 'monthly' | 'occasionally' | 'rarely';
 
 /**
- * Golf-specific identity and preferences
+ * Epic 1: Handicap bands for tiered matching
+ */
+export type HandicapBand = 'beginner' | 'intermediate' | 'advanced' | 'expert';
+
+/**
+ * Preferred tee time preferences
+ */
+export type TeeTimePreference = 'early_bird' | 'mid_morning' | 'afternoon' | 'twilight' | 'weekends_only' | 'flexible';
+
+/**
+ * Epic 1: Enhanced mobility preferences for golfers
+ */
+export type MobilityPreference = 'walking' | 'walking_preferred' | 'cart' | 'cart_preferred' | 'either';
+
+/**
+ * Epic 1: Golf-specific identity and preferences (expanded)
  */
 export interface GolfIdentity {
   /** Golf handicap index (e.g., 12.4) */
   handicap?: number;
+  /** Epic 1: Handicap band for tiered matching */
+  handicapBand?: HandicapBand;
   /** ID of user's home course */
   homeCourseId?: UUID;
-  /** How often the user plays */
+  /** Epic 1: Home course area (e.g., "Scottsdale, AZ") */
+  homeCourseArea?: string;
+  /** How often the user plays (legacy) */
   playFrequency: PlayFrequency;
-  /** Preferred tee times */
+  /** Epic 1: Preferred tee times (expanded) */
   preferredTeeTimes: TeeTimePreference[];
   /** Years playing golf */
   yearsPlaying: number;
@@ -87,6 +107,12 @@ export type CartPreference = 'walking' | 'cart' | 'either';
 export interface NetworkingPreferences {
   /** Primary intent for joining the network */
   networkingIntent: NetworkingIntent;
+  /** Epic 1: Industry sector for business networking */
+  industry?: string;
+  /** Epic 1: Company name for business networking */
+  company?: string;
+  /** Epic 1: Professional title/role */
+  titleOrRole?: string;
   /** Whether user is open to receiving introductions */
   openToIntros: boolean;
   /** Whether user is open to sending introductions */
@@ -95,8 +121,14 @@ export interface NetworkingPreferences {
   openToRecurringRounds: boolean;
   /** Preferred playing group size */
   preferredGroupSize: PreferredGroupSize;
-  /** Walking vs cart preference */
+  /** Walking vs cart preference (legacy - prefer mobilityPreference) */
   cartPreference: CartPreference;
+  /** Epic 1: Enhanced mobility preference */
+  mobilityPreference?: MobilityPreference;
+  /** Epic 1: Preferred tee time window */
+  preferredTeeTimeWindow?: TeeTimePreference;
+  /** Epic 1: How often user wants to play rounds */
+  roundFrequency?: RoundFrequency;
   /** Preferred geographic area for golf (e.g., "Scottsdale, AZ" or "Phoenix Metro") */
   preferredGolfArea?: string;
   /** Additional notes about networking preferences */
@@ -622,4 +654,66 @@ export function isValidPreferredGroupSize(size: string): size is PreferredGroupS
  */
 export function isValidCartPreference(pref: string): pref is CartPreference {
   return ['walking', 'cart', 'either'].includes(pref);
+}
+
+// ============================================================================
+// Epic 1: Additional Constants and Type Guards
+// ============================================================================
+
+/**
+ * Epic 1: Round frequency options for onboarding
+ */
+export const ROUND_FREQUENCIES: { value: RoundFrequency; label: string }[] = [
+  { value: 'multiple_per_week', label: 'Multiple per week' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'occasionally', label: 'Occasionally' },
+  { value: 'rarely', label: 'Rarely' },
+];
+
+/**
+ * Epic 1: Handicap band options with display labels
+ */
+export const HANDICAP_BANDS: { value: HandicapBand; label: string; description: string }[] = [
+  { value: 'beginner', label: 'Beginner (25+)', description: 'New to golf or high handicapper' },
+  { value: 'intermediate', label: 'Intermediate (10-24)', description: 'Developing player' },
+  { value: 'advanced', label: 'Advanced (0-9)', description: 'Low handicap, competitive player' },
+  { value: 'expert', label: 'Expert (Pro/Scratch)', description: 'Professional or scratch golfer' },
+];
+
+/**
+ * Epic 1: Mobility preference options
+ */
+export const MOBILITY_PREFERENCES: { value: MobilityPreference; label: string; description: string }[] = [
+  { value: 'walking', label: 'Walking Only', description: 'Always walk, never ride' },
+  { value: 'walking_preferred', label: 'Walking Preferred', description: 'Prefer walking but cart is OK' },
+  { value: 'cart', label: 'Cart Only', description: 'Always ride, never walk' },
+  { value: 'cart_preferred', label: 'Cart Preferred', description: 'Prefer cart but walking is OK' },
+  { value: 'either', label: 'Either', description: 'No preference' },
+];
+
+// ============================================================================
+// Epic 1: Type Guards
+// ============================================================================
+
+/**
+ * Epic 1: Check if a string is a valid RoundFrequency
+ */
+export function isValidRoundFrequency(freq: string): freq is RoundFrequency {
+  return ['multiple_per_week', 'weekly', 'biweekly', 'monthly', 'occasionally', 'rarely'].includes(freq);
+}
+
+/**
+ * Epic 1: Check if a string is a valid HandicapBand
+ */
+export function isValidHandicapBand(band: string): band is HandicapBand {
+  return ['beginner', 'intermediate', 'advanced', 'expert'].includes(band);
+}
+
+/**
+ * Epic 1: Check if a string is a valid MobilityPreference
+ */
+export function isValidMobilityPreference(pref: string): pref is MobilityPreference {
+  return ['walking', 'walking_preferred', 'cart', 'cart_preferred', 'either'].includes(pref);
 }

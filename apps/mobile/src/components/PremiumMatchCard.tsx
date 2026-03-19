@@ -1,4 +1,5 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from './Card';
 import { TierBadge, TierSlug } from './TierBadge';
 import { Button } from './Button';
@@ -61,8 +62,13 @@ export interface PremiumMatchData {
 interface PremiumMatchCardProps {
   match: PremiumMatchData;
   onPress?: () => void;
-  onConnect?: () => void;
+  onConnect?: () => Promise<void>;
+  onSave?: () => Promise<void>;
+  onRequestIntro?: () => void;
+  onInviteToRound?: () => void;
   compact?: boolean;
+  loading?: boolean;
+  saved?: boolean;
 }
 
 // ============================================================================
@@ -95,22 +101,84 @@ const getTierLabel = (tier: string): string => {
   }
 };
 
-const getTopFitReasons = (factors: MatchFactor[]): string[] => {
+const getFitStrengthColor = (score: number): string => {
+  if (score >= 80) return '#059669'; // Strong - green
+  if (score >= 60) return '#0891b2'; // Good - cyan
+  if (score >= 40) return '#d97706'; // Fair - amber
+  return '#6b7280'; // Weak - gray
+};
+
+const getFitStrengthLabel = (score: number): string => {
+  if (score >= 80) return 'Strong';
+  if (score >= 60) return 'Good';
+  if (score >= 40) return 'Fair';
+  return 'Weak';
+};
+
+const formatHandicapBand = (handicap: number): string => {
+  if (handicap < 10) return 'Low Handicap';
+  if (handicap <= 20) return 'Mid Handicap';
+  return 'High Handicap';
+};
+
+const getTopFitReasons = (factors: MatchFactor[], match: PremiumMatchData): Array<{ text: string; score: number; icon: string }> => {
   // Sort by raw score and take top 3
   const sorted = [...factors].sort((a, b) => b.rawScore - a.rawScore);
-  const topFactors = sorted.slice(0, 3).filter(f => f.rawScore >= 60);
+  const topFactors = sorted.slice(0, 3).filter(f => f.rawScore >= 40);
   
   return topFactors.map(f => {
+    const baseReason = { score: f.rawScore, icon: '⛳' };
+    
     if (f.factor === 'handicap') {
-      return `⛳ ${f.label}: ${f.description}`;
+      const handicapDiff = match.golf?.handicap !== undefined ? 
+        ` (${match.golf.handicap} vs your handicap)` : '';
+      return {
+        ...baseReason,
+        icon: '🏌️',
+        text: `Similar skill level${handicapDiff}`,
+      };
     } else if (f.factor === 'networking_intent') {
-      return `🤝 ${f.label}: ${f.description}`;
+      const intentMap: Record<string, string> = {
+        business: 'business networking',
+        social: 'social connections',
+        competitive: 'competitive play',
+        business_social: 'business + social golf',
+      };
+      const intentText = intentMap[match.networking?.intent || ''] || 'golf networking';
+      return {
+        ...baseReason,
+        icon: '🤝',
+        text: `Both interested in ${intentText}`,
+      };
     } else if (f.factor === 'location') {
-      return `📍 ${f.label}: ${f.description}`;
+      const distance = match.distanceKm !== undefined ? 
+        ` (${Math.round(match.distanceKm)}km away)` : '';
+      return {
+        ...baseReason,
+        icon: '📍',
+        text: `Plays at courses near you${distance}`,
+      };
     } else if (f.factor === 'group_size') {
-      return `👥 ${f.label}: ${f.description}`;
+      const groupSize = match.networking?.preferredGroupSize === 'any' ? 
+        'any group size' : `${match.networking?.preferredGroupSize}-some`;
+      return {
+        ...baseReason,
+        icon: '👥',
+        text: `Prefers ${groupSize} like you`,
+      };
+    } else if (f.factor === 'availability') {
+      return {
+        ...baseReason,
+        icon: '📅',
+        text: 'Compatible playing schedules',
+      };
     }
-    return `${f.label}: ${f.description}`;
+    
+    return {
+      ...baseReason,
+      icon: '⛳',
+      text: f.description,
+    };
   });
 };
 
@@ -263,8 +331,8 @@ const NetworkingSection: React.FC<{ networking?: NetworkingPreferences }> = ({ n
   );
 };
 
-const FitReasonsSection: React.FC<{ factors: MatchFactor[] }> = ({ factors }) => {
-  const reasons = getTopFitReasons(factors);
+const FitReasonsSection: React.FC<{ factors: MatchFactor[]; match: PremiumMatchData }> = ({ factors, match }) => {
+  const reasons = getTopFitReasons(factors, match);
   
   if (reasons.length === 0) return null;
 
@@ -272,9 +340,18 @@ const FitReasonsSection: React.FC<{ factors: MatchFactor[] }> = ({ factors }) =>
     <View style={styles.fitReasonsSection}>
       <Text style={styles.sectionLabel}>✨ Why This Match</Text>
       {reasons.map((reason, index) => (
-        <Text key={index} style={styles.fitReason} numberOfLines={2}>
-          {reason}
-        </Text>
+        <View key={index} style={styles.fitReasonRow}>
+          <View style={[styles.fitStrengthIndicator, { backgroundColor: getFitStrengthColor(reason.score) }]} />
+          <Text style={styles.fitReason} numberOfLines={2}>
+            <Text style={styles.fitReasonIcon}>{reason.icon}</Text>{' '}
+            {reason.text}
+          </Text>
+          <View style={[styles.fitStrengthBadge, { backgroundColor: getFitStrengthColor(reason.score) + '20' }]}>
+            <Text style={[styles.fitStrengthText, { color: getFitStrengthColor(reason.score) }]}>
+              {getFitStrengthLabel(reason.score)}
+            </Text>
+          </View>
+        </View>
       ))}
     </View>
   );
@@ -309,12 +386,185 @@ const QuickStats: React.FC<{
   );
 };
 
+const ActionButtons: React.FC<{
+  onConnect?: () => Promise<void>;
+  onSave?: () => Promise<void>;
+  onRequestIntro?: () => void;
+  onInviteToRound?: () => void;
+  saved?: boolean;
+  compact?: boolean;
+}> = ({ onConnect, onSave, onRequestIntro, onInviteToRound, saved, compact }) => {
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  const handleConnect = async () => {
+    if (!onConnect || connectLoading) return;
+    setConnectLoading(true);
+    try {
+      await onConnect();
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!onSave || saveLoading) return;
+    setSaveLoading(true);
+    try {
+      await onSave();
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  if (compact) {
+    return (
+      <View style={styles.compactActions}>
+        {onConnect && (
+          <TouchableOpacity 
+            style={styles.compactPrimaryButton}
+            onPress={handleConnect}
+            disabled={connectLoading}
+          >
+            {connectLoading ? (
+              <ActivityIndicator size="small" color={palette.white} />
+            ) : (
+              <Text style={styles.compactPrimaryButtonText}>Connect</Text>
+            )}
+          </TouchableOpacity>
+        )}
+        <View style={styles.compactSecondaryActions}>
+          {onSave && (
+            <TouchableOpacity 
+              style={[styles.compactSecondaryButton, saved && styles.savedButton]}
+              onPress={handleSave}
+              disabled={saveLoading}
+            >
+              {saveLoading ? (
+                <ActivityIndicator size="small" color={saved ? '#059669' : palette.navy600} />
+              ) : (
+                <Text style={[styles.compactSecondaryButtonText, saved && styles.savedButtonText]}>
+                  {saved ? '★ Saved' : '☆ Save'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {onRequestIntro && (
+            <TouchableOpacity 
+              style={styles.compactSecondaryButton}
+              onPress={onRequestIntro}
+            >
+              <Text style={styles.compactSecondaryButtonText}>Intro</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.actions}>
+      {onConnect && (
+        <Button 
+          title={connectLoading ? 'Connecting...' : 'Connect'} 
+          onPress={handleConnect} 
+          tone="primary" 
+        />
+      )}
+      <View style={styles.secondaryActionsRow}>
+        {onSave && (
+          <TouchableOpacity 
+            style={[styles.secondaryActionButton, saved && styles.savedButton]}
+            onPress={handleSave}
+            disabled={saveLoading}
+          >
+            {saveLoading ? (
+              <ActivityIndicator size="small" color={saved ? '#059669' : palette.navy600} />
+            ) : (
+              <Text style={[styles.secondaryActionText, saved && styles.savedButtonText]}>
+                {saved ? '★ Saved' : '☆ Save for Later'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+        {onRequestIntro && (
+          <TouchableOpacity 
+            style={styles.secondaryActionButton}
+            onPress={onRequestIntro}
+          >
+            <Text style={styles.secondaryActionText}>Request Intro</Text>
+          </TouchableOpacity>
+        )}
+        {onInviteToRound && (
+          <TouchableOpacity 
+            style={styles.secondaryActionButton}
+            onPress={onInviteToRound}
+          >
+            <Text style={styles.secondaryActionText}>Invite to Round</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const LoadingCard: React.FC<{ compact?: boolean }> = ({ compact }) => {
+  if (compact) {
+    return (
+      <Card>
+        <View style={styles.compactContainer}>
+          <View style={styles.compactHeader}>
+            <View style={[styles.avatarPlaceholder, styles.skeleton]} />
+            <View style={styles.compactInfo}>
+              <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
+              <View style={[styles.skeletonLine, { width: '40%', height: 13, marginTop: 4 }]} />
+            </View>
+            <View style={[styles.skeletonCircle, { width: 56, height: 56 }]} />
+          </View>
+          <View style={[styles.skeletonLine, { width: '80%', height: 13, marginTop: spacing.sm }]} />
+        </View>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <View style={styles.fullContainer}>
+        <View style={styles.fullHeader}>
+          <View style={[styles.fullAvatarPlaceholder, styles.skeleton]} />
+          <View style={styles.fullInfo}>
+            <View style={[styles.skeletonLine, { width: '70%', height: 20 }]} />
+            <View style={[styles.skeletonLine, { width: '50%', height: 14, marginTop: 4 }]} />
+          </View>
+          <View style={[styles.skeletonCircle, { width: 72, height: 72 }]} />
+        </View>
+        <View style={[styles.skeletonLine, { width: '90%', height: 13, marginTop: spacing.md }]} />
+        <View style={[styles.skeletonLine, { width: '70%', height: 13, marginTop: spacing.xs }]} />
+      </View>
+    </Card>
+  );
+};
+
 // ============================================================================
 // Main Component
 // ============================================================================
 
-export function PremiumMatchCard({ match, onPress, onConnect, compact = false }: PremiumMatchCardProps) {
+export function PremiumMatchCard({ 
+  match, 
+  onPress, 
+  onConnect, 
+  onSave,
+  onRequestIntro,
+  onInviteToRound,
+  compact = false,
+  loading = false,
+  saved = false,
+}: PremiumMatchCardProps) {
   const tierColor = getTierColor(match.matchTier);
+
+  if (loading) {
+    return <LoadingCard compact={compact} />;
+  }
 
   if (compact) {
     // Compact version for list views
@@ -350,13 +600,18 @@ export function PremiumMatchCard({ match, onPress, onConnect, compact = false }:
             />
             
             {match.factors.length > 0 && (
-              <Text style={styles.compactReasoning} numberOfLines={2}>
-                {match.reasoning}
-              </Text>
+              <FitReasonsSection factors={match.factors} match={match} />
             )}
             
-            {onConnect && (
-              <Button title="Connect" onPress={onConnect} tone="primary" />
+            {(onConnect || onSave || onRequestIntro || onInviteToRound) && (
+              <ActionButtons 
+                onConnect={onConnect}
+                onSave={onSave}
+                onRequestIntro={onRequestIntro}
+                onInviteToRound={onInviteToRound}
+                saved={saved}
+                compact={true}
+              />
             )}
           </View>
         </Card>
@@ -410,16 +665,20 @@ export function PremiumMatchCard({ match, onPress, onConnect, compact = false }:
         <NetworkingSection networking={match.networking} />
 
         {/* Fit Reasons */}
-        <FitReasonsSection factors={match.factors} />
+        {match.factors.length > 0 && (
+          <FitReasonsSection factors={match.factors} match={match} />
+        )}
 
         {/* Actions */}
-        {onConnect && (
-          <View style={styles.actions}>
-            <Button title="Request Introduction" onPress={onConnect} tone="primary" />
-            {onPress && (
-              <Button title="View Full Profile" onPress={onPress} tone="secondary" />
-            )}
-          </View>
+        {(onConnect || onSave || onRequestIntro || onInviteToRound) && (
+          <ActionButtons 
+            onConnect={onConnect}
+            onSave={onSave}
+            onRequestIntro={onRequestIntro}
+            onInviteToRound={onInviteToRound}
+            saved={saved}
+            compact={false}
+          />
         )}
       </View>
     </Card>
@@ -431,6 +690,19 @@ export function PremiumMatchCard({ match, onPress, onConnect, compact = false }:
 // ============================================================================
 
 const styles = StyleSheet.create({
+  // Skeleton loading
+  skeleton: {
+    backgroundColor: palette.sky200,
+  },
+  skeletonLine: {
+    backgroundColor: palette.sky200,
+    borderRadius: radius.sm,
+  },
+  skeletonCircle: {
+    backgroundColor: palette.sky200,
+    borderRadius: radius.pill,
+  },
+
   // Compact styles
   compactContainer: {
     gap: spacing.sm,
@@ -462,6 +734,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: palette.ink700,
     lineHeight: 18,
+  },
+  compactActions: {
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  compactPrimaryButton: {
+    backgroundColor: palette.navy600,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+  },
+  compactPrimaryButtonText: {
+    color: palette.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  compactSecondaryActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  compactSecondaryButton: {
+    flex: 1,
+    backgroundColor: palette.sky100,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.sky200,
+  },
+  compactSecondaryButtonText: {
+    color: palette.navy600,
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   // Full styles
@@ -605,9 +912,11 @@ const styles = StyleSheet.create({
   identityRow: {
     flexDirection: 'row',
     gap: spacing.md,
+    flexWrap: 'wrap',
   },
   identityItem: {
     flex: 1,
+    minWidth: 60,
   },
   identityValue: {
     fontSize: 16,
@@ -661,15 +970,68 @@ const styles = StyleSheet.create({
   fitReasonsSection: {
     gap: spacing.xs,
   },
+  fitReasonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  fitStrengthIndicator: {
+    width: 4,
+    height: '100%',
+    borderRadius: radius.pill,
+    minHeight: 24,
+  },
   fitReason: {
+    flex: 1,
     fontSize: 13,
     color: palette.ink700,
     lineHeight: 18,
+  },
+  fitReasonIcon: {
+    fontSize: 14,
+  },
+  fitStrengthBadge: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  fitStrengthText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
 
   // Actions
   actions: {
     gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  secondaryActionButton: {
+    flex: 1,
+    minWidth: 100,
+    backgroundColor: palette.sky100,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.sky200,
+  },
+  secondaryActionText: {
+    color: palette.navy600,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  savedButton: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#059669',
+  },
+  savedButtonText: {
+    color: '#059669',
   },
 });

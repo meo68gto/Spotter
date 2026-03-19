@@ -120,6 +120,92 @@ const getBoostDescription = (boost: number): string => {
   return 'Standard visibility';
 };
 
+// Epic 1: Helper functions for formatting
+const formatHandicapBand = (band: string | null): string => {
+  const bands: Record<string, string> = {
+    beginner: 'Beginner (25+)',
+    intermediate: 'Intermediate (10-24)',
+    advanced: 'Advanced (0-9)',
+    expert: 'Expert (Pro/Scratch)',
+  };
+  return bands[band || ''] || 'Not set';
+};
+
+const getHandicapBandColor = (band: string | null): string => {
+  const colors: Record<string, string> = {
+    beginner: '#22c55e',      // green-500
+    intermediate: '#3b82f6', // blue-500
+    advanced: '#f59e0b',     // amber-500
+    expert: '#8b5cf6',       // violet-500
+  };
+  return colors[band || ''] || '#9ca3af';
+};
+
+const formatPlayFrequency = (freq: string | null): string => {
+  const freqs: Record<string, string> = {
+    weekly: 'Weekly',
+    biweekly: 'Bi-weekly',
+    monthly: 'Monthly',
+    occasionally: 'Occasionally',
+  };
+  return freqs[freq || ''] || freq || 'Not set';
+};
+
+const formatNetworkingIntent = (intent: string | null): string => {
+  const intents: Record<string, string> = {
+    business: 'Business',
+    social: 'Social',
+    competitive: 'Competitive',
+    business_social: 'Business + Social',
+  };
+  return intents[intent || ''] || intent || 'Not set';
+};
+
+const formatRoundFrequency = (freq: string | null): string => {
+  const freqs: Record<string, string> = {
+    multiple_per_week: 'Multiple per week',
+    weekly: 'Weekly',
+    biweekly: 'Bi-weekly',
+    monthly: 'Monthly',
+    occasionally: 'Occasionally',
+    rarely: 'Rarely',
+  };
+  return freqs[freq || ''] || freq || 'Not set';
+};
+
+const formatGroupSize = (size: string | null): string => {
+  const sizes: Record<string, string> = {
+    '2': 'Twosome',
+    '3': 'Threesome',
+    '4': 'Foursome',
+    any: 'Any size',
+  };
+  return sizes[size || ''] || size || 'Not set';
+};
+
+const formatMobilityPreference = (pref: string | null): string => {
+  const prefs: Record<string, string> = {
+    walking: 'Walking Only',
+    walking_preferred: 'Walking Preferred',
+    cart: 'Cart Only',
+    cart_preferred: 'Cart Preferred',
+    either: 'No Preference',
+  };
+  return prefs[pref || ''] || pref || 'No Preference';
+};
+
+const formatTeeTimePreference = (pref: string | null): string => {
+  const prefs: Record<string, string> = {
+    early_bird: 'Early Bird (before 9am)',
+    mid_morning: 'Mid-Morning (9am-12pm)',
+    afternoon: 'Afternoon (12pm-4pm)',
+    twilight: 'Twilight (after 4pm)',
+    weekends_only: 'Weekends Only',
+    flexible: 'Flexible',
+  };
+  return prefs[pref || ''] || pref || 'Not set';
+};
+
 export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [userWithTier, setUserWithTier] = useState<UserWithTier | null>(null);
@@ -445,7 +531,7 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
         </View>
       </Card>
 
-      {/* Golf Identity Card */}
+            {/* Epic 1: Golf Identity Card with Handicap Band */}
       <Card>
         <View style={styles.identityCard}>
           <View style={styles.identityHeader}>
@@ -455,20 +541,33 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
 
           {golfIdentity ? (
             <View style={styles.identityContent}>
+              {/* Epic 1: Handicap Band - prominently displayed */}
+              <View style={styles.epic1Row}>
+                <Text style={styles.epic1Label}>Skill Level</Text>
+                <View style={[
+                  styles.handicapBandBadge,
+                  { backgroundColor: getHandicapBandColor(golfIdentity.handicap_band) }
+                ]}>
+                  <Text style={styles.handicapBandText}>
+                    {formatHandicapBand(golfIdentity.handicap_band) || 'Not set'}
+                  </Text>
+                </View>
+              </View>
+              
               <View style={styles.identityRow}>
                 <Text style={styles.identityLabel}>Handicap</Text>
-                <Text style={styles.identityValue}>{golfIdentity.handicap || 'Not set'}</Text>
+                <Text style={styles.identityValue}>{golfIdentity.handicap || 'N/A'}</Text>
               </View>
               <View style={styles.identityRow}>
                 <Text style={styles.identityLabel}>Home Course</Text>
                 <Text style={styles.identityValue}>
-                  {golfIdentity.home_course?.name || 'Not set'}
+                  {golfIdentity.home_course?.name || golfIdentity.home_course_area || 'Not set'}
                 </Text>
               </View>
               <View style={styles.identityRow}>
                 <Text style={styles.identityLabel}>Play Frequency</Text>
                 <Text style={styles.identityValue}>
-                  {golfIdentity.play_frequency || 'Not set'}
+                  {formatPlayFrequency(golfIdentity.play_frequency) || 'Not set'}
                 </Text>
               </View>
               <View style={styles.identityRow}>
@@ -485,7 +584,75 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
         </View>
       </Card>
 
-      {/* Tier Upgrade CTA */}
+      {/* Epic 1: Networking Preferences Card */}
+      <Card>
+        <View style={styles.identityCard}>
+          <View style={styles.identityHeader}>
+            <Text style={styles.identityIcon}>🤝</Text>
+            <Text style={styles.identityTitle}>Networking Preferences</Text>
+          </View>
+
+          {networkingPreferences ? (
+            <View style={styles.identityContent}>
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Intent</Text>
+                <Text style={styles.identityValue}>
+                  {formatNetworkingIntent(networkingPreferences.networking_intent)}
+                </Text>
+              </View>
+              
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Round Frequency</Text>
+                <Text style={styles.identityValue}>
+                  {formatRoundFrequency(networkingPreferences.round_frequency)}
+                </Text>
+              </View>
+              
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Preferred Group Size</Text>
+                <Text style={styles.identityValue}>
+                  {formatGroupSize(networkingPreferences.preferred_group_size)}
+                </Text>
+              </View>
+              
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Mobility</Text>
+                <Text style={styles.identityValue}>
+                  {formatMobilityPreference(networkingPreferences.mobility_preference)}
+                </Text>
+              </View>
+              
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Preferred Tee Time</Text>
+                <Text style={styles.identityValue}>
+                  {formatTeeTimePreference(networkingPreferences.preferred_tee_time_window)}
+                </Text>
+              </View>
+              
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Recurring Rounds</Text>
+                <Text style={styles.identityValue}>
+                  {networkingPreferences.open_to_recurring_rounds ? 'Yes' : 'No'}
+                </Text>
+              </View>
+              
+              {networkingPreferences.preferred_golf_area && (
+                <View style={styles.identityRow}>
+                  <Text style={styles.identityLabel}>Preferred Area</Text>
+                  <Text style={styles.identityValue}>
+                    {networkingPreferences.preferred_golf_area}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.emptyIdentity}>
+              <Text style={styles.emptyText}>Set your networking preferences</Text>
+              <Button title="Configure Networking" onPress={handleEditProfile} />
+            </View>
+          )}
+        </View>
+      </Card>
       {showUpgradeCTA && nextTier && (
         <Card>
           <View style={styles.upgradeCard}>
@@ -726,7 +893,29 @@ const styles = StyleSheet.create({
     color: palette.ink600,
     lineHeight: 18,
   },
-  // Identity Card Styles
+  // Epic 1: Handicap Band Styles
+  epic1Row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  epic1Label: {
+    fontSize: 14,
+    color: palette.ink500,
+    fontWeight: '600',
+  },
+  handicapBandBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs / 2,
+    borderRadius: radius.sm,
+  },
+  handicapBandText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
   identityCard: {
     gap: spacing.md,
   },

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -23,6 +23,9 @@ type RootStackParamList = {
   Profile: { userId: string };
 };
 
+type SortOption = 'name' | 'dateSaved' | 'tier';
+type SortDirection = 'asc' | 'desc';
+
 export function SavedMembersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -31,10 +34,13 @@ export function SavedMembersScreen() {
   const [savedMembers, setSavedMembers] = useState<SavedMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<SavesMemberTier | 'all'>('all');
+  const [filter, setFilter] = useState<SavedMemberTier | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('dateSaved');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   const fetchSavedMembers = useCallback(async (isRefresh = false) => {
     if (!user) return;
@@ -135,15 +141,66 @@ export function SavedMembersScreen() {
     }
   };
 
-  const filteredMembers = savedMembers.filter(member => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      member.member.displayName.toLowerCase().includes(query) ||
-      member.tags.some(tag => tag.toLowerCase().includes(query)) ||
-      member.notes?.toLowerCase().includes(query)
-    );
-  });
+  // Memoized filtering and sorting
+  const processedMembers = useMemo(() => {
+    let result = [...savedMembers];
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(member => {
+        const nameMatch = member.member.displayName.toLowerCase().includes(query);
+        const tagMatch = member.tags?.some(tag => tag.toLowerCase().includes(query)) ?? false;
+        const notesMatch = member.notes?.toLowerCase().includes(query) ?? false;
+        const tierMatch = member.member.tier?.toLowerCase().includes(query) ?? false;
+        return nameMatch || tagMatch || notesMatch || tierMatch;
+      });
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'name':
+          comparison = a.member.displayName.localeCompare(b.member.displayName);
+          break;
+        case 'dateSaved':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'tier':
+          const tierOrder: Record<SavedMemberTier, number> = { favorite: 0, standard: 1, archived: 2 };
+          comparison = tierOrder[a.tier] - tierOrder[b.tier];
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [savedMembers, searchQuery, sortBy, sortDirection]);
+
+  const toggleSort = (option: SortOption) => {
+    if (sortBy === option) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(option);
+      setSortDirection(option === 'name' ? 'asc' : 'desc');
+    }
+    setShowSortMenu(false);
+  };
+
+  const getSortLabel = (option: SortOption): string => {
+    switch (option) {
+      case 'name': return 'Name';
+      case 'dateSaved': return 'Date Saved';
+      case 'tier': return 'Tier';
+    }
+  };
+
+  const getSortIcon = (): string => {
+    return sortDirection === 'asc' ? '↑' : '↓';
+  };
 
   if (loading && savedMembers.length === 0) {
     return <LoadingScreen message="Loading saved members..." />;
@@ -159,42 +216,102 @@ export function SavedMembersScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name, tag, or notes..."
-          placeholderTextColor={palette.ink400}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name, tag, notes, or tier..."
+            placeholderTextColor={palette.ink400}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity 
+              style={styles.clearButton}
+              onPress={() => setSearchQuery('')}
+            >
+              <Text style={styles.clearButtonText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {/* Sort Controls */}
+        <View style={styles.sortContainer}>
+          <TouchableOpacity 
+            style={styles.sortButton}
+            onPress={() => setShowSortMenu(!showSortMenu)}
+          >
+            <Text style={styles.sortLabel}>Sort by:</Text>
+            <Text style={styles.sortValue}>
+              {getSortLabel(sortBy)} {getSortIcon()}
+            </Text>
+          </TouchableOpacity>
+          
+          {showSortMenu && (
+            <View style={styles.sortMenu}>
+              {(['name', 'dateSaved', 'tier'] as SortOption[]).map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.sortOption,
+                    sortBy === option && styles.sortOptionActive
+                  ]}
+                  onPress={() => toggleSort(option)}
+                >
+                  <Text style={[
+                    styles.sortOptionText,
+                    sortBy === option && styles.sortOptionTextActive
+                  ]}>
+                    {getSortLabel(option)}
+                    {sortBy === option && ` ${getSortIcon()}`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
         <FilterTab 
           label="All" 
+          count={savedMembers.length}
           active={filter === 'all'} 
           onPress={() => setFilter('all')} 
         />
         <FilterTab 
           label="Favorites" 
+          count={savedMembers.filter(m => m.tier === 'favorite').length}
           active={filter === 'favorite'} 
           onPress={() => setFilter('favorite')} 
         />
         <FilterTab 
           label="Standard" 
+          count={savedMembers.filter(m => m.tier === 'standard').length}
           active={filter === 'standard'} 
           onPress={() => setFilter('standard')} 
         />
         <FilterTab 
           label="Archived" 
+          count={savedMembers.filter(m => m.tier === 'archived').length}
           active={filter === 'archived'} 
           onPress={() => setFilter('archived')} 
         />
       </View>
 
+      {/* Results Count */}
+      <View style={styles.resultsContainer}>
+        <Text style={styles.resultsText}>
+          {searchQuery 
+            ? `${processedMembers.length} of ${savedMembers.length} members`
+            : `${savedMembers.length} saved members`
+          }
+        </Text>
+      </View>
+
       {/* Saved Members List */}
       <FlatList
-        data={filteredMembers}
+        data={processedMembers}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <SavedMemberCard
@@ -207,6 +324,7 @@ export function SavedMembersScreen() {
             tags={item.tags}
             professional={item.member.professional}
             golf={item.member.golf}
+            createdAt={item.createdAt}
             onPress={() => navigation.navigate('Profile', { userId: item.savedId })}
             onEdit={() => handleUpdateTier(item.savedId, 
               item.tier === 'favorite' ? 'standard' : 'favorite'
@@ -222,10 +340,43 @@ export function SavedMembersScreen() {
         onEndReachedThreshold={0.5}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No saved members</Text>
-            <Text style={styles.emptyText}>
-              Save members from your network to organize and prioritize your connections
-            </Text>
+            {searchQuery ? (
+              <>
+                <Text style={styles.emptyIcon}>🔍</Text>
+                <Text style={styles.emptyTitle}>No matches found</Text>
+                <Text style={styles.emptyText}>
+                  Try adjusting your search terms or filters
+                </Text>
+              </>
+            ) : filter !== 'all' ? (
+              <>
+                <Text style={styles.emptyIcon}>📂</Text>
+                <Text style={styles.emptyTitle}>No {filter} members</Text>
+                <Text style={styles.emptyText}>
+                  Save members as {filter} to see them here
+                </Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.emptyIconContainer}>
+                  <Text style={styles.emptyIcon}>⭐</Text>
+                </View>
+                <Text style={styles.emptyTitle}>Build your private network</Text>
+                <Text style={styles.emptyText}>
+                  Save members you discover to organize and prioritize your golf connections.{'\n\n'}
+                  Members are organized into tiers:{'\n'}
+                  • <Text style={styles.emptyHighlight}>Favorites</Text> — VIP connections{'\n'}
+                  • <Text style={styles.emptyHighlight}>Standard</Text> — Regular connections{'\n'}
+                  • <Text style={styles.emptyHighlight}>Archived</Text> — Dormant connections
+                </Text>
+                <TouchableOpacity 
+                  style={styles.emptyAction}
+                  onPress={() => navigation.navigate('Network' as never)}
+                >
+                  <Text style={styles.emptyActionText}>Explore Network →</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         }
       />
@@ -235,11 +386,12 @@ export function SavedMembersScreen() {
 
 interface FilterTabProps {
   label: string;
+  count?: number;
   active: boolean;
   onPress: () => void;
 }
 
-function FilterTab({ label, active, onPress }: FilterTabProps) {
+function FilterTab({ label, count, active, onPress }: FilterTabProps) {
   return (
     <TouchableOpacity
       style={[styles.filterTab, active && styles.activeFilterTab]}
@@ -248,6 +400,13 @@ function FilterTab({ label, active, onPress }: FilterTabProps) {
       <Text style={[styles.filterText, active && styles.activeFilterText]}>
         {label}
       </Text>
+      {count !== undefined && count > 0 && (
+        <View style={[styles.countBadge, active && styles.activeCountBadge]}>
+          <Text style={[styles.countText, active && styles.activeCountText]}>
+            {count}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -280,14 +439,87 @@ const styles = StyleSheet.create({
     backgroundColor: palette.white,
     borderBottomWidth: 1,
     borderBottomColor: palette.ink100,
+    gap: spacing.md,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   searchInput: {
+    flex: 1,
     borderWidth: 1,
     borderColor: palette.ink300,
     borderRadius: radius.lg,
     padding: spacing.md,
     fontSize: 15,
     color: palette.ink900,
+  },
+  clearButton: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    backgroundColor: palette.ink200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearButtonText: {
+    fontSize: 14,
+    color: palette.ink600,
+    fontWeight: '600',
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: palette.navy50,
+  },
+  sortLabel: {
+    fontSize: 13,
+    color: palette.ink600,
+  },
+  sortValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: palette.navy700,
+  },
+  sortMenu: {
+    position: 'absolute',
+    left: 0,
+    top: 30,
+    backgroundColor: palette.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.ink200,
+    shadowColor: palette.ink900,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 100,
+  },
+  sortOption: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minWidth: 120,
+  },
+  sortOptionActive: {
+    backgroundColor: palette.navy50,
+  },
+  sortOptionText: {
+    fontSize: 14,
+    color: palette.ink700,
+  },
+  sortOptionTextActive: {
+    fontWeight: '600',
+    color: palette.navy700,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -299,10 +531,13 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
     backgroundColor: palette.ink100,
-    alignItems: 'center',
   },
   activeFilterTab: {
     backgroundColor: palette.navy600,
@@ -315,6 +550,35 @@ const styles = StyleSheet.create({
   activeFilterText: {
     color: palette.white,
   },
+  countBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: radius.pill,
+    backgroundColor: palette.ink300,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  activeCountBadge: {
+    backgroundColor: palette.navy400,
+  },
+  countText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: palette.ink700,
+  },
+  activeCountText: {
+    color: palette.white,
+  },
+  resultsContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: palette.ink50,
+  },
+  resultsText: {
+    fontSize: 13,
+    color: palette.ink500,
+  },
   listContent: {
     padding: spacing.lg,
   },
@@ -324,16 +588,49 @@ const styles = StyleSheet.create({
   emptyContainer: {
     padding: spacing.xl,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 300,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.xl,
+    backgroundColor: palette.navy100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: palette.ink700,
+    color: palette.ink800,
     marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
     color: palette.ink500,
     textAlign: 'center',
+    lineHeight: 22,
+  },
+  emptyHighlight: {
+    fontWeight: '600',
+    color: palette.ink700,
+  },
+  emptyAction: {
+    marginTop: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: palette.navy600,
+    borderRadius: radius.lg,
+  },
+  emptyActionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: palette.white,
   },
 });
