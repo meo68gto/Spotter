@@ -13,6 +13,9 @@ import { Session } from '@supabase/supabase-js';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { TierBadge, TierSlug } from '../components/TierBadge';
+import { ReliabilityIndicator } from '../components/ReliabilityIndicator';
+import { TrustBadgeDisplay } from '../components/TrustBadgeDisplay';
+import { TrustBadge, ReliabilityBreakdown } from '@spotter/types';
 import { supabase } from '../lib/supabase';
 import { palette, radius, shadows, spacing } from '../theme/design';
 
@@ -94,6 +97,29 @@ const TIER_DEFINITIONS: Record<TierSlug, { name: string; description: string; fe
   },
 };
 
+// Helper functions for reliability buckets
+const getShowRateBucket = (rate: number): 'excellent' | 'good' | 'fair' | 'building' => {
+  if (rate >= 95) return 'excellent';
+  if (rate >= 80) return 'good';
+  if (rate >= 60) return 'fair';
+  return 'building';
+};
+
+const getPunctualityBucket = (rate: number): 'excellent' | 'good' | 'fair' | 'building' => {
+  if (rate >= 95) return 'excellent';
+  if (rate >= 80) return 'good';
+  if (rate >= 60) return 'fair';
+  return 'building';
+};
+
+const getBoostDescription = (boost: number): string => {
+  if (boost >= 1.5) return '+50% visibility boost';
+  if (boost >= 1.3) return '+30% visibility boost';
+  if (boost >= 1.15) return '+15% visibility boost';
+  if (boost >= 1.05) return '+5% visibility boost';
+  return 'Standard visibility';
+};
+
 export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [userWithTier, setUserWithTier] = useState<UserWithTier | null>(null);
@@ -102,6 +128,9 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
   const [professionalIdentity, setProfessionalIdentity] = useState<any>(null);
   const [golfIdentity, setGolfIdentity] = useState<any>(null);
   const [networkingPreferences, setNetworkingPreferences] = useState<any>(null);
+  const [reliability, setReliability] = useState<ReliabilityBreakdown | null>(null);
+  const [trustBadges, setTrustBadges] = useState<TrustBadge[]>([]);
+  const [discoveryBoost, setDiscoveryBoost] = useState<number>(1.0);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -123,7 +152,7 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
 
       setConnectionCount(count || 0);
 
-      // Load reputation score (simplified)
+      // Load reputation score
       const { data: reputationData } = await supabase
         .from('user_reputation')
         .select('score')
@@ -158,6 +187,46 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
         .single();
 
       setNetworkingPreferences(networkingData);
+
+      // Load reliability data
+      const { data: reliabilityData } = await supabase
+        .from('user_reputation')
+        .select('reliability_score, reliability_label, show_rate, punctuality_rate, rounds_completed, rounds_scheduled, minutes_early_avg, last_reliability_calc_at')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (reliabilityData) {
+        setReliability({
+          reliabilityScore: reliabilityData.reliability_score,
+          reliabilityLabel: reliabilityData.reliability_label,
+          showRate: reliabilityData.show_rate,
+          punctualityRate: reliabilityData.punctuality_rate,
+          roundsCompleted: reliabilityData.rounds_completed,
+          roundsScheduled: reliabilityData.rounds_scheduled,
+          minutesEarlyAvg: reliabilityData.minutes_early_avg,
+          lastCalculatedAt: reliabilityData.last_reliability_calc_at,
+          showRateBucket: getShowRateBucket(reliabilityData.show_rate),
+          punctualityBucket: getPunctualityBucket(reliabilityData.punctuality_rate),
+        });
+      }
+
+      // Load trust badges
+      const { data: badgesData } = await supabase
+        .from('trust_badges')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('is_visible', true)
+        .order('awarded_at', { ascending: false });
+
+      setTrustBadges(badgesData || []);
+
+      // Load discovery boost
+      const { data: boostData } = await supabase
+        .rpc('calculate_discovery_boost', { p_user_id: session.user.id });
+      
+      if (boostData) {
+        setDiscoveryBoost(boostData);
+      }
 
       // Format user with tier
       setUserWithTier({
@@ -256,6 +325,88 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
         </View>
       </View>
 
+      {/* Reliability & Trust Card - EPIC 6 */}
+      <Card>
+        <View style={styles.identityCard}>
+          <View style={styles.identityHeader}>
+            <Text style={styles.identityIcon}>🛡️</Text>
+            <Text style={styles.identityTitle}>Trust & Reliability</Text>
+          </View>
+
+          {reliability ? (
+            <View style={styles.reliabilityContent}>
+              <View style={styles.reliabilityTopRow}>
+                <ReliabilityIndicator 
+                  score={reliability.reliabilityScore}
+                  label={reliability.reliabilityLabel}
+                  size="md"
+                />
+                
+                <View style={styles.reliabilityDetails}>
+                  <View style={styles.reliabilityRow}>
+                    <Text style={styles.reliabilityLabel}>Rounds Completed</Text>
+                    <Text style={styles.reliabilityValue}>{reliability.roundsCompleted}</Text>
+                  </View>
+                  
+                  <View style={styles.reliabilityRow}>
+                    <Text style={styles.reliabilityLabel}>Show Rate</Text>
+                    <View style={styles.bucketBadge}>
+                      <Text style={[
+                        styles.bucketText, 
+                        { 
+                          color: reliability.showRateBucket === 'excellent' ? '#059669' :
+                                 reliability.showRateBucket === 'good' ? '#0891b2' :
+                                 reliability.showRateBucket === 'fair' ? '#d97706' : '#6b7280'
+                        }
+                      ]}>
+                        {reliability.showRateBucket.charAt(0).toUpperCase() + reliability.showRateBucket.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.reliabilityRow}>
+                    <Text style={styles.reliabilityLabel}>Punctuality</Text>
+                    <View style={styles.bucketBadge}>
+                      <Text style={[
+                        styles.bucketText, 
+                        { 
+                          color: reliability.punctualityBucket === 'excellent' ? '#059669' :
+                                 reliability.punctualityBucket === 'good' ? '#0891b2' :
+                                 reliability.punctualityBucket === 'fair' ? '#d97706' : '#6b7280'
+                        }
+                      ]}>
+                        {reliability.punctualityBucket.charAt(0).toUpperCase() + reliability.punctualityBucket.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Trust Badges */}
+              <View style={styles.badgesSection}>
+                <Text style={styles.badgesTitle}>Trust Badges</Text>
+                <TrustBadgeDisplay badges={trustBadges} size="sm" />
+              </View>
+
+              {/* Discovery Boost */}
+              <View style={styles.boostSection}>
+                <View style={styles.boostHeader}>
+                  <Text style={styles.boostTitle}>Discovery Score</Text>
+                  <Text style={styles.boostBadge}>{getBoostDescription(discoveryBoost)}</Text>
+                </View>
+                <Text style={styles.boostDescription}>
+                  Higher reliability scores and trust badges boost your visibility to other golfers.
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyIdentity}>
+              <Text style={styles.emptyText}>Complete rounds to build your reliability</Text>
+            </View>
+          )}
+        </View>
+      </Card>
+
       {/* Professional Identity Card */}
       <Card>
         <View style={styles.identityCard}>
@@ -309,18 +460,6 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
                 <Text style={styles.identityValue}>{golfIdentity.handicap || 'Not set'}</Text>
               </View>
               <View style={styles.identityRow}>
-                <Text style={styles.identityLabel}>Skill Level</Text>
-                <Text style={styles.identityValue}>
-                  {golfIdentity.handicap !== null && golfIdentity.handicap !== undefined
-                    ? golfIdentity.handicap <= 9
-                      ? 'Advanced (0-9)'
-                      : golfIdentity.handicap <= 24
-                        ? 'Intermediate (10-24)'
-                        : 'Beginner (25+)'
-                    : 'Not set'}
-                </Text>
-              </View>
-              <View style={styles.identityRow}>
                 <Text style={styles.identityLabel}>Home Course</Text>
                 <Text style={styles.identityValue}>
                   {golfIdentity.home_course?.name || 'Not set'}
@@ -329,10 +468,7 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
               <View style={styles.identityRow}>
                 <Text style={styles.identityLabel}>Play Frequency</Text>
                 <Text style={styles.identityValue}>
-                  {golfIdentity.play_frequency
-                    ? golfIdentity.play_frequency.charAt(0).toUpperCase() +
-                      golfIdentity.play_frequency.slice(1)
-                    : 'Not set'}
+                  {golfIdentity.play_frequency || 'Not set'}
                 </Text>
               </View>
               <View style={styles.identityRow}>
@@ -344,73 +480,6 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
             <View style={styles.emptyIdentity}>
               <Text style={styles.emptyText}>Complete your golf profile</Text>
               <Button title="Add Golf Info" onPress={handleEditProfile} />
-            </View>
-          )}
-        </View>
-      </Card>
-
-      {/* Networking Preferences Card */}
-      <Card>
-        <View style={styles.identityCard}>
-          <View style={styles.identityHeader}>
-            <Text style={styles.identityIcon}>🤝</Text>
-            <Text style={styles.identityTitle}>Networking Preferences</Text>
-          </View>
-
-          {networkingPreferences ? (
-            <View style={styles.identityContent}>
-              <View style={styles.identityRow}>
-                <Text style={styles.identityLabel}>Intent</Text>
-                <Text style={styles.identityValue}>
-                  {networkingPreferences.networking_intent
-                    ? networkingPreferences.networking_intent
-                        .replace('_', ' ')
-                        .replace(/\b\w/g, (l) => l.toUpperCase())
-                    : 'Not set'}
-                </Text>
-              </View>
-              <View style={styles.identityRow}>
-                <Text style={styles.identityLabel}>Open to Intros</Text>
-                <Text style={styles.identityValue}>
-                  {networkingPreferences.open_to_intros ? 'Yes' : 'No'}
-                </Text>
-              </View>
-              <View style={styles.identityRow}>
-                <Text style={styles.identityLabel}>Recurring Rounds</Text>
-                <Text style={styles.identityValue}>
-                  {networkingPreferences.open_to_recurring_rounds ? 'Yes' : 'No'}
-                </Text>
-              </View>
-              <View style={styles.identityRow}>
-                <Text style={styles.identityLabel}>Group Size</Text>
-                <Text style={styles.identityValue}>
-                  {networkingPreferences.preferred_group_size === 'any'
-                    ? 'Any size'
-                    : `${networkingPreferences.preferred_group_size} players`}
-                </Text>
-              </View>
-              <View style={styles.identityRow}>
-                <Text style={styles.identityLabel}>Cart Preference</Text>
-                <Text style={styles.identityValue}>
-                  {networkingPreferences.cart_preference
-                    ? networkingPreferences.cart_preference.charAt(0).toUpperCase() +
-                      networkingPreferences.cart_preference.slice(1)
-                    : 'Not set'}
-                </Text>
-              </View>
-              {networkingPreferences.preferred_golf_area && (
-                <View style={styles.identityRow}>
-                  <Text style={styles.identityLabel}>Preferred Area</Text>
-                  <Text style={styles.identityValue}>
-                    {networkingPreferences.preferred_golf_area}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={styles.emptyIdentity}>
-              <Text style={styles.emptyText}>Complete your networking preferences</Text>
-              <Button title="Add Preferences" onPress={handleEditProfile} />
             </View>
           )}
         </View>
@@ -577,6 +646,87 @@ const styles = StyleSheet.create({
     color: palette.ink500,
     marginTop: spacing.xs / 2,
   },
+  // Reliability Section Styles - Epic 6
+  reliabilityContent: {
+    gap: spacing.md,
+  },
+  reliabilityTopRow: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    alignItems: 'flex-start',
+  },
+  reliabilityDetails: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  reliabilityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  reliabilityLabel: {
+    fontSize: 13,
+    color: palette.ink600,
+  },
+  reliabilityValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.ink900,
+  },
+  bucketBadge: {
+    backgroundColor: palette.sky100,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  bucketText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  badgesSection: {
+    marginTop: spacing.sm,
+  },
+  badgesTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: palette.ink800,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  boostSection: {
+    backgroundColor: palette.sky100,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+  },
+  boostHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  boostTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.ink900,
+  },
+  boostBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: palette.navy600,
+    backgroundColor: `${palette.navy600}15`,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  boostDescription: {
+    fontSize: 12,
+    color: palette.ink600,
+    lineHeight: 18,
+  },
+  // Identity Card Styles
   identityCard: {
     gap: spacing.md,
   },

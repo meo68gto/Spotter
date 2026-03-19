@@ -1,141 +1,227 @@
 // ============================================================================
-// Phase 2: Round Coordination & Scheduling Types
+// Epic 5: Rounds as Social Infrastructure - Complete Types
 // ============================================================================
 
 import type { UUID } from "./index.js";
 
 // ----------------------------------------------------------------------------
-// Round Status Enum
+// Legacy Round Status (for backwards compatibility)
 // ----------------------------------------------------------------------------
 
-/**
- * Possible statuses for a golf round
- */
 export type RoundStatus = 
-  | 'draft'      // Round being created
-  | 'open'       // Accepting participants
-  | 'full'       // Max players reached
-  | 'confirmed'  // All spots filled, ready to play
-  | 'in_progress'// Round is happening now
-  | 'completed'  // Round finished
-  | 'cancelled'; // Round cancelled by creator
+  | 'draft'
+  | 'open'
+  | 'full'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
 
-/**
- * Possible statuses for a round invitation
- */
 export type InvitationStatus = 
-  | 'pending'   // Awaiting response
-  | 'accepted'  // User accepted invite
-  | 'declined'  // User declined invite
-  | 'expired';  // Invite expired
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'expired';
 
-/**
- * Cart preference options
- */
 export type CartPreference = 'walking' | 'cart' | 'either';
 
 // ----------------------------------------------------------------------------
-// Round Interface
+// NEW: Round Lifecycle Status (Epic 5)
+// More granular states for social round flow
 // ----------------------------------------------------------------------------
 
-/**
- * Core round entity for foursome coordination
- */
-export interface Round {
-  /** Unique identifier for the round */
+export type RoundLifecycleStatus =
+  | 'planning'      // Initial creation, building the group
+  | 'invited'       // Invitations sent, awaiting responses
+  | 'confirmed'     // All players confirmed
+  | 'played'        // Round has been played
+  | 'review_pending' // Awaiting post-round ratings
+  | 'reviewed'      // All ratings submitted
+  | 'review_closed' // Rating window closed
+  | 'cancelled';    // Round was cancelled
+
+// ----------------------------------------------------------------------------
+// NEW: Round Source Type (Epic 5)
+// Tracks how the round was created
+// ----------------------------------------------------------------------------
+
+export type RoundSourceType =
+  | 'standing_foursome'  // Created from a standing foursome
+  | 'network_invite'     // Invited via network connection
+  | 'discovery'          // Found through discovery/matching
+  | 'direct';            // Direct creation
+
+// ----------------------------------------------------------------------------
+// NEW: Standing Foursome Types (Epic 5)
+// ----------------------------------------------------------------------------
+
+export type FoursomeCadence = 'weekly' | 'biweekly' | 'monthly' | 'flexible';
+export type FoursomePreferredDay = 'weekday' | 'weekend' | 'flexible';
+export type FoursomePreferredTime = 'morning' | 'midday' | 'afternoon' | 'flexible';
+export type StandingFoursomeStatus = 'active' | 'paused' | 'disbanded';
+
+export interface StandingFoursome {
   id: UUID;
-  
-  /** User who created the round */
-  creatorId: UUID;
-  
-  /** Course where the round is scheduled */
-  courseId: UUID;
-  
-  /** Date and time of the round */
-  scheduledAt: string; // ISO 8601 datetime
-  
-  /** Maximum number of players (2, 3, or 4) */
-  maxPlayers: number;
-  
-  /** Preferred cart option */
-  cartPreference: CartPreference;
-  
-  /** Tier ID for same-tier enforcement */
+  name: string;
+  description?: string;
+  organizerId: UUID;
+  preferredCourseId?: UUID;
+  cadence: FoursomeCadence;
+  preferredDay?: FoursomePreferredDay;
+  preferredTime?: FoursomePreferredTime;
+  roundsPlayedCount: number;
+  lastRoundAt?: string;
+  nextRoundAt?: string;
+  status: StandingFoursomeStatus;
   tierId: UUID;
-  
-  /** Current status of the round */
-  status: RoundStatus;
-  
-  /** Optional notes from creator */
-  notes?: string;
-  
-  /** When the round was created */
   createdAt: string;
-  
-  /** When the round was last updated */
   updatedAt: string;
 }
 
-/**
- * Round with joined course data
- */
+export interface StandingFoursomeMember {
+  foursomeId: UUID;
+  userId: UUID;
+  displayName: string;
+  avatarUrl?: string;
+  role: 'organizer' | 'member';
+  joinedAt: string;
+}
+
+export interface StandingFoursomeWithMembers extends StandingFoursome {
+  members: StandingFoursomeMember[];
+  organizer: {
+    id: UUID;
+    displayName: string;
+    avatarUrl?: string;
+  };
+  preferredCourse?: {
+    id: UUID;
+    name: string;
+    city: string;
+    state: string;
+  };
+}
+
+// ----------------------------------------------------------------------------
+// NEW: Round Rating Types (Epic 5)
+// Post-round player ratings
+// ----------------------------------------------------------------------------
+
+export interface RoundRating {
+  id: UUID;
+  roundId: UUID;
+  raterId: UUID;
+  rateeId: UUID;
+  punctuality: number;      // 1-5
+  golfEtiquette: number;    // 1-5
+  enjoyment: number;        // 1-5
+  businessValue?: number;   // 1-5 (optional)
+  playAgain: boolean;
+  wouldIntroduce: boolean;
+  privateNote?: string;
+  publicCompliment?: string;
+  publicComplimentApproved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RoundRatingInput {
+  rateeId: string;
+  punctuality: number;
+  golfEtiquette: number;
+  enjoyment: number;
+  businessValue?: number;
+  playAgain: boolean;
+  wouldIntroduce: boolean;
+  privateNote?: string;
+  publicCompliment?: string;
+}
+
+export interface RoundRatingAggregate {
+  userId: UUID;
+  totalRoundsRated: number;
+  avgPunctuality: number;
+  avgGolfEtiquette: number;
+  avgEnjoyment: number;
+  avgBusinessValue?: number;
+  playAgainPercentage: number;
+  wouldIntroducePercentage: number;
+}
+
+// ----------------------------------------------------------------------------
+// Round Interface (UPDATED for Epic 5)
+// ----------------------------------------------------------------------------
+
+export interface Round {
+  id: UUID;
+  creatorId: UUID;
+  courseId: UUID;
+  scheduledAt: string;
+  maxPlayers: number;
+  cartPreference: CartPreference;
+  tierId: UUID;
+  status: RoundStatus;
+  lifecycleStatus?: RoundLifecycleStatus;  // NEW (Epic 5)
+  sourceType?: RoundSourceType;           // NEW (Epic 5)
+  standingFoursomeId?: UUID;              // NEW (Epic 5)
+  networkContext?: RoundNetworkContext;  // NEW (Epic 5)
+  playedAt?: string;                    // NEW (Epic 5)
+  reviewedAt?: string;                 // NEW (Epic 5)
+  reviewWindowClosesAt?: string;         // NEW (Epic 5)
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ----------------------------------------------------------------------------
+// NEW: Network Context (Epic 5)
+// Tracks network-driven round creation
+// ----------------------------------------------------------------------------
+
+export interface RoundNetworkContext {
+  mutualConnections?: UUID[];
+  sharedMemberships?: UUID[];
+  referralSource?: string;
+  introductionId?: UUID;
+}
+
+// ----------------------------------------------------------------------------
+// Round With Joined Data
+// ----------------------------------------------------------------------------
+
 export interface RoundWithCourse extends Round {
-  /** Joined course data */
   course: {
     id: UUID;
     name: string;
     city: string;
     state: string;
   };
-  
-  /** Current number of confirmed participants */
   confirmedParticipants: number;
-  
-  /** Whether the requesting user is a participant */
   isParticipant?: boolean;
-  
-  /** Current user's invitation status if applicable */
   myInvitationStatus?: InvitationStatus;
+  // NEW: Standing foursome info (Epic 5)
+  standingFoursome?: {
+    id: UUID;
+    name: string;
+  };
 }
 
 // ----------------------------------------------------------------------------
 // Round Invitation Interface
 // ----------------------------------------------------------------------------
 
-/**
- * Invitation to join a round
- */
 export interface RoundInvitation {
-  /** Unique identifier for the invitation */
   id: UUID;
-  
-  /** Round being invited to */
   roundId: UUID;
-  
-  /** User being invited */
   inviteeId: UUID;
-  
-  /** Current status of the invitation */
   status: InvitationStatus;
-  
-  /** Optional message from inviter */
   message?: string;
-  
-  /** When the invitation was sent */
   invitedAt: string;
-  
-  /** When the invitee responded (null if pending) */
   respondedAt?: string;
 }
 
-/**
- * Round invitation with joined round data
- */
 export interface RoundInvitationWithRound extends RoundInvitation {
-  /** Joined round data */
   round: RoundWithCourse;
-  
-  /** Invitee profile info */
   invitee?: {
     id: UUID;
     displayName: string;
@@ -147,31 +233,15 @@ export interface RoundInvitationWithRound extends RoundInvitation {
 // Round Participant Interface
 // ----------------------------------------------------------------------------
 
-/**
- * Confirmed participant in a round
- */
 export interface RoundParticipant {
-  /** Unique identifier */
   id: UUID;
-  
-  /** Round reference */
   roundId: UUID;
-  
-  /** User reference */
   userId: UUID;
-  
-  /** Whether this user is the round creator */
   isCreator: boolean;
-  
-  /** When they joined the round */
   joinedAt: string;
 }
 
-/**
- * Participant with user profile data
- */
 export interface RoundParticipantWithUser extends RoundParticipant {
-  /** User profile data */
   user: {
     id: UUID;
     displayName: string;
@@ -181,155 +251,110 @@ export interface RoundParticipantWithUser extends RoundParticipant {
 }
 
 // ----------------------------------------------------------------------------
-// Input Types
+// Input Types (UPDATED for Epic 5)
 // ----------------------------------------------------------------------------
 
-/**
- * Input for creating a new round
- */
 export interface CreateRoundInput {
-  /** Course ID where the round takes place */
   courseId: UUID;
-  
-  /** Date and time of the round (ISO 8601) */
   scheduledAt: string;
-  
-  /** Maximum players (2, 3, or 4) */
   maxPlayers?: number;
-  
-  /** Cart preference (default: either) */
   cartPreference?: CartPreference;
-  
-  /** Optional notes */
   notes?: string;
-  
-  /** Initial invitee IDs to invite after creation */
+  // NEW (Epic 5)
+  sourceType?: RoundSourceType;
+  standingFoursomeId?: UUID;
+  networkContext?: RoundNetworkContext;
   inviteeIds?: UUID[];
 }
 
-/**
- * Input for updating a round
- */
 export interface UpdateRoundInput {
-  /** Updated scheduled time */
   scheduledAt?: string;
-  
-  /** Updated max players */
   maxPlayers?: number;
-  
-  /** Updated cart preference */
   cartPreference?: CartPreference;
-  
-  /** Updated notes */
   notes?: string;
-  
-  /** Updated status */
   status?: RoundStatus;
+  lifecycleStatus?: RoundLifecycleStatus;  // NEW (Epic 5)
 }
 
-/**
- * Input for inviting a user to a round
- */
 export interface InviteToRoundInput {
-  /** Round ID to invite to */
   roundId: UUID;
-  
-  /** User ID to invite */
   userId: UUID;
-  
-  /** Optional message */
   message?: string;
 }
 
-/**
- * Input for responding to a round invitation
- */
 export interface RespondToRoundInput {
-  /** Round ID (alternative to invitationId) */
   roundId?: UUID;
-  
-  /** Invitation ID (alternative to roundId) */
   invitationId?: UUID;
-  
-  /** Response action */
   action: 'accept' | 'decline';
 }
 
-/**
- * Input for filtering rounds
- */
 export interface RoundFilters {
-  /** Filter by course ID */
   courseId?: UUID;
-  
-  /** Filter by creator ID */
   creatorId?: UUID;
-  
-  /** Filter by status */
   status?: RoundStatus | RoundStatus[];
-  
-  /** Filter by date range start */
+  lifecycleStatus?: RoundLifecycleStatus | RoundLifecycleStatus[];  // NEW (Epic 5)
+  sourceType?: RoundSourceType;  // NEW (Epic 5)
   dateFrom?: string;
-  
-  /** Filter by date range end */
   dateTo?: string;
-  
-  /** Filter by tier ID */
   tierId?: UUID;
-  
-  /** Include only rounds the user is invited to */
   invitedOnly?: boolean;
-  
-  /** Include only rounds the user is participating in */
   participatingOnly?: boolean;
-  
-  /** Maximum results to return */
+  // NEW (Epic 5)
+  standingFoursomeId?: UUID;
+  pendingReview?: boolean;  // Filter for rounds awaiting ratings
   limit?: number;
-  
-  /** Offset for pagination */
   offset?: number;
+}
+
+// ----------------------------------------------------------------------------
+// NEW: Standing Foursome Input Types (Epic 5)
+// ----------------------------------------------------------------------------
+
+export interface CreateStandingFoursomeInput {
+  name: string;
+  description?: string;
+  memberIds: UUID[];  // 2-3 other members
+  preferredCourseId?: UUID;
+  cadence?: FoursomeCadence;
+  preferredDay?: FoursomePreferredDay;
+  preferredTime?: FoursomePreferredTime;
+}
+
+export interface UpdateStandingFoursomeInput {
+  name?: string;
+  description?: string;
+  preferredCourseId?: UUID;
+  cadence?: FoursomeCadence;
+  preferredDay?: FoursomePreferredDay;
+  preferredTime?: FoursomePreferredTime;
+  status?: StandingFoursomeStatus;
+}
+
+export interface ScheduleFromFoursomeInput {
+  foursomeId: UUID;
+  scheduledAt: string;
+  courseId?: UUID;  // Override preferred course
+  notes?: string;
 }
 
 // ----------------------------------------------------------------------------
 // Response Types
 // ----------------------------------------------------------------------------
 
-/**
- * API response for round operations
- */
 export interface RoundApiResponse {
-  /** The round data */
   data: Round | RoundWithCourse | Round[];
-  
-  /** Error message if operation failed */
   error?: string;
-  
-  /** Error code for programmatic handling */
   code?: string;
 }
 
-/**
- * API response for invitation operations
- */
 export interface InvitationApiResponse {
-  /** The invitation data */
   data: RoundInvitation | RoundInvitation[];
-  
-  /** Error message if operation failed */
   error?: string;
-  
-  /** Error code for programmatic handling */
   code?: string;
 }
 
-/**
- * Round list response with pagination
- */
 export interface RoundListResponse {
-  /** List of rounds */
   data: RoundWithCourse[];
-  
-  /** Pagination info */
   pagination: {
     total: number;
     limit: number;
@@ -337,13 +362,32 @@ export interface RoundListResponse {
   };
 }
 
+// NEW (Epic 5)
+export interface StandingFoursomeApiResponse {
+  data: StandingFoursome | StandingFoursomeWithMembers | StandingFoursome[];
+  error?: string;
+  code?: string;
+}
+
+export interface StandingFoursomeListResponse {
+  data: StandingFoursomeWithMembers[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+
+export interface RoundRatingApiResponse {
+  data: RoundRating | RoundRatingInput[] | RoundRatingAggregate;
+  error?: string;
+  code?: string;
+}
+
 // ----------------------------------------------------------------------------
 // Constants
 // ----------------------------------------------------------------------------
 
-/**
- * Valid round statuses with metadata
- */
 export const ROUND_STATUS_META: Record<RoundStatus, { 
   label: string; 
   description: string; 
@@ -394,9 +438,72 @@ export const ROUND_STATUS_META: Record<RoundStatus, {
   },
 };
 
-/**
- * Valid invitation statuses with metadata
- */
+// NEW (Epic 5)
+export const ROUND_LIFECYCLE_META: Record<RoundLifecycleStatus, {
+  label: string;
+  description: string;
+  isActive: boolean;
+  canInvite: boolean;
+  canRate: boolean;
+}> = {
+  planning: {
+    label: 'Planning',
+    description: 'Building the group',
+    isActive: true,
+    canInvite: true,
+    canRate: false,
+  },
+  invited: {
+    label: 'Invited',
+    description: 'Waiting for responses',
+    isActive: true,
+    canInvite: false,
+    canRate: false,
+  },
+  confirmed: {
+    label: 'Confirmed',
+    description: 'Group confirmed, ready to play',
+    isActive: true,
+    canInvite: false,
+    canRate: false,
+  },
+  played: {
+    label: 'Played',
+    description: 'Round completed',
+    isActive: false,
+    canInvite: false,
+    canRate: true,
+  },
+  review_pending: {
+    label: 'Review Pending',
+    description: 'Awaiting player ratings',
+    isActive: false,
+    canInvite: false,
+    canRate: true,
+  },
+  reviewed: {
+    label: 'Reviewed',
+    description: 'All ratings submitted',
+    isActive: false,
+    canInvite: false,
+    canRate: false,
+  },
+  review_closed: {
+    label: 'Review Closed',
+    description: 'Rating window expired',
+    isActive: false,
+    canInvite: false,
+    canRate: false,
+  },
+  cancelled: {
+    label: 'Cancelled',
+    description: 'Round cancelled',
+    isActive: false,
+    canInvite: false,
+    canRate: false,
+  },
+};
+
 export const INVITATION_STATUS_META: Record<InvitationStatus, { 
   label: string; 
   description: string;
@@ -419,9 +526,6 @@ export const INVITATION_STATUS_META: Record<InvitationStatus, {
   },
 };
 
-/**
- * Cart preferences with labels
- */
 export const CART_PREFERENCE_OPTIONS: Record<CartPreference, { 
   label: string; 
   description: string;
@@ -440,68 +544,116 @@ export const CART_PREFERENCE_OPTIONS: Record<CartPreference, {
   },
 };
 
-/**
- * Default round values
- */
+// NEW (Epic 5)
+export const FOURSOME_CADENCE_OPTIONS: Record<FoursomeCadence, {
+  label: string;
+  description: string;
+}> = {
+  weekly: {
+    label: 'Weekly',
+    description: 'Play every week',
+  },
+  biweekly: {
+    label: 'Bi-weekly',
+    description: 'Play every other week',
+  },
+  monthly: {
+    label: 'Monthly',
+    description: 'Play once a month',
+  },
+  flexible: {
+    label: 'Flexible',
+    description: 'Play when everyone is available',
+  },
+};
+
 export const ROUND_DEFAULTS = {
   maxPlayers: 4,
   cartPreference: 'either' as CartPreference,
 } as const;
 
-/**
- * Valid max players options
- */
 export const VALID_MAX_PLAYERS = [2, 3, 4] as const;
+
+// NEW (Epic 5): Free tier monthly limit
+export const FREE_TIER_ROUND_LIMIT = 3;
 
 // ----------------------------------------------------------------------------
 // Type Guards
 // ----------------------------------------------------------------------------
 
-/**
- * Check if a string is a valid RoundStatus
- */
 export function isValidRoundStatus(status: string): status is RoundStatus {
   return ['draft', 'open', 'full', 'confirmed', 'in_progress', 'completed', 'cancelled'].includes(status);
 }
 
-/**
- * Check if a string is a valid InvitationStatus
- */
 export function isValidInvitationStatus(status: string): status is InvitationStatus {
   return ['pending', 'accepted', 'declined', 'expired'].includes(status);
 }
 
-/**
- * Check if a string is a valid CartPreference
- */
 export function isValidCartPreference(pref: string): pref is CartPreference {
   return ['walking', 'cart', 'either'].includes(pref);
 }
 
-/**
- * Check if a number is a valid max players value
- */
 export function isValidMaxPlayers(num: number): boolean {
   return VALID_MAX_PLAYERS.includes(num as any);
 }
 
-/**
- * Check if a round can be joined
- */
+// NEW (Epic 5)
+export function isValidRoundLifecycleStatus(status: string): status is RoundLifecycleStatus {
+  return ['planning', 'invited', 'confirmed', 'played', 'review_pending', 'reviewed', 'review_closed', 'cancelled'].includes(status);
+}
+
+export function isValidRoundSourceType(source: string): source is RoundSourceType {
+  return ['standing_foursome', 'network_invite', 'discovery', 'direct'].includes(source);
+}
+
+export function isValidFoursomeCadence(cadence: string): cadence is FoursomeCadence {
+  return ['weekly', 'biweekly', 'monthly', 'flexible'].includes(cadence);
+}
+
+export function isValidStandingFoursomeStatus(status: string): status is StandingFoursomeStatus {
+  return ['active', 'paused', 'disbanded'].includes(status);
+}
+
+// ----------------------------------------------------------------------------
+// Helper Functions
+// ----------------------------------------------------------------------------
+
 export function canJoinRound(round: Round): boolean {
   return round.status === 'open';
 }
 
-/**
- * Check if a round can be edited by the creator
- */
 export function canEditRound(round: Round, userId: UUID): boolean {
   return round.creatorId === userId && !['in_progress', 'completed', 'cancelled'].includes(round.status);
 }
 
-/**
- * Check if a round can be cancelled
- */
 export function canCancelRound(round: Round, userId: UUID): boolean {
   return round.creatorId === userId && !['in_progress', 'completed', 'cancelled'].includes(round.status);
+}
+
+// NEW (Epic 5)
+export function canRateRound(round: Round): boolean {
+  return round.lifecycleStatus === 'played' || round.lifecycleStatus === 'review_pending';
+}
+
+export function isRatingWindowOpen(round: Round): boolean {
+  if (!round.reviewWindowClosesAt) return false;
+  return new Date(round.reviewWindowClosesAt) > new Date();
+}
+
+export function canInviteToRound(round: Round): boolean {
+  return round.lifecycleStatus === 'planning' || round.lifecycleStatus === 'invited';
+}
+
+export function getRoundLifecycleLabel(status: RoundLifecycleStatus): string {
+  return ROUND_LIFECYCLE_META[status]?.label || status;
+}
+
+export function getRoundSourceLabel(source: RoundSourceType): string {
+  const labels: Record<RoundSourceType, string> = {
+    standing_foursome: 'Standing Foursome',
+    network_invite: 'Network',
+    discovery: 'Discovery',
+    direct: 'Direct',
+  };
+  return labels[source] || source;
 }

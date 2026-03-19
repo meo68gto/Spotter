@@ -61,6 +61,8 @@ export interface MatchSuggestion {
     displayName: string;
     avatarUrl?: string;
     city?: string;
+    /** User's membership tier (free, select, summit) */
+    tier?: 'free' | 'select' | 'summit';
   };
   /** Golf identity summary */
   golf?: {
@@ -87,6 +89,8 @@ export interface MatchSuggestion {
   sharedCourses: number;
   /** Distance from current user in km (if location available) */
   distanceKm?: number;
+  /** User's reputation score (0-100) */
+  reputationScore?: number;
 }
 
 /**

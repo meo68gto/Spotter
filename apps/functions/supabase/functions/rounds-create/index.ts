@@ -1,29 +1,34 @@
-// Phase 2: Golf Rounds Create Edge Function
-// Handles creating new golf rounds with same-tier enforcement and tier limits
+// Epic 5: Golf Rounds Create Edge Function (Updated)
+// Handles creating new golf rounds with same-tier enforcement, free tier limits, and network context
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
 import { TIER_SLUGS, getTierFeatures, TierSlug } from '../_shared/tier-gate.ts';
 
-// Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Valid max players options
 const VALID_MAX_PLAYERS = [2, 3, 4] as const;
 type MaxPlayers = typeof VALID_MAX_PLAYERS[number];
 
-// Valid cart preferences
 const VALID_CART_PREFERENCES = ['walking', 'cart', 'either'] as const;
 type CartPreference = typeof VALID_CART_PREFERENCES[number];
 
 interface CreateRoundRequest {
   courseId: string;
-  scheduledAt: string; // ISO 8601 datetime
+  scheduledAt: string;
   maxPlayers?: MaxPlayers;
   cartPreference?: CartPreference;
   notes?: string;
+  sourceType?: 'standing_foursome' | 'network_invite' | 'discovery' | 'direct';
+  standingFoursomeId?: string;
+  networkContext?: {
+    mutualConnections?: string[];
+    sharedMemberships?: string[];
+    referralSource?: string;
+  };
+  inviteeIds?: string[];
 }
 
 interface RoundResponse {
@@ -39,18 +44,19 @@ interface RoundResponse {
   tierId: string;
   tierSlug: string;
   status: string;
+  lifecycleStatus: string;
+  sourceType: string;
   confirmedParticipants: number;
+  invitedCount: number;
   notes: string | null;
   createdAt: string;
 }
 
 serve(async (req) => {
-  // CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // Only allow POST
   if (req.method !== 'POST') {
     return new Response(
       JSON.stringify({ error: 'Method not allowed', code: 'method_not_allowed' }),
@@ -58,7 +64,6 @@ serve(async (req) => {
     );
   }
 
-  // Get auth header
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
     return new Response(
@@ -68,14 +73,11 @@ serve(async (req) => {
   }
 
   try {
-    // Create client with user's JWT for auth check
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized', code: 'invalid_token' }),
@@ -83,18 +85,9 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body
-    let body: CreateRoundRequest;
-    try {
-      body = await req.json();
-    } catch {
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON body', code: 'invalid_json' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const body: CreateRoundRequest = await req.json();
 
-    // Validate required fields
+    // Validation
     if (!body.courseId) {
       return new Response(
         JSON.stringify({ error: 'course_id is required', code: 'missing_course_id' }),
@@ -109,7 +102,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate scheduled_at is a valid future date
     const scheduledAt = new Date(body.scheduledAt);
     const now = new Date();
     if (isNaN(scheduledAt.getTime())) {
@@ -125,7 +117,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate max_players if provided
     const maxPlayers = body.maxPlayers || 4;
     if (!VALID_MAX_PLAYERS.includes(maxPlayers as MaxPlayers)) {
       return new Response(
@@ -137,7 +128,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate cart_preference if provided
     const cartPreference = body.cartPreference || 'either';
     if (!VALID_CART_PREFERENCES.includes(cartPreference as CartPreference)) {
       return new Response(
@@ -156,6 +146,8 @@ serve(async (req) => {
         id,
         tier_id,
         tier_status,
+        monthly_rounds_count,
+        rounds_count_reset_at,
         membership_tiers (
           id,
           slug
@@ -201,27 +193,39 @@ serve(async (req) => {
       );
     }
 
-    // Check max rounds per month limit
-    if (tierFeatures.maxRoundsPerMonth !== null) {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
+    // FREE TIER ENFORCEMENT: Check monthly round limit (3 rounds/month)
+    if (tierSlug === TIER_SLUGS.FREE) {
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const resetMonth = userData.rounds_count_reset_at 
+        ? new Date(userData.rounds_count_reset_at).getMonth()
+        : currentMonth;
+      const resetYear = userData.rounds_count_reset_at 
+        ? new Date(userData.rounds_count_reset_at).getFullYear()
+        : currentYear;
+      
+      // Check if we need to reset (new month)
+      if (currentMonth !== resetMonth || currentYear !== resetYear) {
+        // Reset the counter
+        await supabase
+          .from('users')
+          .update({ 
+            monthly_rounds_count: 0,
+            rounds_count_reset_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+        userData.monthly_rounds_count = 0;
+      }
 
-      const { count: roundsThisMonth, error: countError } = await supabase
-        .from('rounds')
-        .select('*', { count: 'exact', head: true })
-        .eq('creator_id', user.id)
-        .gte('created_at', startOfMonth.toISOString());
-
-      if (countError) {
-        console.error('Error counting rounds:', countError);
-      } else if ((roundsThisMonth || 0) >= tierFeatures.maxRoundsPerMonth) {
+      const FREE_TIER_MONTHLY_LIMIT = 3;
+      if ((userData.monthly_rounds_count || 0) >= FREE_TIER_MONTHLY_LIMIT) {
         return new Response(
           JSON.stringify({ 
-            error: `You have reached your monthly limit of ${tierFeatures.maxRoundsPerMonth} rounds`, 
-            code: 'round_limit_reached',
-            limit: tierFeatures.maxRoundsPerMonth,
-            used: roundsThisMonth
+            error: `Free tier users can only create ${FREE_TIER_MONTHLY_LIMIT} rounds per month. Upgrade to create more rounds.`, 
+            code: 'free_tier_round_limit_reached',
+            limit: FREE_TIER_MONTHLY_LIMIT,
+            used: userData.monthly_rounds_count,
+            upgradeUrl: '/upgrade'
           }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -249,7 +253,11 @@ serve(async (req) => {
       );
     }
 
-    // Create the round (creator is auto-added as participant via trigger)
+    // Determine source type and lifecycle status
+    const sourceType = body.sourceType || 'direct';
+    const lifecycleStatus = sourceType === 'standing_foursome' ? 'invited' : 'planning';
+
+    // Create the round
     const { data: round, error: roundError } = await supabase
       .from('rounds')
       .insert({
@@ -260,9 +268,13 @@ serve(async (req) => {
         cart_preference: cartPreference,
         tier_id: tierId,
         notes: body.notes?.substring(0, 500) ?? null,
-        status: 'open'
+        status: 'open',
+        lifecycle_status: lifecycleStatus,
+        source_type: sourceType,
+        standing_foursome_id: body.standingFoursomeId ?? null,
+        network_context: body.networkContext ?? null
       })
-      .select('id, creator_id, course_id, scheduled_at, max_players, cart_preference, tier_id, status, notes, created_at')
+      .select('id, creator_id, course_id, scheduled_at, max_players, cart_preference, tier_id, status, lifecycle_status, source_type, notes, created_at')
       .single();
 
     if (roundError || !round) {
@@ -271,6 +283,38 @@ serve(async (req) => {
         JSON.stringify({ error: 'Failed to create round', code: 'create_failed', details: roundError?.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Send invitations if provided
+    let invitedCount = 0;
+    if (body.inviteeIds && body.inviteeIds.length > 0) {
+      // Validate invitees are valid same-tier users
+      const { data: inviteeUsers } = await supabase
+        .from('users')
+        .select('id, tier_id')
+        .in('id', body.inviteeIds)
+        .eq('tier_id', tierId);
+
+      const validInviteeIds = new Set(inviteeUsers?.map(u => u.id) || []);
+
+      const invitations = body.inviteeIds
+        .filter(id => validInviteeIds.has(id))
+        .map(userId => ({
+          round_id: round.id,
+          invitee_id: userId,
+          status: 'pending',
+          message: null
+        }));
+
+      if (invitations.length > 0) {
+        const { error: inviteError } = await supabase
+          .from('round_invitations')
+          .insert(invitations);
+        
+        if (!inviteError) {
+          invitedCount = invitations.length;
+        }
+      }
     }
 
     // Get participant count
@@ -293,7 +337,10 @@ serve(async (req) => {
       tierId: round.tier_id,
       tierSlug: tierSlug,
       status: round.status,
+      lifecycleStatus: round.lifecycle_status,
+      sourceType: round.source_type || 'direct',
       confirmedParticipants: participantCount || 1,
+      invitedCount,
       notes: round.notes,
       createdAt: round.created_at
     };

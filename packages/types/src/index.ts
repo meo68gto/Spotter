@@ -475,6 +475,56 @@ export {
 } from "./profile.js";
 
 // ============================================================================
+// Epic 4: Network Graph & Saved Members Types Re-exports
+// ============================================================================
+
+export type {
+  // Network Connection Types
+  NetworkConnection,
+  NetworkMember,
+  RelationshipState,
+  // Saved Members Types
+  SavedMember,
+  SavedMemberData,
+  SavedMemberTier,
+  // Introduction Types (Enhanced)
+  Introduction,
+  IntroductionWithParticipants,
+  IntroductionStatus,
+  // Network Graph Types
+  GraphNode,
+  GraphEdge,
+  NetworkGraphData,
+  NetworkGraphStats,
+  // Statistics Types
+  NetworkStats,
+  // Input Types
+  SaveMemberInput,
+  UpdateSavedMemberInput,
+  RequestIntroductionInput,
+  RespondToIntroductionInput,
+  NetworkConnectionsFilter,
+  NetworkGraphInput,
+} from "./networking.js";
+
+export {
+  // Constants
+  RELATIONSHIP_STATES,
+  SAVED_MEMBER_TIERS,
+  INTRODUCTION_STATUSES,
+  // Type Guards
+  isValidRelationshipState,
+  isValidSavedMemberTier,
+  isValidIntroductionStatus,
+  // Helpers
+  getRelationshipStateLabel,
+  getSavedMemberTierLabel,
+  getNextRelationshipState,
+  getStrengthScoreColor,
+  getStrengthScoreLabel,
+} from "./networking.js";
+
+// ============================================================================
 // Organizer Types Re-exports
 // ============================================================================
 
@@ -634,6 +684,22 @@ export type {
   Round,
   RoundWithCourse,
   RoundStatus,
+  // Epic 5: NEW Round Lifecycle Types
+  RoundLifecycleStatus,
+  RoundSourceType,
+  RoundNetworkContext,
+  // Epic 5: NEW Standing Foursome Types
+  StandingFoursome,
+  StandingFoursomeMember,
+  StandingFoursomeWithMembers,
+  FoursomeCadence,
+  FoursomePreferredDay,
+  FoursomePreferredTime,
+  StandingFoursomeStatus,
+  // Epic 5: NEW Round Rating Types
+  RoundRating,
+  RoundRatingInput,
+  RoundRatingAggregate,
   // Invitation Types
   RoundInvitation,
   RoundInvitationWithRound,
@@ -647,10 +713,18 @@ export type {
   InviteToRoundInput,
   RespondToRoundInput,
   RoundFilters,
+  // Epic 5: NEW Standing Foursome Input Types
+  CreateStandingFoursomeInput,
+  UpdateStandingFoursomeInput,
+  ScheduleFromFoursomeInput,
   // Response Types
   RoundApiResponse,
   InvitationApiResponse,
   RoundListResponse,
+  // Epic 5: NEW Response Types
+  StandingFoursomeApiResponse,
+  StandingFoursomeListResponse,
+  RoundRatingApiResponse,
   // Preference Types
   CartPreference,
 } from "./rounds.js";
@@ -662,14 +736,30 @@ export {
   INVITATION_STATUS_META,
   ROUND_DEFAULTS,
   VALID_MAX_PLAYERS,
+  // Epic 5: NEW Constants
+  ROUND_LIFECYCLE_META,
+  FOURSOME_CADENCE_OPTIONS,
+  FREE_TIER_ROUND_LIMIT,
   // Type Guards
   isValidRoundStatus,
   isValidInvitationStatus,
   isValidCartPreference,
   isValidMaxPlayers,
+  // Epic 5: NEW Type Guards
+  isValidRoundLifecycleStatus,
+  isValidRoundSourceType,
+  isValidFoursomeCadence,
+  isValidStandingFoursomeStatus,
+  // Helper Functions
   canJoinRound,
   canEditRound,
   canCancelRound,
+  // Epic 5: NEW Helper Functions
+  canRateRound,
+  isRatingWindowOpen,
+  canInviteToRound,
+  getRoundLifecycleLabel,
+  getRoundSourceLabel,
 } from "./rounds.js";
 
 // ============================================================================
@@ -712,3 +802,63 @@ export {
   hasTierFeature,
   compareTiers,
 } from "./tier.js";
+
+// ============================================================================
+// Trust & Reliability Types Re-exports - Epic 6
+// ============================================================================
+
+export type {
+  // Reliability Types
+  ReliabilityLabel,
+  ReliabilityBreakdown,
+  ReliabilityWeights,
+  // Vouch Types
+  VouchStatus,
+  Vouch,
+  VouchSummary,
+  // Incident Types
+  IncidentSeverity,
+  IncidentStatus,
+  IncidentCategory,
+  Incident,
+  CreateIncidentInput,
+  // Trust Badge Types
+  TrustBadgeType,
+  TrustBadge,
+  TrustBadgeMeta,
+  // Discovery Boost Types
+  DiscoveryBoost,
+  // Extended Reputation
+  ExtendedReputationScore,
+  // Input Types
+  CreateVouchInput,
+  RevokeVouchInput,
+} from "./trust.js";
+
+export {
+  // Constants
+  DEFAULT_RELIABILITY_WEIGHTS,
+  VOUCH_MIN_ROUNDS,
+  VOUCH_MAX_GIVEN,
+  VOUCH_EXPIRATION_DAYS,
+  DISCOVERY_BOOST_THRESHOLDS,
+  INCIDENT_PENALTIES,
+  TRUST_BADGE_META,
+  // Type Guards
+  isValidVouchStatus,
+  isValidIncidentSeverity,
+  isValidIncidentStatus,
+  isValidIncidentCategory,
+  isValidTrustBadgeType,
+  isValidReliabilityLabel,
+} from "./trust.js";
+
+// ============================================================================
+// Trust & Reliability Configuration - Epic 6
+// ============================================================================
+
+export {
+  TRUST_CONFIG,
+  calculateDiscoveryBoost,
+  getReliabilityLabel,
+} from "./trust-config.js";
