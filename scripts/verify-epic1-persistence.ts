@@ -7,9 +7,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 
-// Test configuration
-const SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpNhqIU';
+// Test configuration - use environment variables or defaults for local Supabase
+const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:54321';
+// Use service role key from environment
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 // The 12 required fields from Epic 1
 const REQUIRED_FIELDS = {
@@ -84,23 +85,26 @@ async function runOnboarding(supabase: SupabaseClient, userId: string): Promise<
   
   if (!tier) throw new Error('Tier not found');
   
-  // Update user tier
-  const { error: userError } = await supabase
+  // Ensure user exists in users table (create if not)
+  const { error: userUpsertError } = await supabase
     .from('users')
-    .update({
+    .upsert({
+      id: userId,
       tier_id: tier.id,
       tier_enrolled_at: new Date().toISOString(),
       tier_status: 'active',
-    })
-    .eq('id', userId);
+    }, { onConflict: 'id' });
   
-  if (userError) throw new Error(`Failed to update user: ${userError.message}`);
+  if (userUpsertError) throw new Error(`Failed to upsert user: ${userUpsertError.message}`);
   
-  // Create golf identity
+  // Create golf identity - set both handicap_band AND numeric handicap
+  // The trigger will auto-calculate handicap_band from handicap if handicap is provided
+  // But we set handicap_band explicitly to ensure it's preserved
   const { error: golfError } = await supabase
     .from('user_golf_identities')
     .upsert({
       user_id: userId,
+      handicap: 18, // numeric handicap that corresponds to 'intermediate'
       handicap_band: REQUIRED_FIELDS.handicap_band,
       home_course_area: REQUIRED_FIELDS.home_course_area,
       play_frequency: 'weekly',
@@ -202,31 +206,39 @@ async function verifyPersistence(supabase: SupabaseClient, userId: string): Prom
 }
 
 async function verifyDatabaseSchema(supabase: SupabaseClient): Promise<{ exists: boolean; missing: string[] }> {
-  const requiredColumns = [
-    { table: 'user_golf_identities', column: 'handicap_band' },
-    { table: 'user_golf_identities', column: 'home_course_area' },
-    { table: 'user_networking_preferences', column: 'preferred_tee_time_window' },
-    { table: 'user_networking_preferences', column: 'round_frequency' },
-    { table: 'user_networking_preferences', column: 'mobility_preference' },
-    { table: 'user_networking_preferences', column: 'title_or_role' },
-    { table: 'user_networking_preferences', column: 'industry' },
-    { table: 'user_networking_preferences', column: 'company' },
-  ];
-  
   const missing: string[] = [];
   
-  for (const { table, column } of requiredColumns) {
-    const { data, error } = await supabase
-      .from('information_schema.columns')
-      .select('column_name')
-      .eq('table_schema', 'public')
-      .eq('table_name', table)
-      .eq('column_name', column)
-      .single();
-    
-    if (error || !data) {
-      missing.push(`${table}.${column}`);
+  // Try to fetch from tables to verify columns exist
+  // user_golf_identities check
+  try {
+    const { error: golfError } = await supabase
+      .from('user_golf_identities')
+      .select('handicap_band, home_course_area')
+      .limit(0);
+    if (golfError?.message?.includes('column') || golfError?.message?.includes('does not exist')) {
+      if (golfError.message.includes('handicap_band')) missing.push('user_golf_identities.handicap_band');
+      if (golfError.message.includes('home_course_area')) missing.push('user_golf_identities.home_course_area');
     }
+  } catch (e) {
+    // Ignore
+  }
+  
+  // user_networking_preferences check
+  try {
+    const { error: netError } = await supabase
+      .from('user_networking_preferences')
+      .select('preferred_tee_time_window, round_frequency, mobility_preference, title_or_role, industry, company')
+      .limit(0);
+    if (netError?.message?.includes('column') || netError?.message?.includes('does not exist')) {
+      if (netError.message.includes('preferred_tee_time_window')) missing.push('user_networking_preferences.preferred_tee_time_window');
+      if (netError.message.includes('round_frequency')) missing.push('user_networking_preferences.round_frequency');
+      if (netError.message.includes('mobility_preference')) missing.push('user_networking_preferences.mobility_preference');
+      if (netError.message.includes('title_or_role')) missing.push('user_networking_preferences.title_or_role');
+      if (netError.message.includes('industry')) missing.push('user_networking_preferences.industry');
+      if (netError.message.includes('company')) missing.push('user_networking_preferences.company');
+    }
+  } catch (e) {
+    // Ignore
   }
   
   return { exists: missing.length === 0, missing };

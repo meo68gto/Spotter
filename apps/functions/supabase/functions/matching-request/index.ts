@@ -1,6 +1,7 @@
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { createAuthedClient, createServiceClient } from '../_shared/client.ts';
 import { requireLegalConsent } from '../_shared/guard.ts';
+import { verifyInteractionAllowed } from '../_shared/enforcement.ts';
 
 interface Payload {
   candidateUserId: string;
@@ -28,6 +29,12 @@ Deno.serve(async (req) => {
 
   if (body.candidateUserId === user.id) {
     return badRequest('Cannot request match with yourself', 'self_match_not_allowed');
+  }
+
+  // Same-tier enforcement: Verify interaction is allowed
+  const interactionCheck = await verifyInteractionAllowed(service, user.id, body.candidateUserId);
+  if (!interactionCheck.allowed) {
+    return json(403, { error: interactionCheck.error, code: interactionCheck.code });
   }
 
   let requestedRange: string | null = null;

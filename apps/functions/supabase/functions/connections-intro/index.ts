@@ -6,6 +6,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
 import { TIER_SLUGS, getTierFeatures, TierSlug } from '../_shared/tier-gate.ts';
+import { verifyInteractionAllowed } from '../_shared/enforcement.ts';
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -298,6 +299,15 @@ async function requestIntroduction(supabase: any, userId: string, body: RequestI
   if (targetUser?.allow_intros === false) {
     return new Response(
       JSON.stringify({ error: 'User does not accept introduction requests', code: 'intros_disabled' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Same-tier enforcement: Verify requester and target are in same tier
+  const interactionCheck = await verifyInteractionAllowed(supabase, userId, targetUserId);
+  if (!interactionCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: interactionCheck.error, code: interactionCheck.code }),
       { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

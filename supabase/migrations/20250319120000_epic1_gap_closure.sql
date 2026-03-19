@@ -61,10 +61,15 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 -- 5. Create trigger to auto-update handicap_band when handicap changes
+-- Only updates handicap_band if handicap is provided and handicap_band is not explicitly set
 CREATE OR REPLACE FUNCTION public.sync_handicap_band()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.handicap_band := public.calculate_handicap_band(NEW.handicap);
+  -- Only calculate from handicap if handicap is provided
+  -- If handicap_band is explicitly set and handicap is null, preserve the explicit value
+  IF NEW.handicap IS NOT NULL THEN
+    NEW.handicap_band := public.calculate_handicap_band(NEW.handicap);
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

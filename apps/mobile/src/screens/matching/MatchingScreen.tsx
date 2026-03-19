@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
+  Platform,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -20,7 +24,23 @@ import {
   TopMatchesResponse,
   MatchScore,
   MATCH_TIERS,
+  RequestIntroductionInput,
+  Introduction,
 } from '@spotter/types';
+
+interface MutualConnection {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  tier: string;
+  connectionDate: string;
+}
+
+interface MutualConnectionsResponse {
+  data: MutualConnection[];
+  count: number;
+  targetUserId: string;
+}
 
 export function MatchingScreen({ session }: { session: Session }) {
   const [matches, setMatches] = useState<MatchSuggestion[]>([]);
@@ -28,6 +48,8 @@ export function MatchingScreen({ session }: { session: Session }) {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchSuggestion | null>(null);
   const [metadata, setMetadata] = useState<TopMatchesResponse['metadata'] | null>(null);
+  const [pendingIntroIds, setPendingIntroIds] = useState<Set<string>>(new Set());
+  const [requestingIntroIds, setRequestingIntroIds] = useState<Set<string>>(new Set());
 
   const fetchMatches = useCallback(async () => {
     setLoading(true);
@@ -49,6 +71,81 @@ export function MatchingScreen({ session }: { session: Session }) {
   useEffect(() => {
     fetchMatches();
   }, [fetchMatches]);
+
+  const fetchMutualConnections = async (targetUserId: string): Promise<MutualConnection[]> => {
+    try {
+      const response = await invokeFunction<MutualConnectionsResponse>('connections-list', {
+        method: 'GET',
+      });
+      return response.data || [];
+    } catch (error) {
+      console.log('Failed to fetch mutual connections:', error);
+      return [];
+    }
+  };
+
+  const handleRequestIntroduction = async (match: MatchSuggestion) => {
+    if (requestingIntroIds.has(match.user.id) || pendingIntroIds.has(match.user.id)) return;
+
+    // Check if there are mutual connections
+    if (match.mutualConnections === 0) {
+      Alert.alert(
+        'No Mutual Connections',
+        'You need at least one mutual connection to request an introduction. Try connecting with them directly first.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setRequestingIntroIds((prev) => new Set(prev).add(match.user.id));
+
+    try {
+      // Fetch actual mutual connections to get connector ID
+      const mutualConnections = await fetchMutualConnections(match.user.id);
+      
+      if (mutualConnections.length === 0) {
+        Alert.alert(
+          'No Mutual Connections',
+          'You need at least one mutual connection to request an introduction.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Use the first mutual connection as the connector
+      const connector = mutualConnections[0];
+
+      const response = await invokeFunction<{ data: Introduction }>('network-introduction-request', {
+        method: 'POST',
+        body: {
+          connectorId: connector.id,
+          targetId: match.user.id,
+          connectorMessage: `I'd like to connect with you for golf.`,
+        } as RequestIntroductionInput,
+      });
+
+      setPendingIntroIds((prev) => new Set(prev).add(match.user.id));
+
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Introduction request sent', ToastAndroid.SHORT);
+      }
+
+      Alert.alert(
+        'Request Sent!',
+        `Your introduction request to ${match.user.displayName} has been sent via ${connector.displayName}.`,
+        [{ text: 'OK', onPress: () => setSelectedMatch(null) }]
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send introduction request';
+      Alert.alert('Error', message);
+    } finally {
+      setRequestingIntroIds((prev) => {
+        const next = new Set(prev);
+        next.delete(match.user.id);
+        return next;
+      });
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -145,9 +242,15 @@ export function MatchingScreen({ session }: { session: Session }) {
             </View>
 
             <View style={styles.tierBadge}>
-              <Text style={[styles.tierText, { color: tierColor }]}>
-                {MATCH_TIERS[tier]?.label}
-              </Text>
+              {pendingIntroIds.has(item.user.id) ? (
+                <Text style={[styles.tierText, { color: '#8b5cf6' }]}>
+                  Intro Pending
+                </Text>
+              ) : (
+                <Text style={[styles.tierText, { color: tierColor }]}>
+                  {MATCH_TIERS[tier]?.label}
+                </Text>
+              )}
             </View>
 
             <Text style={styles.reasoning} numberOfLines={2}>
@@ -263,8 +366,20 @@ export function MatchingScreen({ session }: { session: Session }) {
             </View>
 
             <Button
-              title="Request Introduction"
+              title={
+                pendingIntroIds.has(match.user.id)
+                  ? 'Intro Pending'
+                  : requestingIntroIds.has(match.user.id)
+                  ? 'Sending...'
+                  : 'Request Introduction'
+              }
               onPress={() => {
+                if (pendingIntroIds.has(match.user.id)) {
+                  Alert.alert('Already Pending', 'You have already sent an introduction request to this user.');
+                  return;
+                }
+                if (requestingIntroIds.has(match.user.id)) return;
+
                 Alert.alert(
                   'Request Introduction',
                   `Send introduction request to ${match.user.displayName}?`,
@@ -272,27 +387,14 @@ export function MatchingScreen({ session }: { session: Session }) {
                     { text: 'Cancel', style: 'cancel' },
                     {
                       text: 'Send',
-                      onPress: async () => {
-                        try {
-                          await invokeFunction('network-introduction-request', {
-                            method: 'POST',
-                            body: {
-                              targetUserId: match.user.id,
-                              message: `I'd like to connect with you for golf.`,
-                            },
-                          });
-                          Alert.alert('Request sent!', 'We will notify you when they respond.');
-                        } catch (error) {
-                          const message = error instanceof Error ? error.message : 'Failed to send request';
-                          Alert.alert('Error', message);
-                        } finally {
-                          setSelectedMatch(null);
-                        }
-                      },
+                      onPress: () => handleRequestIntroduction(match),
                     },
                   ]
                 );
               }}
+              tone="primary"
+              disabled={pendingIntroIds.has(match.user.id) || requestingIntroIds.has(match.user.id)}
+              loading={requestingIntroIds.has(match.user.id)}
             />
             <Button
               title="Close"
@@ -339,9 +441,6 @@ export function MatchingScreen({ session }: { session: Session }) {
     </View>
   );
 }
-
-// Need ScrollView import for detail view
-import { ScrollView } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {

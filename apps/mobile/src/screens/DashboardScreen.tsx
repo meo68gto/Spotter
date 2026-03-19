@@ -13,6 +13,7 @@ import { RoundsScreen } from './rounds/RoundsScreen';
 import { CreateRoundScreen } from './rounds/CreateRoundScreen';
 import { RoundInvitationsScreen } from './rounds/RoundInvitationsScreen';
 import { NetworkScreen } from './network/NetworkScreen';
+import { SavedMembersScreen } from './network/SavedMembersScreen';
 import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
@@ -39,6 +40,8 @@ type Props = {
   onSignOut: () => void;
   deepLinkTarget?: DeepLinkTarget | null;
 };
+
+type NetworkView = 'network' | 'saved-members' | 'profile';
 
 type NavItem = {
   key: TabKey;
@@ -86,6 +89,8 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   const [tab, setTab] = useState<TabKey>('home');
   const [roundsView, setRoundsView] = useState<'list' | 'create' | 'invitations' | 'detail'>('list');
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
+  const [networkView, setNetworkView] = useState<NetworkView>('network');
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     const bootstrapFlags = async () => {
@@ -122,11 +127,55 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
     setRoundsView('list');
   };
 
+  // Network sub-view navigation handlers
+  const handleNavigateToSavedMembers = () => {
+    setNetworkView('saved-members');
+  };
+
+  const handleNavigateToNetwork = () => {
+    setNetworkView('network');
+  };
+
+  const handleNavigateToProfile = (userId: string) => {
+    setSelectedProfileId(userId);
+    setNetworkView('profile');
+  };
+
   const renderContent = () => {
     // BETA SCOPE: 9 tabs including Discovery, Rounds, and Network
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
     if (tab === 'discover') return <DiscoveryScreen session={session} />;
-    if (tab === 'network') return <NetworkScreen />;
+    if (tab === 'network') {
+      // Import SavedMembersScreen for network sub-view
+      const { SavedMembersScreen } = require('./network/SavedMembersScreen');
+      if (networkView === 'saved-members') {
+        return (
+          <SavedMembersScreen
+            onNavigateToProfile={handleNavigateToProfile}
+            onNavigateToNetwork={handleNavigateToNetwork}
+            onBack={handleNavigateToNetwork}
+          />
+        );
+      }
+      if (networkView === 'profile' && selectedProfileId) {
+        // For now, redirect back to network if profile navigation attempted
+        // In a full implementation, this would render ProfileScreen with userId
+        setNetworkView('network');
+        setSelectedProfileId(null);
+        return <NetworkScreen
+          session={session}
+          onNavigateToSavedMembers={handleNavigateToSavedMembers}
+          onNavigateToProfile={handleNavigateToProfile}
+          onNavigateToDiscovery={jumpToQuickAction.bind(null, 'discover')}
+        />;
+      }
+      return <NetworkScreen
+        session={session}
+        onNavigateToSavedMembers={handleNavigateToSavedMembers}
+        onNavigateToProfile={handleNavigateToProfile}
+        onNavigateToDiscovery={jumpToQuickAction.bind(null, 'discover')}
+      />;
+    }
     if (tab === 'rounds') {
       if (roundsView === 'create') {
         return (

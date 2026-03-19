@@ -8,27 +8,23 @@ import {
   View,
   TextInput,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SavedMember, SavedMemberTier } from '@spotter/types';
 import { SavedMemberCard } from '../components/SavedMemberCard';
 import { LoadingScreen } from '../components/LoadingScreen';
-import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { palette, radius, spacing } from '../theme/design';
 import { supabase } from '../lib/supabase';
 
-type RootStackParamList = {
-  SavedMembers: undefined;
-  Profile: { userId: string };
-};
-
 type SortOption = 'name' | 'dateSaved' | 'tier';
 type SortDirection = 'asc' | 'desc';
 
-export function SavedMembersScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user } = useAuth();
+interface SavedMembersScreenProps {
+  onNavigateToProfile?: (userId: string) => void;
+  onNavigateToNetwork?: () => void;
+  onBack?: () => void;
+}
+
+export function SavedMembersScreen({ onNavigateToProfile, onNavigateToNetwork, onBack }: SavedMembersScreenProps) {
   const { showToast } = useToast();
   
   const [savedMembers, setSavedMembers] = useState<SavedMember[]>([]);
@@ -325,7 +321,7 @@ export function SavedMembersScreen() {
             professional={item.member.professional}
             golf={item.member.golf}
             createdAt={item.createdAt}
-            onPress={() => navigation.navigate('Profile', { userId: item.savedId })}
+            onPress={() => onNavigateToProfile?.(item.savedId)}
             onEdit={() => handleUpdateTier(item.savedId, 
               item.tier === 'favorite' ? 'standard' : 'favorite'
             )}
@@ -371,7 +367,7 @@ export function SavedMembersScreen() {
                 </Text>
                 <TouchableOpacity 
                   style={styles.emptyAction}
-                  onPress={() => navigation.navigate('Network' as never)}
+                  onPress={() => onNavigateToNetwork?.()}
                 >
                   <Text style={styles.emptyActionText}>Explore Network →</Text>
                 </TouchableOpacity>

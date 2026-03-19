@@ -12,26 +12,20 @@ import {
   View,
 } from 'react-native';
 import { Session } from '@supabase/supabase-js';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { NetworkConnection, NetworkStats, RelationshipState, getRelationshipStateLabel } from '@spotter/types';
 import { ConnectionCard } from '../components/ConnectionCard';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { palette, radius, spacing } from '../theme/design';
 import { supabase } from '../lib/supabase';
 
-type RootStackParamList = {
-  Network: undefined;
-  SavedMembers: undefined;
-  Profile: { userId: string };
-};
-
 interface NetworkScreenProps {
   session: Session;
+  onNavigateToSavedMembers?: () => void;
+  onNavigateToProfile?: (userId: string) => void;
+  onNavigateToDiscovery?: () => void;
 }
 
-export function NetworkScreen({ session }: NetworkScreenProps) {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+export function NetworkScreen({ session, onNavigateToSavedMembers, onNavigateToProfile, onNavigateToDiscovery }: NetworkScreenProps) {
   const user = session.user;
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -208,7 +202,7 @@ export function NetworkScreen({ session }: NetworkScreenProps) {
         
         <TouchableOpacity 
           style={styles.savedButton}
-          onPress={() => navigation.navigate('SavedMembers')}
+          onPress={() => onNavigateToSavedMembers?.()}
         >
           <Text style={styles.savedButtonText}>★ Saved ({stats?.savedConnections || 0})</Text>
         </TouchableOpacity>
@@ -314,7 +308,7 @@ export function NetworkScreen({ session }: NetworkScreenProps) {
             isSavedByMe={item.isSavedByMe}
             isPending={item.status === 'pending_sent' || item.status === 'pending_received'}
             isIncoming={item.status === 'pending_received'}
-            onPress={() => navigation.navigate('Profile', { userId: getOtherUserId(item) })}
+            onPress={() => onNavigateToProfile?.(getOtherUserId(item))}
             onAccept={() => handleAccept(item.id)}
             onDecline={() => handleDecline(item.id)}
             onSave={() => handleSave(getOtherUserId(item))}
@@ -346,7 +340,7 @@ export function NetworkScreen({ session }: NetworkScreenProps) {
             {filter !== 'saved' && (
               <TouchableOpacity 
                 style={styles.emptyAction}
-                onPress={() => navigation.navigate('Profile' as never)}
+                onPress={() => onNavigateToDiscovery?.()}
               >
                 <Text style={styles.emptyActionText}>Discover Members →</Text>
               </TouchableOpacity>

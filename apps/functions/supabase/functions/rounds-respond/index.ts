@@ -5,6 +5,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
 import { sendTransactionalEmail } from '../_shared/notifications.ts';
+import { verifyInteractionAllowed } from '../_shared/enforcement.ts';
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -154,8 +155,17 @@ serve(async (req) => {
     const respondedAt = new Date().toISOString();
     const newStatus = body.action === 'accept' ? 'accepted' : 'declined';
 
-    // If accepting, check round isn't full
+    // If accepting, check same-tier enforcement and round capacity
     if (body.action === 'accept') {
+      // Same-tier enforcement: Verify invitee can interact with round creator
+      const interactionCheck = await verifyInteractionAllowed(supabase, user.id, round.creator_id);
+      if (!interactionCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: interactionCheck.error, code: interactionCheck.code }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { count: participantCount } = await supabase
         .from('round_participants_v2')
         .select('*', { count: 'exact', head: true })
