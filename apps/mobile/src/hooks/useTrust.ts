@@ -73,9 +73,10 @@ export function useTrust({ userId, enabled = true }: UseTrustOptions = {}): UseT
 
     try {
       // Fetch reliability data from edge function
+      // Contract: GET /trust-reliability/:userId (path-based, not query param)
       const { data: reliabilityData, error: reliabilityError } = await supabase.functions.invoke(
-        'trust-reliability',
-        { method: 'GET', query: { userId } }
+        `trust-reliability/${userId}`,
+        { method: 'GET' }
       );
 
       if (reliabilityError) throw reliabilityError;
@@ -172,8 +173,7 @@ export function useVouch(): UseVouchReturn {
     try {
       const { error: vouchError } = await supabase.functions.invoke('trust-vouch', {
         body: { 
-          action: 'create',
-          vouchedUserId,
+          vouchedId: vouchedUserId,  // Contract: backend expects 'vouchedId'
           notes 
         },
       });
@@ -243,7 +243,7 @@ export function useReportIncident(): UseReportIncidentReturn {
     try {
       const { error: reportError } = await supabase.functions.invoke('trust-report-incident', {
         body: {
-          reportedUserId,
+          reportedId: reportedUserId,  // Contract: backend expects 'reportedId'
           severity,
           category,
           description,

@@ -21,8 +21,18 @@ import {
   RoundWithCourse,
   RoundStatus,
   ROUND_STATUS_META,
-  RoundParticipant,
 } from '@spotter/types';
+
+// Backend response type for participant (matches rounds-detail edge function)
+interface RoundParticipantResponse {
+  id: string;
+  userId: string;
+  displayName: string;
+  avatarUrl?: string;
+  currentHandicap?: number;
+  isCreator: boolean;
+  joinedAt: string;
+}
 
 interface RoundDetailScreenProps {
   session: Session;
@@ -38,7 +48,7 @@ export function RoundDetailScreen({
   onEdit,
 }: RoundDetailScreenProps) {
   const [round, setRound] = useState<RoundWithCourse | null>(null);
-  const [participants, setParticipants] = useState<RoundParticipant[]>([]);
+  const [participants, setParticipants] = useState<RoundParticipantResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -48,36 +58,28 @@ export function RoundDetailScreen({
       setLoading(true);
       setError(null);
 
-      // Get round details via rounds-list with specific ID filter
+      // Get round details with participants via rounds-detail
       const response = await invokeFunction<{
-        data: RoundWithCourse[];
-      }>('rounds-list', {
-        method: 'POST',
-        body: {
-          roundId,
-          limit: 1,
-        },
+        data: RoundWithCourse & { participants: RoundParticipant[] };
+      }>('rounds-detail', {
+        method: 'GET',
+        params: { roundId },
       });
 
-      const roundData = response.data?.[0];
-      if (!roundData) {
+      if (!response.data) {
         setError('Round not found');
         return;
       }
 
-      setRound(roundData);
-
-      // Get participants
-      const { data: participantsData } = await invokeFunction<{
-        participants: RoundParticipant[];
-      }>('rounds-detail', {
-        method: 'GET',
-      }).catch(() => ({ data: { participants: [] } }));
-
-      setParticipants(participantsData?.participants || []);
-    } catch (err) {
+      setRound(response.data);
+      setParticipants(response.data.participants || []);
+    } catch (err: any) {
       console.error('Error fetching round detail:', err);
-      setError('Failed to load round details');
+      // Extract error message from backend response if available
+      const errorMessage = err?.response?.data?.error || 
+                          err?.message || 
+                          'Failed to load round details';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

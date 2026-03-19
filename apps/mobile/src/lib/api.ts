@@ -12,6 +12,7 @@ export const invokeFunction = async <T>(
   options?: {
     method?: 'GET' | 'POST';
     body?: Record<string, unknown>;
+    params?: Record<string, string>;
   }
 ): Promise<T> => {
   const token = (await supabase.auth.getSession()).data.session?.access_token;
@@ -22,13 +23,20 @@ export const invokeFunction = async <T>(
     throw new Error('Session missing. Please sign in again.');
   }
 
-  const response = await fetch(toFunctionsUrl(path), {
+  // Build URL with query params for GET requests
+  let url = toFunctionsUrl(path);
+  if (options?.params) {
+    const searchParams = new URLSearchParams(options.params);
+    url += `?${searchParams.toString()}`;
+  }
+
+  const response = await fetch(url, {
     method: options?.method ?? 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'content-type': 'application/json'
     },
-    body: options?.body ? JSON.stringify(options.body) : undefined
+    body: options?.body && options?.method !== 'GET' ? JSON.stringify(options.body) : undefined
   });
 
   const payload = (await response.json().catch(() => ({}))) as {
