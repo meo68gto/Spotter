@@ -8,7 +8,22 @@ import { Button } from '../../../components/Button';
 import { invokeFunction } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
 import { font, isWeb, palette, radius, spacing } from '../../../theme/design';
-import type { RegistrationWithUser, RegistrationStatus } from '../../../../../packages/types/src/organizer';
+
+// Types defined locally following project pattern
+type RegistrationStatus = 'registered' | 'waitlisted' | 'confirmed' | 'checked_in' | 'no_show' | 'cancelled';
+type OrganizerTier = 'bronze' | 'silver' | 'gold';
+
+interface RegistrationWithUser {
+  id: string;
+  eventId: string;
+  userId?: string;
+  displayName?: string;
+  email?: string;
+  status: RegistrationStatus;
+  registeredAt: string;
+  checkedInAt?: string;
+  paymentStatus?: string;
+}
 
 interface RegistrationData {
   data: RegistrationWithUser[];
