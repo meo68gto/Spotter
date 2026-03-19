@@ -16,7 +16,7 @@ import { SignUpScreen } from './src/screens/auth/SignUpScreen';
 import { WelcomeScreen } from './src/screens/auth/WelcomeScreen';
 import { DashboardScreen, DeepLinkTarget } from './src/screens/DashboardScreen';
 import { LegalConsentScreen } from './src/screens/LegalConsentScreen';
-import { OnboardingWizardScreen } from './src/screens/onboarding/OnboardingWizardScreen';
+import { OnboardingWizardScreenPhase1 } from './src/screens/onboarding/OnboardingWizardScreenPhase1';
 import { ThemeProvider } from './src/theme/provider';
 import { env, validateMobileEnv } from './src/types/env';
 
@@ -225,7 +225,7 @@ function RootApp() {
   }
 
   if (stage === 'onboarding') {
-    return <OnboardingWizardScreen onComplete={() => setStage('dashboard')} />;
+    return <OnboardingWizardScreenPhase1 onComplete={() => setStage('dashboard')} />;
   }
 
   const app = <DashboardScreen session={session} onSignOut={() => supabase.auth.signOut()} deepLinkTarget={deepLinkTarget} />;
