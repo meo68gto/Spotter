@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -8,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -23,7 +25,9 @@ import {
   NETWORKING_INTENT_FILTERS,
   HandicapBand,
   NetworkingIntentFilter,
+  SavedMemberData,
 } from '@spotter/types';
+import { Platform } from 'react-native';
 
 type FilterState = {
   handicap_band?: HandicapBand;
@@ -45,6 +49,16 @@ interface DiscoveryResponse {
   };
 }
 
+interface SavedMembersResponse {
+  data: SavedMemberData[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
 export function DiscoveryScreen({ session }: { session: Session }) {
   const [golfers, setGolfers] = useState<DiscoverableGolfer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,6 +67,8 @@ export function DiscoveryScreen({ session }: { session: Session }) {
   const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState({ offset: 0, hasMore: true });
   const [callerTier, setCallerTier] = useState<string>('free');
+  const [savedMemberIds, setSavedMemberIds] = useState<Set<string>>(new Set());
+  const [savingMemberIds, setSavingMemberIds] = useState<Set<string>>(new Set());
 
   const fetchGolfers = useCallback(
     async (isRefresh = false) => {
@@ -86,7 +102,52 @@ export function DiscoveryScreen({ session }: { session: Session }) {
 
   useEffect(() => {
     fetchGolfers(true);
+    fetchSavedMembers();
   }, [filters]);
+
+  const fetchSavedMembers = async () => {
+    try {
+      const response = await invokeFunction<SavedMembersResponse>('network-save-member', {
+        method: 'GET',
+      });
+      const savedIds = new Set(response.data.map((m) => m.savedId));
+      setSavedMemberIds(savedIds);
+    } catch (error) {
+      // Silently fail - saved state is not critical
+      console.log('Failed to fetch saved members:', error);
+    }
+  };
+
+  const handleSaveMember = async (item: DiscoverableGolfer) => {
+    if (savingMemberIds.has(item.user_id)) return;
+
+    setSavingMemberIds((prev) => new Set(prev).add(item.user_id));
+
+    try {
+      await invokeFunction<SavedMemberData>('network-save-member', {
+        method: 'POST',
+        body: {
+          userId: item.user_id,
+          tier: 'standard',
+        },
+      });
+
+      setSavedMemberIds((prev) => new Set(prev).add(item.user_id));
+
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Member saved to your network', ToastAndroid.SHORT);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save member';
+      Alert.alert('Error', message);
+    } finally {
+      setSavingMemberIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.user_id);
+        return next;
+      });
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -262,12 +323,11 @@ export function DiscoveryScreen({ session }: { session: Session }) {
         )}
 
         <Button
-          title="Connect"
-          onPress={() => {
-            // TODO: Navigate to matching screen or send connection request
-            Alert.alert('Connect', `Request to connect with ${item.display_name}`);
-          }}
+          title={savedMemberIds.has(item.user_id) ? 'Saved' : 'Connect'}
+          onPress={() => handleSaveMember(item)}
           tone="primary"
+          disabled={savedMemberIds.has(item.user_id) || savingMemberIds.has(item.user_id)}
+          loading={savingMemberIds.has(item.user_id)}
         />
       </View>
     </Card>

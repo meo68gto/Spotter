@@ -272,10 +272,22 @@ export function MatchingScreen({ session }: { session: Session }) {
                     { text: 'Cancel', style: 'cancel' },
                     {
                       text: 'Send',
-                      onPress: () => {
-                        // TODO: Send introduction request
-                        Alert.alert('Request sent!', 'We will notify you when they respond.');
-                        setSelectedMatch(null);
+                      onPress: async () => {
+                        try {
+                          await invokeFunction('network-introduction-request', {
+                            method: 'POST',
+                            body: {
+                              targetUserId: match.user.id,
+                              message: `I'd like to connect with you for golf.`,
+                            },
+                          });
+                          Alert.alert('Request sent!', 'We will notify you when they respond.');
+                        } catch (error) {
+                          const message = error instanceof Error ? error.message : 'Failed to send request';
+                          Alert.alert('Error', message);
+                        } finally {
+                          setSelectedMatch(null);
+                        }
                       },
                     },
                   ]

@@ -12,15 +12,16 @@ import { MatchingScreen } from './matching/MatchingScreen';
 import { RoundsScreen } from './rounds/RoundsScreen';
 import { CreateRoundScreen } from './rounds/CreateRoundScreen';
 import { RoundInvitationsScreen } from './rounds/RoundInvitationsScreen';
+import { NetworkScreen } from './network/NetworkScreen';
 import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
-export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds';
+export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network';
 
-// BETA SCOPE: 8 tabs including Discovery and Rounds for Phase 2
-// Cut from beta: network, events, feed, matches, videos, progress, expert console, call room, inbox
-// Kept: home, coaching, ask, requests, sessions, profile, discover, rounds
+// BETA SCOPE: 9 tabs including Discovery, Rounds, and Network for Phase 2
+// Previously cut: events, feed, matches, videos, progress, expert console, call room, inbox
+// Kept: home, coaching, ask, requests, sessions, profile, discover, rounds, network
 
 type TabKey =
   | 'home'
@@ -30,7 +31,8 @@ type TabKey =
   | 'sessions'
   | 'profile'
   | 'discover'
-  | 'rounds';
+  | 'rounds'
+  | 'network';
 
 type Props = {
   session: Session;
@@ -45,7 +47,7 @@ type NavItem = {
   mobilePrimary?: boolean;
 };
 
-// BETA NAV: 8 primary tabs including Discovery and Rounds (Phase 2)
+// BETA NAV: 9 primary tabs including Discovery, Rounds, and Network (Phase 2)
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
   { key: 'discover', label: 'Discover', group: 'core', mobilePrimary: true },
@@ -54,6 +56,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'ask', label: 'Ask', group: 'core', mobilePrimary: true },
   { key: 'requests', label: 'Requests', group: 'core', mobilePrimary: true },
   { key: 'sessions', label: 'Sessions', group: 'core', mobilePrimary: true },
+  { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
   { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true }
 ];
 
@@ -66,7 +69,7 @@ const WEB_PHOTO_TILES = [
 const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
 
 const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
-  // BETA: All 8 valid destinations
+  // BETA: All 9 valid destinations
   if (target === 'home') return 'home';
   if (target === 'coaching') return 'coaching';
   if (target === 'ask') return 'ask';
@@ -75,6 +78,7 @@ const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
   if (target === 'profile') return 'profile';
   if (target === 'discover') return 'discover';
   if (target === 'rounds') return 'rounds';
+  if (target === 'network') return 'network';
   return 'home';
 };
 
@@ -119,9 +123,10 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   };
 
   const renderContent = () => {
-    // BETA SCOPE: 8 tabs including Discovery and Rounds
+    // BETA SCOPE: 9 tabs including Discovery, Rounds, and Network
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
     if (tab === 'discover') return <DiscoveryScreen session={session} />;
+    if (tab === 'network') return <NetworkScreen />;
     if (tab === 'rounds') {
       if (roundsView === 'create') {
         return (

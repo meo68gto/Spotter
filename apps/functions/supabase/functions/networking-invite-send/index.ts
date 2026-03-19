@@ -1,6 +1,7 @@
 import { createServiceClient } from '../_shared/client.ts';
 import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
+import { verifyInteractionAllowed } from '../_shared/enforcement.ts';
 
 type Payload = {
   receiverUserId?: string;
@@ -24,6 +25,13 @@ Deno.serve(async (req) => {
   }
 
   const service = createServiceClient();
+
+  // Same-tier enforcement: Verify interaction is allowed
+  const interactionCheck = await verifyInteractionAllowed(service, auth.user.id, body.receiverUserId);
+  if (!interactionCheck.allowed) {
+    return json(403, { error: interactionCheck.error, code: interactionCheck.code });
+  }
+
   const { data, error } = await service
     .from('networking_invites')
     .insert({

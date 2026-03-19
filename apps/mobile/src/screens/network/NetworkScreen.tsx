@@ -1,20 +1,22 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
+  Alert,
   FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Session } from '@supabase/supabase-js';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { NetworkConnection, NetworkStats, RelationshipState, getRelationshipStateLabel } from '@spotter/types';
 import { ConnectionCard } from '../components/ConnectionCard';
 import { LoadingScreen } from '../components/LoadingScreen';
-import { useAuth } from '../hooks/useAuth';
-import { useToast } from '../hooks/useToast';
 import { palette, radius, spacing } from '../theme/design';
 import { supabase } from '../lib/supabase';
 
@@ -24,10 +26,21 @@ type RootStackParamList = {
   Profile: { userId: string };
 };
 
-export function NetworkScreen() {
+interface NetworkScreenProps {
+  session: Session;
+}
+
+export function NetworkScreen({ session }: NetworkScreenProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user } = useAuth();
-  const { showToast } = useToast();
+  const user = session.user;
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+    } else {
+      Alert.alert(type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info', message);
+    }
+  }, []);
   
   const [connections, setConnections] = useState<NetworkConnection[]>([]);
   const [stats, setStats] = useState<NetworkStats | null>(null);
@@ -72,10 +85,7 @@ export function NetworkScreen() {
       }
     } catch (error) {
       console.error('Failed to fetch connections:', error);
-      showToast({
-        type: 'error',
-        title: 'Failed to load connections',
-      });
+      showToast('Failed to load connections', 'error');
     }
   }, [user, filter, page, showToast]);
 
@@ -109,13 +119,10 @@ export function NetworkScreen() {
 
       if (error) throw error;
 
-      showToast({ type: 'success', title: 'Connection accepted' });
+      showToast('Connection accepted', 'success');
       handleRefresh();
     } catch (error) {
-      showToast({
-        type: 'error',
-        title: 'Failed to accept connection',
-      });
+      showToast('Failed to accept connection', 'error');
     }
   };
 
@@ -127,13 +134,10 @@ export function NetworkScreen() {
 
       if (error) throw error;
 
-      showToast({ type: 'info', title: 'Connection declined' });
+      showToast('Connection declined', 'info');
       handleRefresh();
     } catch (error) {
-      showToast({
-        type: 'error',
-        title: 'Failed to decline connection',
-      });
+      showToast('Failed to decline connection', 'error');
     }
   };
 
@@ -145,13 +149,10 @@ export function NetworkScreen() {
 
       if (error) throw error;
 
-      showToast({ type: 'success', title: 'Member saved' });
+      showToast('Member saved', 'success');
       handleRefresh();
     } catch (error) {
-      showToast({
-        type: 'error',
-        title: 'Failed to save member',
-      });
+      showToast('Failed to save member', 'error');
     }
   };
 
@@ -164,13 +165,10 @@ export function NetworkScreen() {
 
       if (error) throw error;
 
-      showToast({ type: 'info', title: 'Member unsaved' });
+      showToast('Member unsaved', 'info');
       handleRefresh();
     } catch (error) {
-      showToast({
-        type: 'error',
-        title: 'Failed to unsave member',
-      });
+      showToast('Failed to unsave member', 'error');
     }
   };
 

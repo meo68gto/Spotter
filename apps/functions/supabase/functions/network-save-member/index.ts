@@ -5,6 +5,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
+import { verifyInteractionAllowed } from '../_shared/enforcement.ts';
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -122,7 +123,16 @@ async function saveMember(supabase: any, userId: string, req: Request) {
     );
   }
 
-  // Check if target user exists and is in same tier
+  // Same-tier enforcement: Verify interaction is allowed
+  const interactionCheck = await verifyInteractionAllowed(supabase, userId, targetUserId);
+  if (!interactionCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: interactionCheck.error, code: interactionCheck.code }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Check if target user exists
   const { data: targetUser, error: targetError } = await supabase
     .from('users')
     .select('id, tier_id, display_name, avatar_url, membership_tiers(slug)')

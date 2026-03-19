@@ -6,6 +6,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
 import { TIER_SLUGS, getTierFeatures, TierSlug } from '../_shared/tier-gate.ts';
+import { verifyInteractionAllowed } from '../_shared/enforcement.ts';
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -194,6 +195,15 @@ async function respondToIntroduction(
   }
 
   if (action === 'accept') {
+    // Same-tier enforcement: Verify requester and target can interact
+    const interactionCheck = await verifyInteractionAllowed(supabase, intro.requester_id, intro.target_id);
+    if (!interactionCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Cannot connect users from different tiers', code: 'tier_mismatch' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create connection between requester and target
     await supabase
       .from('user_connections')

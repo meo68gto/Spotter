@@ -95,6 +95,7 @@ function RootApp() {
     if (rawPath === 'requests') return { tabTarget: 'requests' };
     if (rawPath === 'sessions') return { tabTarget: 'sessions' };
     if (rawPath === 'profile') return { tabTarget: 'profile' };
+    if (rawPath === 'network') return { tabTarget: 'network' };
     return {};
   }, []);
 

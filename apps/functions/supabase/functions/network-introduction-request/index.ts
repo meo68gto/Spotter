@@ -6,6 +6,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
 import { TIER_SLUGS, getTierFeatures, TierSlug } from '../_shared/tier-gate.ts';
+import { verifyInteractionAllowed } from '../_shared/enforcement.ts';
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -291,6 +292,24 @@ async function requestIntroduction(
         status: existingIntro.status
       }),
       { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Same-tier enforcement: Verify interaction is allowed with target
+  const targetInteractionCheck = await verifyInteractionAllowed(supabase, userId, targetId);
+  if (!targetInteractionCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: targetInteractionCheck.error, code: targetInteractionCheck.code }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Same-tier enforcement: Verify interaction is allowed with connector
+  const connectorInteractionCheck = await verifyInteractionAllowed(supabase, userId, connectorId);
+  if (!connectorInteractionCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: connectorInteractionCheck.error, code: connectorInteractionCheck.code }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
