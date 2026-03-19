@@ -418,3 +418,58 @@ export interface OnboardingStepDraftDTO {
   timezone: string;
   availabilitySlots: AvailabilitySlotDTO[];
 }
+
+// Profile & Networking Types
+export type {
+  // Professional Identity
+  ProfessionalIdentity,
+  CompanyVerificationStatus,
+  // Golf Identity
+  GolfIdentity,
+  PlayFrequency,
+  TeeTimePreference,
+  // Extended Profile
+  ExtendedProfile,
+  ProfileCompleteness,
+  ProfileSection,
+  // Connection Types
+  Connection,
+  ConnectionStatus,
+  ConnectionType,
+  ConnectionWithMembers,
+  PendingConnection,
+  // Introduction Types
+  ConnectionIntro,
+  IntroStatus,
+  IntroWithConnection,
+  // Reputation Types
+  ReputationScore,
+  ReputationComponent,
+  ReputationComponentScore,
+  ReputationEvent,
+  ReputationEventType,
+  // Input Types
+  UpdateProfileInput,
+  SendConnectionRequestInput,
+  RespondToConnectionInput,
+  RequestIntroInput,
+} from "./profile.js";
+
+export {
+  // Constants
+  PLAY_FREQUENCIES,
+  TEE_TIME_PREFERENCES,
+  CONNECTION_STATUSES,
+  CONNECTION_TYPES,
+  PROFILE_SECTIONS,
+  REPUTATION_WEIGHTS,
+  // Type Guards
+  isValidPlayFrequency,
+  isValidConnectionStatus,
+  isValidConnectionType,
+  isValidTeeTimePreference,
+  isValidProfileSection,
+  isValidCompanyVerificationStatus,
+  isValidIntroStatus,
+  isValidReputationComponent,
+} from "./profile.js";

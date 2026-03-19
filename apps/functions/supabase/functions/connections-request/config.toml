@@ -1,0 +1,5 @@
+project_id = "spotter-local"
+
+[functions.connections-request]
+enabled = true
+verify_jwt = true

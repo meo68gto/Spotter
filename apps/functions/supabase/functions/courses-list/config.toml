@@ -1,0 +1,5 @@
+project_id = "spotter-local"
+
+[functions.courses-list]
+enabled = true
+verify_jwt = false
