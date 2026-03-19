@@ -146,8 +146,6 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
     if (tab === 'discover') return <DiscoveryScreen session={session} />;
     if (tab === 'network') {
-      // Import SavedMembersScreen for network sub-view
-      const { SavedMembersScreen } = require('./network/SavedMembersScreen');
       if (networkView === 'saved-members') {
         return (
           <SavedMembersScreen

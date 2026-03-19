@@ -12,6 +12,7 @@ import { SavedMember, SavedMemberTier } from '@spotter/types';
 import { SavedMemberCard } from '../components/SavedMemberCard';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../hooks/useAuth';
 import { palette, radius, spacing } from '../theme/design';
 import { supabase } from '../lib/supabase';
 
@@ -25,6 +26,7 @@ interface SavedMembersScreenProps {
 }
 
 export function SavedMembersScreen({ onNavigateToProfile, onNavigateToNetwork, onBack }: SavedMembersScreenProps) {
+  const { user } = useAuth();
   const { showToast } = useToast();
   
   const [savedMembers, setSavedMembers] = useState<SavedMember[]>([]);
