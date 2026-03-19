@@ -65,7 +65,7 @@ export function OrganizerRegistrationListScreen({ session, eventId, onBack }: Pr
         if (membership?.organizer_id) {
           const response = await invokeFunction<{
             data: Array<{ id: string; title: string }>;
-          }>('organizer-events/list', {
+          }>('organizer-events', {
             method: 'GET',
             params: { organizerId: membership.organizer_id, limit: '100' }
           });
