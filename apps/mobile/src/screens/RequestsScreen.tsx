@@ -56,8 +56,8 @@ export function RequestsScreen({ session }: RequestsScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'received' | 'sent' | 'history'>('received');
   const [receivedRequests, setReceivedRequests] = useState<RequestItem[]>([]);
-  const [sentRequests, setSentRequests] = useState<RequestItem[]>([]);
-  const [requestHistory, setRequestHistory] = useState<RequestItem[]>([]);
+  const [sentRequests, setSentRequests] = useState<any[]>([]);
+  const [requestHistory, setRequestHistory] = useState<any[]>([]);
   const [actingOnId, setActingOnId] = useState<string | null>(null);
 
   const loadRequests = useCallback(async () => {
@@ -121,37 +121,9 @@ export function RequestsScreen({ session }: RequestsScreenProps) {
         })),
       ];
 
-      // Format sent requests
-      const formattedSent: RequestItem[] = (sentConnections || []).map((c: any) => ({
-        id: c.id,
-        type: 'connection' as const,
-        senderId: session.user.id,
-        senderName: 'You',
-        recipientId: c.recipient?.id,
-        recipientName: c.recipient?.display_name || 'Unknown',
-        recipientAvatar: c.recipient?.avatar_url,
-        recipientCompany: c.recipient?.company,
-        status: c.status,
-        createdAt: c.created_at,
-      }));
-
-      // Format history
-      const formattedHistory: RequestItem[] = (historyConnections || []).map((c: any) => ({
-        id: c.id,
-        type: 'connection' as const,
-        senderId: c.sender?.id,
-        senderName: c.sender?.display_name || 'Unknown',
-        senderAvatar: c.sender?.avatar_url,
-        senderCompany: c.sender?.company,
-        senderRole: c.sender?.role,
-        mutualConnections: 0,
-        status: c.status,
-        createdAt: c.created_at,
-      }));
-
       setReceivedRequests(formattedReceived);
-      setSentRequests(formattedSent);
-      setRequestHistory(formattedHistory);
+      setSentRequests(sentConnections || []);
+      setRequestHistory(historyConnections || []);
     } catch (error) {
       console.error('Error loading requests:', error);
     }
@@ -316,16 +288,16 @@ export function RequestsScreen({ session }: RequestsScreenProps) {
           <Card key={request.id}>
             <View style={styles.sentCard}>
               <View style={styles.sentHeader}>
-                {request.recipientAvatar ? (
-                  <Image source={{ uri: request.recipientAvatar }} style={styles.sentAvatar} />
+                {request.recipient?.avatar_url ? (
+                  <Image source={{ uri: request.recipient.avatar_url }} style={styles.sentAvatar} />
                 ) : (
                   <View style={styles.sentAvatarPlaceholder}>
-                    <Text style={styles.sentInitial}>{request.recipientName.charAt(0)}</Text>
+                    <Text style={styles.sentInitial}>{request.recipient?.display_name?.charAt(0)}</Text>
                   </View>
                 )}
                 <View style={styles.sentInfo}>
-                  <Text style={styles.sentName}>{request.recipientName}</Text>
-                  <Text style={styles.sentCompany}>{request.recipientCompany || 'No company listed'}</Text>
+                  <Text style={styles.sentName}>{request.recipient?.display_name || 'Unknown'}</Text>
+                  <Text style={styles.sentCompany}>{request.recipient?.company || 'No company listed'}</Text>
                 </View>
               </View>
               <View style={styles.statusBadge}>
@@ -362,16 +334,16 @@ export function RequestsScreen({ session }: RequestsScreenProps) {
           <Card key={request.id}>
             <View style={styles.historyCard}>
               <View style={styles.historyHeader}>
-                {request.senderAvatar ? (
-                  <Image source={{ uri: request.senderAvatar }} style={styles.historyAvatar} />
+                {request.sender?.avatar_url ? (
+                  <Image source={{ uri: request.sender.avatar_url }} style={styles.historyAvatar} />
                 ) : (
                   <View style={styles.historyAvatarPlaceholder}>
-                    <Text style={styles.historyInitial}>{request.senderName.charAt(0)}</Text>
+                    <Text style={styles.historyInitial}>{request.sender?.display_name?.charAt(0)}</Text>
                   </View>
                 )}
                 <View style={styles.historyInfo}>
-                  <Text style={styles.historyName}>{request.senderName}</Text>
-                  <Text style={styles.historyCompany}>{request.senderCompany || 'No company listed'}</Text>
+                  <Text style={styles.historyName}>{request.sender?.display_name || 'Unknown'}</Text>
+                  <Text style={styles.historyCompany}>{request.sender?.company || 'No company listed'}</Text>
                 </View>
               </View>
               <View

@@ -1,7 +1,31 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { GolfRound, RoundStatus } from '@spotter/types';
 import { Card } from './Card';
 import { palette, radius, spacing } from '../theme/design';
+
+export type RoundStatus =
+  | 'draft'
+  | 'open'
+  | 'full'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
+
+export interface GolfRound {
+  id: string;
+  organizerId: string;
+  courseId: string;
+  course?: {
+    id: string;
+    name: string;
+  };
+  teeTime: string;
+  maxPlayers: number;
+  playerIds: string[];
+  status: RoundStatus;
+  format?: string;
+  wagerAmount?: number;
+}
 
 interface RoundCardProps {
   round: GolfRound;

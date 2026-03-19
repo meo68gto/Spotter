@@ -10,13 +10,11 @@ import {
   View,
 } from 'react-native';
 import { Session } from '@supabase/supabase-js';
-import { GolfRound, UserWithTier } from '@spotter/types';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { RoundCard } from '../components/RoundCard';
-import { TierBadge } from '../components/TierBadge';
+import { RoundCard, GolfRound } from '../components/RoundCard';
+import { TierBadge, TierSlug } from '../components/TierBadge';
 import { supabase } from '../lib/supabase';
-import { invokeFunction } from '../lib/api';
 import { palette, radius, shadows, spacing } from '../theme/design';
 
 type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile';
@@ -24,6 +22,22 @@ type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'p
 interface HomeScreenProps {
   session: Session;
   onNavigate: (target: DeepLinkTarget) => void;
+}
+
+interface UserWithTier {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string;
+  tier: {
+    slug: TierSlug;
+    name: string;
+    status: string;
+    features: Record<string, boolean>;
+    isPaid: boolean;
+    expiresAt: string | null;
+    autoRenew: boolean;
+  };
 }
 
 interface ConnectionSuggestion {
@@ -66,7 +80,7 @@ export function HomeScreen({ session, onNavigate }: HomeScreenProps) {
         displayName: userData.display_name || 'Golfer',
         avatarUrl: userData.avatar_url,
         tier: {
-          slug: userData.tier_slug || 'free',
+          slug: (userData.tier_slug || 'free') as TierSlug,
           name: tierData?.name || 'Free',
           status: 'active',
           features: tierData?.features || {},
@@ -85,7 +99,20 @@ export function HomeScreen({ session, onNavigate }: HomeScreenProps) {
         .order('tee_time', { ascending: true })
         .limit(3);
 
-      setUpcomingRounds((roundsData || []) as GolfRound[]);
+      const formattedRounds: GolfRound[] = (roundsData || []).map((r: any) => ({
+        id: r.id,
+        organizerId: r.organizer_id,
+        courseId: r.course_id,
+        course: r.course ? { id: r.course.id, name: r.course.name } : undefined,
+        teeTime: r.tee_time,
+        maxPlayers: r.max_players || 4,
+        playerIds: r.player_ids || [],
+        status: r.status,
+        format: r.format,
+        wagerAmount: r.wager_amount,
+      }));
+
+      setUpcomingRounds(formattedRounds);
 
       // Load recent connections
       const { data: connectionsData } = await supabase
@@ -107,8 +134,12 @@ export function HomeScreen({ session, onNavigate }: HomeScreenProps) {
         .limit(5);
 
       // Calculate mutual connections (simplified - in real app would query)
-      const suggestionsWithMutuals = (suggestionsData || []).map((s) => ({
-        ...s,
+      const suggestionsWithMutuals: ConnectionSuggestion[] = (suggestionsData || []).map((s: any) => ({
+        id: s.id,
+        displayName: s.display_name,
+        avatarUrl: s.avatar_url,
+        company: s.company,
+        role: s.role,
         mutualConnections: Math.floor(Math.random() * 5), // Placeholder
       }));
 
@@ -212,7 +243,7 @@ export function HomeScreen({ session, onNavigate }: HomeScreenProps) {
         <Text style={styles.sectionTitle}>Recent Connections</Text>
         {recentConnections.length > 0 ? (
           <Card>
-            {recentConnections.slice(0, 3).map((connection, index) => (
+            {recentConnections.slice(0, 3).map((connection: any, index: number) => (
               <View key={connection.id} style={styles.connectionRow}>
                 {connection.connected_user?.avatar_url ? (
                   <Image

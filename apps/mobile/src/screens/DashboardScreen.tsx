@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
-import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
-import { HomeScreen } from './dashboard/HomeScreen';
-import { MyRequestsScreen } from './dashboard/MyRequestsScreen';
-import { ProfileTabScreen } from './dashboard/ProfileTabScreen';
-import { SessionsScreen } from './dashboard/SessionsScreen';
+import { HomeScreen } from './HomeScreen';
+import { CoachingScreen } from './CoachingScreen';
+import { AskScreen } from './AskScreen';
+import { RequestsScreen } from './RequestsScreen';
+import { SessionsScreen } from './SessionsScreen';
+import { ProfileScreen } from './ProfileScreen';
 import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
@@ -92,11 +93,11 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   const renderContent = () => {
     // BETA SCOPE: 6 tabs only (coaching beta)
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
-    if (tab === 'coaching') return <CoachingTabScreen session={session} />;
-    if (tab === 'ask') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />; // Placeholder - ask flow
-    if (tab === 'requests') return <MyRequestsScreen session={session} />;
+    if (tab === 'coaching') return <CoachingScreen session={session} />;
+    if (tab === 'ask') return <AskScreen session={session} />;
+    if (tab === 'requests') return <RequestsScreen session={session} />;
     if (tab === 'sessions') return <SessionsScreen session={session} />;
-    return <ProfileTabScreen session={session} onSignOut={onSignOut} />;
+    return <ProfileScreen session={session} onSignOut={onSignOut} />;
   };
 
   if (isWeb) {

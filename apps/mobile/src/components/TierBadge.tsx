@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { TierSlug } from '@spotter/types';
 import { palette, radius, spacing } from '../theme/design';
+
+export type TierSlug = 'free' | 'select' | 'summit';
 
 type TierSize = 'sm' | 'md' | 'lg';
 

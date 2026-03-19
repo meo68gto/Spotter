@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { TierSlug } from "@spotter/types";
+import type { OrganizerTier } from "@spotter/types";
 
 interface CheckoutResponse {
   success: boolean;
@@ -65,7 +65,7 @@ export function useStripeCheckout() {
   const initiateTierUpgrade = useCallback(
     async (
       userId: string,
-      targetTier: TierSlug,
+      targetTier: OrganizerTier,
       billingInterval: "monthly" | "yearly" = "monthly"
     ): Promise<{ success: boolean; checkoutUrl?: string; error?: string }> => {
       setLoading(true);
