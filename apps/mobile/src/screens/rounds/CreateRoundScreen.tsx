@@ -269,20 +269,36 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
         { text: 'OK', onPress: onComplete },
       ]);
     } catch (error: any) {
-      // Handle specific error codes
-      if (error?.code === 'free_tier_round_limit_reached') {
+      // Handle specific error codes from backend rounds-create edge function
+      const errorCode = error?.code;
+      const errorMessage = error?.message || error instanceof Error ? error.message : 'Failed to create round';
+      
+      if (errorCode === 'tier_insufficient') {
         Alert.alert(
-          'Free Tier Limit Reached',
-          error.message || 'You have reached your monthly round limit.',
+          'Upgrade Required',
+          'Your tier does not allow creating rounds. Upgrade to Select or Summit.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Upgrade', onPress: () => {
-              // Navigate to upgrade
-            }},
+            { text: 'Upgrade', onPress: () => setShowUpgradeModal(true) },
+          ]
+        );
+      } else if (errorCode === 'tier_not_active') {
+        Alert.alert(
+          'Membership Not Active',
+          'Your membership is not active. Please check your subscription status.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      } else if (errorCode === 'round_limit_reached') {
+        Alert.alert(
+          'Monthly Limit Reached',
+          errorMessage || 'You have reached your monthly round limit.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Upgrade', onPress: () => setShowUpgradeModal(true) },
           ]
         );
       } else {
-        Alert.alert('Error', error instanceof Error ? error.message : 'Failed to create round');
+        Alert.alert('Error', errorMessage);
       }
     } finally {
       setCreating(false);
@@ -311,10 +327,10 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
 
   // Epic 7: Updated tier warning component
   const TierWarning = () => {
-    if (!userTier || userTier.canCreateRounds === false) return null;
+    if (!userTier) return null;
 
     // Free tier warning (cannot create rounds)
-    if (!userTier.canCreateRounds) {
+    if (userTier.canCreateRounds === false) {
       return (
         <Card>
           <View style={styles.tierWarningContainer}>

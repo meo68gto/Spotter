@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Image,
   RefreshControl,
@@ -139,10 +138,12 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
   const upcomingSessions = mySessions.filter((s) => s.status === 'upcoming');
   const pastSessions = mySessions.filter((s) => s.status !== 'upcoming');
 
-  const handleBookSession = async (coachId: string) => {
-    // Navigate to booking flow
-    Alert.alert('Booking', `Booking flow for coach ${coachId} would open here`);
-  };
+  // NOTE: Booking flow is disabled for now. Backend exists (engagements-create)
+  // but needs more testing before enabling. Re-enable when ready to implement
+  // full Stripe payment + session scheduling flow.
+  // const handleBookSession = async (coachId: string) => {
+  //   // Navigate to booking flow
+  // };
 
   const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
@@ -192,11 +193,7 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
 
         <View style={styles.coachFooter}>
           <Text style={styles.price}>${item.hourlyRate}/hr</Text>
-          <Button
-            title="Book Golf Lesson"
-            onPress={() => handleBookSession(item.id)}
-            tone="secondary"
-          />
+          {/* Booking disabled - see handleBookSession comment above */}
         </View>
       </View>
     </Card>
@@ -265,6 +262,9 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
             </View>
           </View>
 
+          {/* Session actions disabled - join/reschedule flows not yet implemented
+              Backend supports status updates but full video call + rescheduling UI
+              needs to be built. Re-enable when flows are complete.
           {session.status === 'upcoming' && !isPast && (
             <View style={styles.sessionActions}>
               <Button
@@ -279,6 +279,7 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
               />
             </View>
           )}
+          */}
         </View>
       </Card>
     );

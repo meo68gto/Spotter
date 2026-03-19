@@ -94,7 +94,7 @@ export function MatchingScreen({ session }: { session: Session }) {
 
     // Epic 7: Check tier permissions before requesting introduction
     try {
-      const { data: userTierData } = await invokeFunction<{
+      const userTierData = await invokeFunction<{
         user: { tier: { slug: string } | null; tierStatus: { isActive: boolean } };
         computed: {
           canSendIntros: boolean;

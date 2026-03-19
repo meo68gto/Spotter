@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { HomeScreen } from './HomeScreen';
-import { CoachingScreen } from './CoachingScreen';
+import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
 import { AskScreen } from './AskScreen';
 import { RequestsScreen } from './RequestsScreen';
 import { SessionsScreen } from './SessionsScreen';
@@ -212,7 +212,7 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
         />
       );
     }
-    if (tab === 'coaching') return <CoachingScreen session={session} />;
+    if (tab === 'coaching') return <CoachingTabScreen session={session} />;
     if (tab === 'ask') return <AskScreen session={session} />;
     if (tab === 'requests') return <RequestsScreen session={session} />;
     if (tab === 'sessions') return <SessionsScreen session={session} />;
