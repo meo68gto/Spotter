@@ -101,6 +101,7 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
   const [reputationScore, setReputationScore] = useState(0);
   const [professionalIdentity, setProfessionalIdentity] = useState<any>(null);
   const [golfIdentity, setGolfIdentity] = useState<any>(null);
+  const [networkingPreferences, setNetworkingPreferences] = useState<any>(null);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -148,6 +149,15 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
         .single();
 
       setGolfIdentity(golfData);
+
+      // Load networking preferences
+      const { data: networkingData } = await supabase
+        .from('user_networking_preferences')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single();
+
+      setNetworkingPreferences(networkingData);
 
       // Format user with tier
       setUserWithTier({
@@ -299,6 +309,18 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
                 <Text style={styles.identityValue}>{golfIdentity.handicap || 'Not set'}</Text>
               </View>
               <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Skill Level</Text>
+                <Text style={styles.identityValue}>
+                  {golfIdentity.handicap !== null && golfIdentity.handicap !== undefined
+                    ? golfIdentity.handicap <= 9
+                      ? 'Advanced (0-9)'
+                      : golfIdentity.handicap <= 24
+                        ? 'Intermediate (10-24)'
+                        : 'Beginner (25+)'
+                    : 'Not set'}
+                </Text>
+              </View>
+              <View style={styles.identityRow}>
                 <Text style={styles.identityLabel}>Home Course</Text>
                 <Text style={styles.identityValue}>
                   {golfIdentity.home_course?.name || 'Not set'}
@@ -322,6 +344,73 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
             <View style={styles.emptyIdentity}>
               <Text style={styles.emptyText}>Complete your golf profile</Text>
               <Button title="Add Golf Info" onPress={handleEditProfile} />
+            </View>
+          )}
+        </View>
+      </Card>
+
+      {/* Networking Preferences Card */}
+      <Card>
+        <View style={styles.identityCard}>
+          <View style={styles.identityHeader}>
+            <Text style={styles.identityIcon}>🤝</Text>
+            <Text style={styles.identityTitle}>Networking Preferences</Text>
+          </View>
+
+          {networkingPreferences ? (
+            <View style={styles.identityContent}>
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Intent</Text>
+                <Text style={styles.identityValue}>
+                  {networkingPreferences.networking_intent
+                    ? networkingPreferences.networking_intent
+                        .replace('_', ' ')
+                        .replace(/\b\w/g, (l) => l.toUpperCase())
+                    : 'Not set'}
+                </Text>
+              </View>
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Open to Intros</Text>
+                <Text style={styles.identityValue}>
+                  {networkingPreferences.open_to_intros ? 'Yes' : 'No'}
+                </Text>
+              </View>
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Recurring Rounds</Text>
+                <Text style={styles.identityValue}>
+                  {networkingPreferences.open_to_recurring_rounds ? 'Yes' : 'No'}
+                </Text>
+              </View>
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Group Size</Text>
+                <Text style={styles.identityValue}>
+                  {networkingPreferences.preferred_group_size === 'any'
+                    ? 'Any size'
+                    : `${networkingPreferences.preferred_group_size} players`}
+                </Text>
+              </View>
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Cart Preference</Text>
+                <Text style={styles.identityValue}>
+                  {networkingPreferences.cart_preference
+                    ? networkingPreferences.cart_preference.charAt(0).toUpperCase() +
+                      networkingPreferences.cart_preference.slice(1)
+                    : 'Not set'}
+                </Text>
+              </View>
+              {networkingPreferences.preferred_golf_area && (
+                <View style={styles.identityRow}>
+                  <Text style={styles.identityLabel}>Preferred Area</Text>
+                  <Text style={styles.identityValue}>
+                    {networkingPreferences.preferred_golf_area}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.emptyIdentity}>
+              <Text style={styles.emptyText}>Complete your networking preferences</Text>
+              <Button title="Add Preferences" onPress={handleEditProfile} />
             </View>
           )}
         </View>
