@@ -60,7 +60,7 @@ export function RoundDetailScreen({
 
       // Get round details with participants via rounds-detail
       const response = await invokeFunction<{
-        data: RoundWithCourse & { participants: RoundParticipant[] };
+        data: RoundWithCourse & { participants: RoundParticipantResponse[] };
       }>('rounds-detail', {
         method: 'GET',
         params: { roundId },
