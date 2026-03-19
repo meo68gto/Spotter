@@ -43,3 +43,7 @@
    - `video_call_started`
    - `video_call_ended`
    - `video_call_billed`
+4. Complete accessibility sheet:
+   - `/Users/brucewayne/Documents/Spotter/docs/qa/voiceover-talkback-test-sheet.md`
+5. Attach evidence in:
+   - `/Users/brucewayne/Documents/Spotter/docs/qa/release-evidence-template.md`

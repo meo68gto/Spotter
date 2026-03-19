@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "updatedAt": "",
+  "owners": {
+    "product": "",
+    "design": "",
+    "capture": "",
+    "upload": ""
+  },
+  "ios": {
+    "icon": "",
+    "screenshots": []
+  },
+  "android": {
+    "icon": "",
+    "featureGraphic": "",
+    "screenshots": []
+  },
+  "notes": ""
+}

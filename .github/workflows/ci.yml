@@ -42,5 +42,10 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: QA static checks
+        run: |
+          pnpm qa:screen-index:check
+          pnpm qa:stock-photo-audit
+
       - name: Migration validation
         run: pnpm db:check

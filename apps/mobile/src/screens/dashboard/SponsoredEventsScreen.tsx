@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { invokeFunction } from '../../lib/api';
+import { stockPhotos } from '../../lib/stockPhotos';
 import { supabase } from '../../lib/supabase';
 import { font, isWeb, palette, radius, spacing } from '../../theme/design';
 
@@ -184,8 +185,13 @@ export function SponsoredEventsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Sponsored Events</Text>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={loadEvents} />}
+    >
+      <ImageBackground source={{ uri: stockPhotos.eventsHero }} style={styles.hero} imageStyle={styles.heroImage}>
+        <Text style={styles.title}>Sponsored Events</Text>
+      </ImageBackground>
       <Text style={styles.subtitle}>Create tournaments, activate sponsors, and invite locals based on activity fit.</Text>
 
       <View style={styles.layout}>
@@ -243,6 +249,14 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md
   },
+  hero: {
+    height: 150,
+    justifyContent: 'flex-end',
+    padding: spacing.md
+  },
+  heroImage: {
+    borderRadius: radius.md
+  },
   layout: {
     ...(isWeb
       ? {
@@ -258,7 +272,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: font.display,
     fontWeight: '800',
-    color: palette.ink900
+    color: palette.white
   },
   subtitle: {
     color: palette.ink700

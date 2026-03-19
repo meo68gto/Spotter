@@ -62,6 +62,27 @@ Deno.serve(async (req) => {
         .eq('id', order.id)
         .in('status', ['created', 'requires_payment_method', 'processing']);
 
+      // Auto-publish any associated engagement (reduces client fragility)
+      const { data: engagement } = await service
+        .from('engagement_requests')
+        .select('id, status')
+        .eq('review_order_id', order.id)
+        .eq('status', 'created')
+        .maybeSingle();
+
+      if (engagement) {
+        await service
+          .from('engagement_requests')
+          .update({ status: 'awaiting_expert', published_at: new Date().toISOString() })
+          .eq('id', engagement.id);
+        
+        await trackServerEvent('engagement_auto_published', order.buyer_user_id, {
+          engagement_id: engagement.id,
+          review_order_id: order.id,
+          source: 'webhook'
+        });
+      }
+
       const userRecord = await service.auth.admin.getUserById(order.buyer_user_id);
       const email = userRecord.data.user?.email;
       if (email) {
@@ -77,7 +98,8 @@ Deno.serve(async (req) => {
 
       await trackServerEvent('payment_intent_succeeded', order.buyer_user_id, {
         review_order_id: order.id,
-        payment_intent_id: paymentIntentId
+        payment_intent_id: paymentIntentId,
+        engagement_published: !!engagement
       });
     }
   }

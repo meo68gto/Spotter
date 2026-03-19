@@ -6,6 +6,7 @@ import { Card } from '../../components/Card';
 import { trackEvent } from '../../lib/analytics';
 import { supabase } from '../../lib/supabase';
 import { env } from '../../types/env';
+import { formatSessionStatus } from './ui-utils';
 
 type MatchRecord = {
   id: string;
@@ -82,6 +83,7 @@ export function SessionsScreen({ session }: Props) {
   const [messageText, setMessageText] = useState('');
   const [feedbackTag, setFeedbackTag] = useState('Great teacher');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const selectedMatch = useMemo(
     () => matches.find((match) => match.id === selectedMatchId),
@@ -452,7 +454,7 @@ export function SessionsScreen({ session }: Props) {
                         onPress={() => setSelectedMatchId(match.id)}
                       >
                         <Text style={[styles.chipText, isActive ? styles.chipTextActive : null]}>
-                          {match.status} • {match.id.slice(0, 8)}
+                          {formatSessionStatus(match.status)} • {match.id.slice(0, 8)}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -502,7 +504,7 @@ export function SessionsScreen({ session }: Props) {
                         onPress={() => setSelectedSessionId(item.id)}
                       >
                         <Text style={[styles.chipText, isActive ? styles.chipTextActive : null]}>
-                          {item.status} • {item.id.slice(0, 8)}
+                          {formatSessionStatus(item.status)} • {item.id.slice(0, 8)}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -522,7 +524,7 @@ export function SessionsScreen({ session }: Props) {
               {selectedSession ? (
                 <>
                   <Text style={styles.sessionMeta}>Session: {selectedSession.id}</Text>
-                  <Text style={styles.sessionMeta}>Status: {selectedSession.status}</Text>
+                  <Text style={styles.sessionMeta}>Status: {formatSessionStatus(selectedSession.status)}</Text>
                   <Text style={styles.sessionMeta}>
                     Proposed: {new Date(selectedSession.proposed_start_time).toLocaleString()}
                   </Text>
@@ -549,6 +551,13 @@ export function SessionsScreen({ session }: Props) {
           </>
         }
         data={messages}
+        refreshing={refreshing}
+        onRefresh={async () => {
+          if (refreshing) return;
+          setRefreshing(true);
+          await refresh();
+          setRefreshing(false);
+        }}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
         renderItem={({ item }) => {

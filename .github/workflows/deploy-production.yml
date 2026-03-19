@@ -28,6 +28,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: QA static checks
+        run: |
+          pnpm qa:screen-index:check
+          pnpm qa:stock-photo-audit
+
       - name: Release preflight
         run: pnpm release:preflight
         env:
@@ -117,3 +122,17 @@ jobs:
         working-directory: apps/functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Build mobile bundle (production artifact)
+        run: pnpm --filter @spotter/mobile build
+
+      - name: Build bundle report
+        run: pnpm qa:mobile-bundle-report
+
+      - name: Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-qa-${{ github.run_id }}
+          path: .artifacts/qa/**
+          if-no-files-found: warn

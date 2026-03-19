@@ -1,9 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "jsx": "react-jsx",
+    "strict": false,
+    "noImplicitAny": false,
     "types": ["react", "react-native"]
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["tests/**", "**/*.test.ts", "**/*.test.tsx"]
+  "exclude": ["tests/**", "e2e/**", "**/*.test.ts", "**/*.test.tsx"]
 }

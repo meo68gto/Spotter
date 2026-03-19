@@ -1,0 +1,72 @@
+{
+  "node": {
+    "4015c64181d538ca25ef8986213228ff401cd90367": {
+      "workers": {
+        "app/moderation/page": {
+          "moduleId": "(rsc)/../../node_modules/.pnpm/next@15.1.2_react-dom@19.0.0_react@19.0.0__react@19.0.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fbrucewayne%2FDocuments%2FSpotter%2Fapps%2Fweb-admin%2Fapp%2Fmoderation%2Fpage.tsx%22%2C%5B%5B%224015c64181d538ca25ef8986213228ff401cd90367%22%2C%22%24%24RSC_SERVER_ACTION_2%22%5D%2C%5B%2240b758811a8a09314f5ad7aa9c1dc9ab9b6b2c9649%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%2C%5B%2240d583e107e119c5cd353c0d13df9e15dea8ea46e5%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/moderation/page": "rsc"
+      }
+    },
+    "40b758811a8a09314f5ad7aa9c1dc9ab9b6b2c9649": {
+      "workers": {
+        "app/moderation/page": {
+          "moduleId": "(rsc)/../../node_modules/.pnpm/next@15.1.2_react-dom@19.0.0_react@19.0.0__react@19.0.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fbrucewayne%2FDocuments%2FSpotter%2Fapps%2Fweb-admin%2Fapp%2Fmoderation%2Fpage.tsx%22%2C%5B%5B%224015c64181d538ca25ef8986213228ff401cd90367%22%2C%22%24%24RSC_SERVER_ACTION_2%22%5D%2C%5B%2240b758811a8a09314f5ad7aa9c1dc9ab9b6b2c9649%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%2C%5B%2240d583e107e119c5cd353c0d13df9e15dea8ea46e5%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/moderation/page": "rsc"
+      }
+    },
+    "40d583e107e119c5cd353c0d13df9e15dea8ea46e5": {
+      "workers": {
+        "app/moderation/page": {
+          "moduleId": "(rsc)/../../node_modules/.pnpm/next@15.1.2_react-dom@19.0.0_react@19.0.0__react@19.0.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fbrucewayne%2FDocuments%2FSpotter%2Fapps%2Fweb-admin%2Fapp%2Fmoderation%2Fpage.tsx%22%2C%5B%5B%224015c64181d538ca25ef8986213228ff401cd90367%22%2C%22%24%24RSC_SERVER_ACTION_2%22%5D%2C%5B%2240b758811a8a09314f5ad7aa9c1dc9ab9b6b2c9649%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%2C%5B%2240d583e107e119c5cd353c0d13df9e15dea8ea46e5%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/moderation/page": "rsc"
+      }
+    },
+    "401e27966cbb6d6e61c461bd104b146bb009373514": {
+      "workers": {
+        "app/payments/page": {
+          "moduleId": "(rsc)/../../node_modules/.pnpm/next@15.1.2_react-dom@19.0.0_react@19.0.0__react@19.0.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fbrucewayne%2FDocuments%2FSpotter%2Fapps%2Fweb-admin%2Fapp%2Fpayments%2Fpage.tsx%22%2C%5B%5B%22401e27966cbb6d6e61c461bd104b146bb009373514%22%2C%22%24%24RSC_SERVER_ACTION_2%22%5D%2C%5B%22408ab932ff66f2946408f9dd4015054e9c9f58ff44%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%2C%5B%2240f15f2dae7e3bf972967458850f07881336932d3b%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/payments/page": "rsc"
+      }
+    },
+    "408ab932ff66f2946408f9dd4015054e9c9f58ff44": {
+      "workers": {
+        "app/payments/page": {
+          "moduleId": "(rsc)/../../node_modules/.pnpm/next@15.1.2_react-dom@19.0.0_react@19.0.0__react@19.0.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fbrucewayne%2FDocuments%2FSpotter%2Fapps%2Fweb-admin%2Fapp%2Fpayments%2Fpage.tsx%22%2C%5B%5B%22401e27966cbb6d6e61c461bd104b146bb009373514%22%2C%22%24%24RSC_SERVER_ACTION_2%22%5D%2C%5B%22408ab932ff66f2946408f9dd4015054e9c9f58ff44%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%2C%5B%2240f15f2dae7e3bf972967458850f07881336932d3b%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/payments/page": "rsc"
+      }
+    },
+    "40f15f2dae7e3bf972967458850f07881336932d3b": {
+      "workers": {
+        "app/payments/page": {
+          "moduleId": "(rsc)/../../node_modules/.pnpm/next@15.1.2_react-dom@19.0.0_react@19.0.0__react@19.0.0/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fbrucewayne%2FDocuments%2FSpotter%2Fapps%2Fweb-admin%2Fapp%2Fpayments%2Fpage.tsx%22%2C%5B%5B%22401e27966cbb6d6e61c461bd104b146bb009373514%22%2C%22%24%24RSC_SERVER_ACTION_2%22%5D%2C%5B%22408ab932ff66f2946408f9dd4015054e9c9f58ff44%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%2C%5B%2240f15f2dae7e3bf972967458850f07881336932d3b%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/payments/page": "rsc"
+      }
+    }
+  },
+  "edge": {},
+  "encryptionKey": "KB1rzI2igEBE4KOZy5MnxZHK0UCBqAGy0mTLd7jI1rg="
+}

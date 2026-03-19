@@ -12,6 +12,9 @@ export const flags = {
   engagementGuestCheckout: asBool(process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_GUEST_CHECKOUT, true),
   engagementPublicFeed: asBool(process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_PUBLIC_FEED, true),
   engagementVideoCallDaily: asBool(process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_VIDEO_CALL_DAILY, true),
+  inboxV2: asBool(process.env.EXPO_PUBLIC_FLAG_INBOX_V2, true),
+  profileV2: asBool(process.env.EXPO_PUBLIC_FLAG_PROFILE_V2, true),
+  coachingPart2: asBool(process.env.EXPO_PUBLIC_FLAG_COACHING_PART2, true),
   environment: 'local'
 };
 
@@ -35,6 +38,9 @@ export const loadFeatureFlags = async (accessToken: string): Promise<typeof flag
     flags.engagementGuestCheckout = Boolean(payload.data.engagementGuestCheckout);
     flags.engagementPublicFeed = Boolean(payload.data.engagementPublicFeed);
     flags.engagementVideoCallDaily = Boolean(payload.data.engagementVideoCallDaily);
+    flags.inboxV2 = payload.data.inboxV2 === undefined ? flags.inboxV2 : Boolean(payload.data.inboxV2);
+    flags.profileV2 = payload.data.profileV2 === undefined ? flags.profileV2 : Boolean(payload.data.profileV2);
+    flags.coachingPart2 = payload.data.coachingPart2 === undefined ? flags.coachingPart2 : Boolean(payload.data.coachingPart2);
     flags.environment = payload.data.environment ?? flags.environment;
     return flags;
   } catch {

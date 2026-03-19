@@ -1,8 +1,10 @@
 import React, { ReactNode } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 
 type Props = {
   children: ReactNode;
+  contextTag?: string;
 };
 
 type State = {
@@ -21,6 +23,12 @@ export class AppErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error) {
+    Sentry.captureException(error, {
+      tags: {
+        boundary: 'app',
+        context: this.props.contextTag ?? 'unknown'
+      }
+    });
     console.error('Unhandled app error', error);
   }
 

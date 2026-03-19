@@ -1,19 +1,20 @@
 import { Platform } from 'react-native';
+import { lightTokens } from './tokens';
 
 export const palette = {
-  ink900: '#102A43',
-  ink700: '#334E68',
-  ink500: '#627D98',
-  sky100: '#EAF2F8',
-  sky200: '#D9E8F2',
-  sky300: '#BCCCDC',
-  navy600: '#0B3A53',
+  ink900: lightTokens.text,
+  ink700: lightTokens.textSecondary,
+  ink500: lightTokens.textMuted,
+  sky100: lightTokens.backgroundMuted,
+  sky200: lightTokens.border,
+  sky300: lightTokens.borderStrong,
+  navy600: lightTokens.primary,
   navy700: '#082F43',
   mint500: '#2CB1BC',
-  green500: '#2F855A',
-  amber500: '#B7791F',
-  red500: '#C53030',
-  white: '#FFFFFF'
+  green500: lightTokens.success,
+  amber500: lightTokens.warning,
+  red500: lightTokens.danger,
+  white: lightTokens.surface
 };
 
 export const spacing = {

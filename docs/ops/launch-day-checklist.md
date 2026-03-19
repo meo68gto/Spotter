@@ -39,11 +39,18 @@
 ## T-30 minutes (deploy readiness)
 1. Run:
    - `pnpm release:preflight`
+   - `pnpm qa:stock-photo-audit`
 2. Trigger:
    - `Ops Verify` workflow in production
+   - `Mobile RC QA Gate` for the approved RC tag
 3. Verify:
    - no new Sentry critical errors
    - recurring jobs workflow healthy
+   - QA artifact bundle attached:
+     - Detox logs/screenshots
+     - Lighthouse report
+     - Accessibility sheet
+     - Bundle report
 
 ## T-0 (go live)
 1. Push or dispatch production deploy workflow from approved tag.

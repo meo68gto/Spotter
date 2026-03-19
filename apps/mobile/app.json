@@ -6,10 +6,11 @@
     "scheme": "spotter",
     "jsEngine": "jsc",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.spotter.app",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Spotter uses your location to find nearby activity matches."
       }
@@ -18,9 +19,20 @@
       "package": "com.spotter.app",
       "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
+    "plugins": [
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.spotter.app",
+          "enableGooglePay": false
+        }
+      ],
+      "expo-apple-authentication",
+      "@sentry/react-native/expo"
+    ],
     "extra": {
       "eas": {
-        "projectId": "REPLACE_ME"
+        "projectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
       }
     }
   }

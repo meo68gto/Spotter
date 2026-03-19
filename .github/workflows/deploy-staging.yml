@@ -26,6 +26,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: QA static checks
+        run: |
+          pnpm qa:screen-index:check
+          pnpm qa:stock-photo-audit
+
       - name: Release preflight
         run: pnpm release:preflight
         env:
@@ -118,3 +123,14 @@ jobs:
 
       - name: Build mobile bundle (staging artifact)
         run: pnpm --filter @spotter/mobile build
+
+      - name: Build bundle report
+        run: pnpm qa:mobile-bundle-report
+
+      - name: Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-qa-${{ github.run_id }}
+          path: .artifacts/qa/**
+          if-no-files-found: warn

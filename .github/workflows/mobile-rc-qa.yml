@@ -1,0 +1,86 @@
+name: Mobile RC QA Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      rc_tag:
+        description: Release candidate tag (e.g. v0.1.0-rc1)
+        required: true
+        type: string
+
+jobs:
+  rc-lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RC
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.rc_tag }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Run Lighthouse
+        run: pnpm mobile:web:lighthouse
+
+      - name: Upload Lighthouse artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-lighthouse-${{ github.run_id }}
+          path: .artifacts/qa/lighthouse/**
+          if-no-files-found: warn
+
+  rc-detox-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout RC
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.rc_tag }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install applesimutils
+        run: |
+          brew tap wix/brew
+          brew install applesimutils
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build Detox iOS
+        run: pnpm mobile:e2e:build:ios
+
+      - name: Run Detox iOS smoke suite
+        run: pnpm mobile:e2e:test:ios
+
+      - name: Upload Detox artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-detox-ios-${{ github.run_id }}
+          path: |
+            apps/mobile/artifacts/**
+            apps/mobile/e2e/artifacts/**
+          if-no-files-found: warn

@@ -365,3 +365,56 @@ export interface NetworkingInviteSendDTO {
   purpose?: 'session' | 'tournament' | 'networking';
   message?: string;
 }
+
+export interface InboxConversationDTO {
+  threadType: 'session' | 'engagement';
+  threadId: UUID;
+  title: string;
+  status: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
+}
+
+export interface InboxThreadMessageDTO {
+  id: UUID;
+  threadType: 'session' | 'engagement';
+  threadId: UUID;
+  senderUserId: UUID;
+  message: string;
+  clientMessageId?: string | null;
+  createdAt: string;
+}
+
+export interface InboxMarkReadDTO {
+  threadType: 'session' | 'engagement';
+  threadId: UUID;
+  lastReadAt?: string;
+}
+
+export interface SkillRadarPointDTO {
+  key: string;
+  label: string;
+  value: number;
+  maxValue: number;
+}
+
+export type ThemePreference = 'system' | 'light' | 'dark';
+
+export interface ToastPayloadDTO {
+  type?: 'success' | 'error' | 'info';
+  title: string;
+  message?: string;
+  durationMs?: number;
+}
+
+export interface OnboardingStepDraftDTO {
+  activityId: UUID;
+  sourceScale: string;
+  sourceValue: string;
+  canonicalScore: number;
+  skillBand: string;
+  city: string;
+  timezone: string;
+  availabilitySlots: AvailabilitySlotDTO[];
+}
