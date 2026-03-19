@@ -8,10 +8,26 @@ import { Button } from '../../../components/Button';
 import { invokeFunction } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
 import { font, isWeb, palette, radius, spacing } from '../../../theme/design';
-import type { OrganizerEvent, OrganizerWithStats, OrganizerQuotaInfo } from '../../../../../packages/types/src/organizer';
 
-interface DashboardEvent extends OrganizerEvent {
+// Types defined locally following project pattern
+type EventType = 'tournament' | 'scramble' | 'charity' | 'corporate' | 'social';
+type EventStatus = 'draft' | 'published' | 'registration_open' | 'full' | 'in_progress' | 'completed' | 'cancelled';
+type OrganizerTier = 'bronze' | 'silver' | 'gold';
+
+interface DashboardEvent {
+  id: string;
+  title: string;
+  description?: string;
+  type: EventType;
+  status: EventStatus;
+  courseId: string;
+  courseName: string;
+  startTime: string;
+  endTime: string;
+  maxParticipants: number;
   currentRegistrations: number;
+  price: number;
+  isPublic: boolean;
 }
 
 interface DashboardStats {
