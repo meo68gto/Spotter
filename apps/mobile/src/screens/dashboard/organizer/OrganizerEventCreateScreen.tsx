@@ -8,7 +8,25 @@ import { Button } from '../../../components/Button';
 import { invokeFunction } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
 import { font, isWeb, palette, radius, spacing } from '../../../theme/design';
-import type { CreateEventInput, OrganizerEvent, EventType, OrganizerTier } from '../../../../../packages/types/src/organizer';
+
+// Types defined locally following project pattern
+type EventType = 'tournament' | 'scramble' | 'charity' | 'corporate' | 'social';
+type OrganizerTier = 'bronze' | 'silver' | 'gold';
+
+interface OrganizerEvent {
+  id: string;
+  title: string;
+  description?: string;
+  type: EventType;
+  status: string;
+  courseId: string;
+  courseName: string;
+  startTime: string;
+  endTime: string;
+  maxParticipants: number;
+  price: number;
+  isPublic: boolean;
+}
 
 // Golf-only event types (no pickleball/tennis residue)
 const GOLF_EVENT_TYPES: { value: EventType; label: string; description: string }[] = [
