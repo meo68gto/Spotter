@@ -1,0 +1,711 @@
+openapi: 3.0.3
+info:
+  title: Spotter Golf Networking API
+  description: |
+    API for the Spotter Golf Networking platform. Mobile-first platform for golf networking 
+    with tier-based membership, matchmaking, and tournament organization.
+  version: 1.0.0
+  contact:
+    name: Spotter API Support
+    email: api-support@spotter.golf
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://<project>.supabase.co/functions/v1
+    description: Production server
+  - url: http://localhost:54321/functions/v1
+    description: Local development server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth-otp:
+    post:
+      summary: OTP Authentication
+      description: Request or verify one-time password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/OTPRequest'
+                - $ref: '#/components/schemas/OTPVerify'
+      responses:
+        '200':
+          description: OTP sent or verified successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/OTPSentResponse'
+                  - $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /profile/get:
+    get:
+      summary: Get Current User Profile
+      description: Get the authenticated user's extended profile
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /profile/get/{userId}:
+    get:
+      summary: Get User Profile by ID
+      description: Get another user's profile (same-tier visibility enforced)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Tier visibility restricted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /profile/update:
+    post:
+      summary: Update Profile
+      description: Update the authenticated user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateInput'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Profile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /tier-assignment:
+    post:
+      summary: Tier Management
+      description: |
+        Assign default tier (service role) or upgrade user tier (admin).
+        Requires service role key or admin authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/TierAssignDefault'
+                - $ref: '#/components/schemas/TierUpgrade'
+      responses:
+        '200':
+          description: Tier operation successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TierOperationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /tier-upgrade:
+    post:
+      summary: Initiate Tier Upgrade
+      description: Create Stripe checkout session for tier upgrade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - targetTier
+              properties:
+                targetTier:
+                  type: string
+                  enum: [select, summit]
+                successUrl:
+                  type: string
+                  format: uri
+                cancelUrl:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      checkoutUrl:
+                        type: string
+                        format: uri
+                      sessionId:
+                        type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /golf-courses:
+    get:
+      summary: List Golf Courses
+      description: Get list of golf courses with optional filtering
+      parameters:
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [easy, moderate, challenging, expert]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Courses retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GolfCourse'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /connection-request:
+    post:
+      summary: Send Connection Request
+      description: Send a connection request to another user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - receiverId
+              properties:
+                receiverId:
+                  type: string
+                  format: uuid
+                connectionType:
+                  type: string
+                  enum: [played_together, introduced, met_offline, online_only]
+                message:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Request sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Connection already exists
+
+  /round-create:
+    post:
+      summary: Create Golf Round
+      description: Create a new golf round (Select+ tier required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoundCreateInput'
+      responses:
+        '201':
+          description: Round created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GolfRound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Tier feature not available
+
+  /stripe-webhook:
+    post:
+      summary: Stripe Webhook
+      description: Receive Stripe webhook events
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Event received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    OTPRequest:
+      type: object
+      required:
+        - email
+        - action
+      properties:
+        email:
+          type: string
+          format: email
+        action:
+          type: string
+          enum: [signup, signin]
+
+    OTPVerify:
+      type: object
+      required:
+        - email
+        - token
+        - action
+      properties:
+        email:
+          type: string
+          format: email
+        token:
+          type: string
+          pattern: '^[0-9]{6}$'
+        action:
+          type: string
+          enum: [verify]
+
+    OTPSentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        email:
+          type: string
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        session:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+            expires_at:
+              type: integer
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        display_name:
+          type: string
+        tier:
+          $ref: '#/components/schemas/Tier'
+
+    Tier:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+          enum: [free, select, summit]
+        card_color:
+          type: string
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        professionalIdentity:
+          type: object
+          properties:
+            company:
+              type: string
+            title:
+              type: string
+            industry:
+              type: string
+            linkedinUrl:
+              type: string
+            yearsExperience:
+              type: integer
+        golfIdentity:
+          type: object
+          properties:
+            handicap:
+              type: number
+            homeCourseId:
+              type: string
+            homeCourseName:
+              type: string
+            playingFrequency:
+              type: string
+            yearsPlaying:
+              type: integer
+        tier:
+          $ref: '#/components/schemas/Tier'
+        reputation:
+          type: object
+          properties:
+            overallScore:
+              type: integer
+            networkSize:
+              type: integer
+
+    ProfileUpdateInput:
+      type: object
+      properties:
+        displayName:
+          type: string
+        bio:
+          type: string
+        professional:
+          type: object
+          properties:
+            company:
+              type: string
+            title:
+              type: string
+            industry:
+              type: string
+            yearsExperience:
+              type: integer
+        golf:
+          type: object
+          properties:
+            handicap:
+              type: number
+            homeCourseId:
+              type: string
+            playFrequency:
+              type: string
+            yearsPlaying:
+              type: integer
+
+    GolfCourse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        par_total:
+          type: integer
+        course_rating:
+          type: number
+        slope_rating:
+          type: integer
+        difficulty:
+          type: string
+          enum: [easy, moderate, challenging, expert]
+        amenities:
+          type: object
+        images:
+          type: array
+          items:
+            type: string
+
+    RoundCreateInput:
+      type: object
+      required:
+        - courseId
+        - roundDate
+        - totalSpots
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        roundDate:
+          type: string
+          format: date
+        teeTime:
+          type: string
+        format:
+          type: string
+          enum: [stroke_play, match_play, scramble, best_ball, shamble]
+        totalSpots:
+          type: integer
+          minimum: 2
+          maximum: 4
+        isPrivate:
+          type: boolean
+        notes:
+          type: string
+
+    GolfRound:
+      type: object
+      properties:
+        id:
+          type: string
+        courseId:
+          type: string
+        organizerId:
+          type: string
+        roundDate:
+          type: string
+          format: date
+        teeTime:
+          type: string
+        format:
+          type: string
+        status:
+          type: string
+          enum: [draft, open, full, in_progress, completed, cancelled]
+        spotsAvailable:
+          type: integer
+        totalSpots:
+          type: integer
+
+    Connection:
+      type: object
+      properties:
+        id:
+          type: string
+        requesterId:
+          type: string
+        receiverId:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, declined, blocked]
+        connectionType:
+          type: string
+        requestedAt:
+          type: string
+          format: date-time
+
+    TierAssignDefault:
+      type: object
+      required:
+        - action
+        - userId
+      properties:
+        action:
+          type: string
+          enum: [assign-default]
+        userId:
+          type: string
+          format: uuid
+
+    TierUpgrade:
+      type: object
+      required:
+        - action
+        - userId
+        - targetTier
+      properties:
+        action:
+          type: string
+          enum: [upgrade]
+        userId:
+          type: string
+          format: uuid
+        targetTier:
+          type: string
+          enum: [select, summit]
+
+    TierOperationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        userId:
+          type: string
+        tier:
+          type: string
+        message:
+          type: string
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total_pages:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden - tier visibility or insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

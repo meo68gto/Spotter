@@ -1,94 +1,236 @@
-# @spotter/functions
+# Spotter Edge Functions
 
-Supabase Edge Functions for Spotter.
+Supabase Edge Functions for Spotter API.
 
-## Functions
+## Overview
 
-- `health`
-- `onboarding-profile`
-- `matching-candidates`
-- `matching-request`
-- `matching-accept`
-- `matching-reject`
-- `sessions-propose`
-- `sessions-confirm`
-- `sessions-cancel`
-- `sessions-feedback`
-- `chat-send`
-- `videos-presign`
-- `videos-analysis`
-- `videos-enqueue-processing`
-- `videos-process-next`
-- `videos-enqueue-processing`
-- `videos-process-next`
-- `progress-generate`
-- `progress-snapshots`
-- `admin-process-deletion`
+Deno-based edge functions providing:
+- Authentication (OTP)
+- Profile management
+- Tier assignment
+- Golf rounds
+- Connections
+- Events
+- Organizer operations
+- Stripe webhooks
 
-## Local dev
+## Project Structure
 
-1. Install Supabase CLI.
-2. Start stack:
-   - `pnpm --filter @spotter/functions supabase:start`
-3. Serve functions:
-   - `pnpm --filter @spotter/functions dev`
+```
+apps/functions/supabase/functions/
+├── _shared/                    # Shared utilities
+│   ├── cors.ts                # CORS headers
+│   ├── tier-gate.ts           # Tier validation
+│   ├── errors.ts              # Error handling
+│   └── supabase.ts            # Client initialization
+│
+├── auth-otp/                  # OTP authentication
+│   └── index.ts
+│
+├── profile-get/               # Get user profile
+│   └── index.ts
+│
+├── profile-update/            # Update profile
+│   └── index.ts
+│
+├── tier-assignment/           # Tier management
+│   └── index.ts
+│
+├── tier-upgrade/              # Stripe checkout
+│   └── index.ts
+│
+├── round-create/              # Create golf round
+│   └── index.ts
+│
+├── round-join/                # Join round
+│   └── index.ts
+│
+├── connection-request/         # Send connection
+│   └── index.ts
+│
+├── connection-respond/         # Accept/decline
+│   └── index.ts
+│
+├── event-register/            # Register for event
+│   └── index.ts
+│
+├── organizer-create/          # Create organizer
+│   └── index.ts
+│
+├── organizer-event-create/    # Create event
+│   └── index.ts
+│
+├── inbox-send/                # Send message
+│   └── index.ts
+│
+├── inbox-list/                # List threads
+│   └── index.ts
+│
+└── stripe-webhook/            # Stripe events
+    └── index.ts
+```
 
-## Local verification
+## Development
 
-1. Start/reset local stack from repo root:
-   - `pnpm local:up`
-2. In another terminal, serve functions:
-   - `pnpm functions:serve`
-3. Export env from Supabase local status:
-   - `eval "$(cd apps/functions && supabase status -o env)"`
-4. Run smoke checks:
-   - `pnpm smoke:local`
+### Prerequisites
 
-## Staging verification
+- Supabase CLI installed
+- Deno installed (for local testing)
 
-1. Export staging credentials:
-   - `SUPABASE_URL`
-   - `SUPABASE_FUNCTIONS_URL` (or `FUNCTIONS_URL`)
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-2. Run integration smoke checks:
-   - `pnpm smoke:staging`
-3. Run one-command ops verifier (preflight + smoke + evidence artifacts):
-   - `pnpm ops:verify`
+### Local Development
 
-## Staging setup checklist
+```bash
+# Start functions server
+pnpm functions:serve
 
-1. Create Supabase project and set secrets:
-   - `SUPABASE_PROJECT_ID`
-   - `SUPABASE_ACCESS_TOKEN`
-2. Enable auth providers in Supabase dashboard:
-   - Email
-   - Apple OAuth
-   - Google OAuth
-3. Create private storage buckets:
-   - `videos-raw`
-   - `videos-processed`
-4. Set redirect URLs:
-   - `spotter://auth/callback`
-   - Expo development callback URL
-5. Apply migrations:
-   - `supabase db push --include-all`
-6. Deploy functions:
-   - `supabase functions deploy health`
-   - `supabase functions deploy onboarding-profile`
-   - `supabase functions deploy matching-candidates`
-   - `supabase functions deploy matching-request`
-   - `supabase functions deploy matching-accept`
-   - `supabase functions deploy matching-reject`
-   - `supabase functions deploy sessions-propose`
-   - `supabase functions deploy sessions-confirm`
-   - `supabase functions deploy sessions-cancel`
-   - `supabase functions deploy sessions-feedback`
-   - `supabase functions deploy chat-send`
-   - `supabase functions deploy videos-presign`
-   - `supabase functions deploy videos-analysis`
-   - `supabase functions deploy videos-enqueue-processing`
-   - `supabase functions deploy videos-process-next`
-   - `supabase functions deploy progress-generate`
-   - `supabase functions deploy progress-snapshots`
-   - `supabase functions deploy admin-process-deletion`
+# Deploy to local
+pnpm functions:deploy:local
+
+# Deploy specific function
+supabase functions deploy auth-otp
+```
+
+### Testing
+
+```bash
+# Test all functions
+pnpm functions:test
+
+# Test specific function
+pnpm functions:test -- auth-otp
+
+# With coverage
+pnpm functions:test --coverage
+```
+
+## Function Development
+
+### Template
+
+```typescript
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { corsHeaders } from '../_shared/cors.ts';
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+serve(async (req) => {
+  // Handle CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const body = await req.json();
+    
+    // Implementation
+    
+    return new Response(
+      JSON.stringify({ data: result }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+});
+```
+
+### Environment Variables
+
+```bash
+# Required
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_ANON_KEY=
+
+# Stripe (for payment functions)
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+
+# Email (for auth)
+SMTP_HOST=
+SMTP_USER=
+SMTP_PASS=
+```
+
+Set secrets:
+```bash
+supabase secrets set --env-file .env.local
+```
+
+## Key Functions
+
+### auth-otp
+
+- Request OTP (signup/signin)
+- Verify OTP
+- Automatic FREE tier assignment
+
+### profile-get
+
+- Get current user profile
+- Get other user profile (same-tier visibility)
+- Aggregate profile data
+
+### tier-assignment
+
+- Assign FREE tier to new users
+- Upgrade user tiers
+- Handle Stripe webhook events
+
+### stripe-webhook
+
+- Process Stripe events
+- Update tier on payment
+- Handle subscription changes
+
+## Deployment
+
+```bash
+# Deploy all
+supabase functions deploy
+
+# Deploy specific
+supabase functions deploy tier-assignment
+
+# Deploy with project
+supabase functions deploy --project-ref <ref>
+```
+
+## Monitoring
+
+```bash
+# View logs
+supabase functions logs auth-otp --tail
+
+# Check status
+supabase functions list
+```
+
+## Error Handling
+
+Always return proper error responses:
+
+```typescript
+return new Response(
+  JSON.stringify({ 
+    error: 'Error message',
+    code: 'error_code'
+  }),
+  { 
+    status: 400,
+    headers: corsHeaders 
+  }
+);
+```
+
+## Related
+
+- [API Documentation](../../docs/api/)
+- [Architecture](../../docs/dev/architecture.md)
+- [Root README](../../README.md)

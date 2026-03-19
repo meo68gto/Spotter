@@ -1,85 +1,247 @@
-# @spotter/db
+# Spotter Database
 
-Schema package for Spotter with migrations, seeds, and policy checks.
+Database migrations and schema for Spotter.
 
-## Migration overview
+## Overview
 
-`migrations/0001_init.sql` creates:
+PostgreSQL database managed with Supabase CLI:
+- **15+ tables** for core functionality
+- **Row Level Security (RLS)** for same-tier visibility
+- **Triggers** for computed fields
+- **Indexes** for performance
 
-- `users`
-- `activities`
-- `skill_profiles`
-- `matches`
-- `sessions`
-- `video_submissions`
-- `coach_reviews`
-- `progress_snapshots`
-- `messages` (placeholder for chat/realtime)
+## Project Structure
 
-`migrations/0002_gap_closing.sql` adds:
+```
+packages/db/
+└── migrations/
+    ├── 0001_initial.sql              # Initial schema
+    ├── 0014_tier_system.sql          # Tier system
+    ├── 0015_golf_schema.sql          # Golf tables
+    ├── 0016_login_system.sql         # Login system
+    ├── 0017_profile_networking.sql    # Profile + networking
+    └── seed.sql                       # Seed data
+```
 
-- `availability_slots`
-- `session_feedback`
-- match expiration support via `matches.expires_at`
-- message idempotency/moderation fields
-- upgraded matching score + availability overlap SQL helpers
+## Key Tables
 
-`migrations/0009_production_gap_closure.sql` adds:
+### Core
 
-- `coaches`
-- `coach_review_products`
-- `review_orders`
-- `payment_events`
-- `refund_requests`
-- `notification_events`
-- `user_legal_consents`
-- payment/legal indexes + RLS policies
+| Table | Description |
+|-------|-------------|
+| `users` | User accounts with tier assignment |
+| `membership_tiers` | Tier definitions (FREE, SELECT, SUMMIT) |
+| `connections` | Member networking connections |
+| `reputation_scores` | Calculated reputation |
+| `tier_history` | Tier change audit trail |
 
-`migrations/0010_engagements_mvp.sql` adds:
+### Golf
 
-- `expert_profiles`
-- `expert_pricing`
-- `engagement_requests`
-- `engagement_responses`
-- `guest_checkout_sessions`
-- `video_call_sessions`
-- `home_feed_items`
-- `reschedule_requests`
-- engagement enums/status lifecycle
-- auth-hold fields on `review_orders`
+| Table | Description |
+|-------|-------------|
+| `golf_courses` | Golf course information |
+| `golf_rounds` | Golf rounds/foursomes |
+| `round_participants` | Round participants |
+| `round_invites` | Private round invites |
 
-## ERD (text)
+### Organizer
 
-- A `users` row maps 1:1 to `auth.users`
-- `skill_profiles` belongs to `users` and `activities`
-- `matches` links requester + candidate users around one activity
-- `sessions` belongs to a `match` and links two participant users
-- `video_submissions` belongs to a user and optionally a session
-- `coach_reviews` belongs to a video submission and a coach user
-- `progress_snapshots` belongs to a user + activity and references source submission IDs
-- `messages` belongs to sessions and sender users
-- `availability_slots` belongs to users and optional activity
-- `session_feedback` belongs to sessions and reviewer/reviewee users
-- `coaches` maps 1:1 from coach `users`
-- `coach_review_products` belongs to a `coach`
-- `review_orders` belongs to buyer user, coach, product, and video submission
-- `refund_requests` belongs to review orders
-- `payment_events` stores webhook idempotency
-- `notification_events` stores transactional delivery receipts
-- `user_legal_consents` stores legal acceptance versions
+| Table | Description |
+|-------|-------------|
+| `organizers` | Organizer accounts |
+| `events` | Tournament events |
+| `event_registrations` | Event registrations |
+| `organizer_members` | Organizer team members |
 
-## Geospatial
+### Inbox
 
-- User home and session meetup points use `geography(point, 4326)`
-- GIST indexes support radius and proximity queries
+| Table | Description |
+|-------|-------------|
+| `inbox_threads` | Message threads |
+| `inbox_messages` | Individual messages |
 
-## RLS
+## Migrations
 
-- Enabled on every user-data table
-- Access scoped by `auth.uid()` participant relationships
-- `activities` is readable by all authenticated users
+### Running Migrations
 
-## Running checks
+```bash
+# Local
+supabase db reset
 
-- `pnpm --filter @spotter/db db:check`
-- `pnpm --filter @spotter/db test`
+# Staging
+supabase db push --db-url <staging_url>
+
+# Production
+supabase db push
+```
+
+### Creating New Migration
+
+```bash
+# Create migration file
+supabase migration new add_new_feature
+
+# Edit file
+# migrations/00XX_add_new_feature.sql
+
+# Apply
+supabase db reset
+```
+
+### Migration Format
+
+```sql
+-- Up migration
+CREATE TABLE new_table (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_new_table_name ON new_table(name);
+
+-- Enable RLS
+ALTER TABLE new_table ENABLE ROW LEVEL SECURITY;
+
+-- Create policy
+CREATE POLICY new_table_select_all ON new_table
+  FOR SELECT USING (true);
+
+-- Down migration (for rollback)
+-- DROP TABLE IF EXISTS new_table;
+```
+
+## RLS Policies
+
+### Same-Tier Visibility
+
+```sql
+-- Users can only see same-tier profiles
+CREATE POLICY users_select_same_tier ON users
+  FOR SELECT USING (
+    auth.uid() = id
+    OR EXISTS (
+      SELECT 1 FROM users current_user
+      WHERE current_user.id = auth.uid()
+      AND current_user.tier_id = users.tier_id
+    )
+  );
+```
+
+### Connection Visibility
+
+```sql
+-- Users can see their own connections
+CREATE POLICY connections_select_involved ON connections
+  FOR SELECT USING (
+    auth.uid() = requester_id 
+    OR auth.uid() = addressee_id
+  );
+```
+
+## Triggers
+
+### Auto-update timestamps
+
+```sql
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_users_updated_at
+  BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+```
+
+### Update round spots
+
+```sql
+CREATE TRIGGER trg_update_spots
+  AFTER INSERT OR UPDATE OR DELETE ON round_participants
+  FOR EACH ROW EXECUTE FUNCTION update_round_spots_available();
+```
+
+## Seed Data
+
+```bash
+# Seed local database
+supabase seed run
+
+# Or manual
+psql $DATABASE_URL < seed.sql
+```
+
+### Seed File
+
+```sql
+-- Seed membership tiers
+INSERT INTO membership_tiers (name, slug, price_cents, billing_interval) VALUES
+  ('Free', 'free', 0, 'annual'),
+  ('Select', 'select', 100000, 'annual'),
+  ('Summit', 'summit', 1000000, 'lifetime');
+
+-- Seed courses
+INSERT INTO golf_courses (name, city, state, par_total) VALUES
+  ('TPC Scottsdale', 'Scottsdale', 'AZ', 71),
+  ('Grayhawk Golf Club', 'Scottsdale', 'AZ', 72);
+```
+
+## Performance
+
+### Indexes
+
+```sql
+-- Users
+CREATE INDEX idx_users_tier ON users(tier_id);
+CREATE INDEX idx_users_email ON users(email);
+
+-- Connections
+CREATE INDEX idx_connections_requester ON connections(requester_id);
+CREATE INDEX idx_connections_status ON connections(status);
+
+-- Rounds
+CREATE INDEX idx_rounds_date ON golf_rounds(round_date);
+CREATE INDEX idx_rounds_status ON golf_rounds(status);
+
+-- Geospatial
+CREATE INDEX idx_courses_location ON golf_courses USING GIST(location);
+```
+
+## Backup
+
+```bash
+# Export database
+supabase db dump > backup.sql
+
+# Import
+supabase db restore backup.sql
+```
+
+## Development
+
+```bash
+# Start local database
+supabase start
+
+# Connect
+psql postgresql://postgres:postgres@localhost:54322/postgres
+
+# Reset
+supabase db reset
+
+# Check status
+supabase status
+```
+
+## Schema Documentation
+
+See [Database Documentation](../../docs/dev/database.md) for complete schema reference.
+
+## Related
+
+- [Architecture](../../docs/dev/architecture.md)
+- [Root README](../../README.md)
