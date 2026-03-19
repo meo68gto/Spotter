@@ -72,7 +72,7 @@ export function OrganizerDashboardScreen({ session, onNavigateToEventCreate, onN
       const response = await invokeFunction<{
         data: DashboardEvent[];
         pagination: { page: number; limit: number; total: number; totalPages: number };
-      }>('organizer-events/list', {
+      }>('organizer-events', {
         method: 'GET',
         params: { organizerId: orgId, limit: '50' }
       });
@@ -97,7 +97,7 @@ export function OrganizerDashboardScreen({ session, onNavigateToEventCreate, onN
             confirmedRegistrations: number;
           };
         };
-      }>('organizer-analytics/dashboard', {
+      }>('organizer-analytics', {
         method: 'GET',
         params: { organizerId: orgId, range: '30d' }
       });

@@ -132,7 +132,7 @@ export function OrganizerEventCreateScreen({ session, onComplete, onCancel }: Pr
       const startDateTime = `${startDate}T${startTime}:00.000Z`;
       const endDateTime = `${startDate}T${endTime}:00.000Z`;
 
-      const response = await invokeFunction<{ data: OrganizerEvent }>('organizer-events/create', {
+      const response = await invokeFunction<{ data: OrganizerEvent }>('organizer-events', {
         method: 'POST',
         body: {
           organizerId,

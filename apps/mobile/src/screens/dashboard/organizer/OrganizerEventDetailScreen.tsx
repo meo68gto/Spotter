@@ -50,8 +50,9 @@ export function OrganizerEventDetailScreen({ session, eventId, onBack, onNavigat
             totalRevenue: number;
           };
         };
-      }>(`organizer-events/get/${eventId}`, {
-        method: 'GET'
+      }>(`organizer-events`, {
+        method: 'GET',
+        params: { eventId }
       });
 
       setEventData(response.data);
