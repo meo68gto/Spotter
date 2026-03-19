@@ -57,7 +57,7 @@ export function AdminDashboardScreen({
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
-    }).format(amount / 100); // Assuming amount is in cents
+    }).format(amount / 100);
   };
 
   return (
@@ -67,20 +67,20 @@ export function AdminDashboardScreen({
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
-    Þ
+    >
       {/* Header */}
-      <View style={styles.header}Þ
-        <ViewÞ
-          <Text style={[styles.title, { color: tokens.text }]}ÞAdmin Dashboard</TextÞ
-          <Text style={[styles.subtitle, { color: tokens.textSecondary }]}Þ
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.title, { color: tokens.text }]}>Admin Dashboard</Text>
+          <Text style={[styles.subtitle, { color: tokens.textSecondary }]}>
             {adminUser?.display_name || adminUser?.email || 'Admin'}
-          </TextÞ
-        </ViewÞ
+          </Text>
+        </View>
         <Button title="Logout" onPress={onLogout} tone="secondary" />
-      </ViewÞ
+      </View>
 
       {/* Quick Navigation */}
-      <View style={styles.navGrid}Þ
+      <View style={styles.navGrid}>
         <NavButton
           title="Users"
           icon="👥"
@@ -99,11 +99,11 @@ export function AdminDashboardScreen({
           onPress={onNavigateToFeatureFlags}
           tokens={tokens}
         />
-      </ViewÞ
+      </View>
 
       {/* User Statistics */}
-      <SectionCard title="Users" tokens={tokens}Þ
-        <View style={styles.statsGrid}Þ
+      <SectionCard title="Users" tokens={tokens}>
+        <View style={styles.statsGrid}>
           <StatCard
             label="Total Users"
             value={formatNumber(stats?.users.total || 0)}
@@ -126,12 +126,12 @@ export function AdminDashboardScreen({
             tokens={tokens}
             trend="up"
           />
-        </ViewÞ
-      </SectionCardÞ
+        </View>
+      </SectionCard>
 
       {/* Match Statistics */}
-      <SectionCard title="Matches" tokens={tokens}Þ
-        <View style={styles.statsGrid}Þ
+      <SectionCard title="Matches" tokens={tokens}>
+        <View style={styles.statsGrid}>
           <StatCard
             label="Total"
             value={formatNumber(stats?.matches.total || 0)}
@@ -155,12 +155,12 @@ export function AdminDashboardScreen({
             tokens={tokens}
             color={tokens.textMuted}
           />
-        </ViewÞ
-      </SectionCardÞ
+        </View>
+      </SectionCard>
 
       {/* Session Statistics */}
-      <SectionCard title="Sessions" tokens={tokens}Þ
-        <View style={styles.statsGrid}Þ
+      <SectionCard title="Sessions" tokens={tokens}>
+        <View style={styles.statsGrid}>
           <StatCard
             label="Total"
             value={formatNumber(stats?.sessions.total || 0)}
@@ -184,12 +184,12 @@ export function AdminDashboardScreen({
             tokens={tokens}
             color={tokens.success}
           />
-        </ViewÞ
-      </SectionCardÞ
+        </View>
+      </SectionCard>
 
       {/* Revenue */}
-      <SectionCard title="Revenue" tokens={tokens}Þ
-        <View style={styles.statsGrid}Þ
+      <SectionCard title="Revenue" tokens={tokens}>
+        <View style={styles.statsGrid}>
           <StatCard
             label="Today"
             value={formatCurrency(stats?.revenue.today || 0)}
@@ -211,12 +211,12 @@ export function AdminDashboardScreen({
             tokens={tokens}
             color={tokens.success}
           />
-        </ViewÞ
-      </SectionCardÞ
+        </View>
+      </SectionCard>
 
       {/* Deletion Requests */}
-      <SectionCard title="Account Deletions" tokens={tokens}Þ
-        <View style={styles.statsGrid}Þ
+      <SectionCard title="Account Deletions" tokens={tokens}>
+        <View style={styles.statsGrid}>
           <StatCard
             label="Pending"
             value={formatNumber(stats?.deletionRequests.pending || 0)}
@@ -235,8 +235,8 @@ export function AdminDashboardScreen({
             tokens={tokens}
             color={tokens.textMuted}
           />
-        </ViewÞ
-      </SectionCardÞ
+        </View>
+      </SectionCard>
 
       {/* Recent Errors */}
       <SectionCard
@@ -247,7 +247,7 @@ export function AdminDashboardScreen({
             ? { label: 'View All', onPress: () => {} }
             : undefined
         }
-      Þ
+      >
         {stats?.errors.recent && stats.errors.recent.length > 0 ? (
           stats.errors.recent.slice(0, 5).map((error) => (
             <View
@@ -256,51 +256,47 @@ export function AdminDashboardScreen({
                 styles.errorRow,
                 { borderBottomColor: tokens.border },
               ]}
-            Þ
-              <View style={styles.errorHeader}Þ
-                <Text style={[styles.errorType, { color: tokens.error }]}Þ
+            >
+              <View style={styles.errorHeader}>
+                <Text style={[styles.errorType, { color: tokens.error }]}>
                   {error.error_type}
-                </TextÞ
-                <Text style={[styles.errorTime, { color: tokens.textMuted }]}Þ
+                </Text>
+                <Text style={[styles.errorTime, { color: tokens.textMuted }]}>
                   {new Date(error.created_at).toLocaleTimeString()}
-                </TextÞ
-              </ViewÞ
+                </Text>
+              </View>
               <Text
                 style={[styles.errorMessage, { color: tokens.textSecondary }]}
                 numberOfLines={2}
-              Þ
+              >
                 {error.message}
-              </TextÞ
+              </Text>
               {error.user_id && (
-                <Text style={[styles.errorUser, { color: tokens.textMuted }]}Þ
+                <Text style={[styles.errorUser, { color: tokens.textMuted }]}>
                   User: {error.user_id.slice(0, 8)}...
-                </TextÞ
+                </Text>
               )}
-            </ViewÞ
+            </View>
           ))
         ) : (
-          <View style={styles.emptyState}Þ
-            <Text style={[styles.emptyText, { color: tokens.textMuted }]}Þ
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyText, { color: tokens.textMuted }]}>
               ✅ No recent errors
-            </TextÞ
-          </ViewÞ
+            </Text>
+          </View>
         )}
-      </SectionCardÞ
+      </SectionCard>
 
       {isLoading && !stats && (
-        <View style={styles.loadingContainer}Þ
-          <Text style={[styles.loadingText, { color: tokens.textSecondary }]}Þ
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: tokens.textSecondary }]}>
             Loading dashboard...
-          </TextÞ
-        </ViewÞ
+          </Text>
+        </View>
       )}
-    </ScrollViewÞ
+    </ScrollView>
   );
 }
-
-// ============================================================================
-// Sub-components
-// ============================================================================
 
 function NavButton({
   title,
@@ -317,10 +313,10 @@ function NavButton({
     <TouchableOpacity
       onPress={onPress}
       style={[styles.navButton, { backgroundColor: tokens.surface, borderColor: tokens.border }]}
-    Þ
-      <Text style={styles.navIcon}Þ{icon}</TextÞ
-      <Text style={[styles.navLabel, { color: tokens.text }]}Þ{title}</TextÞ
-    </TouchableOpacityÞ
+    >
+      <Text style={styles.navIcon}>{icon}</Text>
+      <Text style={[styles.navLabel, { color: tokens.text }]}>{title}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -336,19 +332,19 @@ function SectionCard({
   action?: { label: string; onPress: () => void };
 }) {
   return (
-    <View style={[styles.sectionCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}Þ
-      <View style={styles.sectionHeader}Þ
-        <Text style={[styles.sectionTitle, { color: tokens.text }]}Þ{title}</TextÞ
+    <View style={[styles.sectionCard, { backgroundColor: tokens.surface, borderColor: tokens.border }]}>
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: tokens.text }]}>{title}</Text>
         {action && (
-          <TouchableOpacity onPress={action.onPress}Þ
-            <Text style={[styles.actionLink, { color: tokens.primary }]}Þ
+          <TouchableOpacity onPress={action.onPress}>
+            <Text style={[styles.actionLink, { color: tokens.primary }]}>
               {action.label}
-            </TextÞ
-          </TouchableOpacityÞ
+            </Text>
+          </TouchableOpacity>
         )}
-      </ViewÞ
+      </View>
       {children}
-    </ViewÞ
+    </View>
   );
 }
 
@@ -366,17 +362,17 @@ function StatCard({
   trend?: 'up' | 'down';
 }) {
   return (
-    <View style={styles.statCard}Þ
-      <Text style={[styles.statValue, { color: color || tokens.text }]}Þ
+    <View style={styles.statCard}>
+      <Text style={[styles.statValue, { color: color || tokens.text }]}>
         {value}
         {trend && (
-          <Text style={{ color: trend === 'up' ? tokens.success : tokens.error }]}Þ
+          <Text style={{ color: trend === 'up' ? tokens.success : tokens.error }}>
             {trend === 'up' ? ' ↑' : ' ↓'}
-          </TextÞ
+          </Text>
         )}
-      </TextÞ
-      <Text style={[styles.statLabel, { color: tokens.textSecondary }]}Þ{label}</TextÞ
-    </ViewÞ
+      </Text>
+      <Text style={[styles.statLabel, { color: tokens.textSecondary }]}>{label}</Text>
+    </View>
   );
 }
 

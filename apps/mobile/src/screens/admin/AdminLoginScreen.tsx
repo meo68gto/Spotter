@@ -92,10 +92,10 @@ export function AdminLoginScreen({ onLoginSuccess, onBackToApp }: AdminLoginScre
     return (
       <View style={[styles.loadingContainer, { backgroundColor: tokens.background }]}>
         <ActivityIndicator size="large" color={tokens.primary} />
-        <Text style={[styles.loadingText, { color: tokens.textSecondary }]}Þ
+        <Text style={[styles.loadingText, { color: tokens.textSecondary }]}>
           Verifying admin access...
-        </TextÞ
-      </ViewÞ
+        </Text>
+      </View>
     );
   }
 
@@ -103,22 +103,22 @@ export function AdminLoginScreen({ onLoginSuccess, onBackToApp }: AdminLoginScre
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: tokens.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    Þ
-      <ScrollView contentContainerStyle={styles.scrollContent}Þ
-        <View style={styles.header}Þ
-          <Text style={[styles.title, { color: tokens.text }]}ÞAdmin Portal</TextÞ
-          <Text style={[styles.subtitle, { color: tokens.textSecondary }]}Þ
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: tokens.text }]}>Admin Portal</Text>
+          <Text style={[styles.subtitle, { color: tokens.textSecondary }]}>
             Sign in with admin credentials
-          </TextÞ
-        </ViewÞ
+          </Text>
+        </View>
 
-        <View style={[styles.card, { backgroundColor: tokens.surface, borderColor: tokens.border }]}Þ
+        <View style={[styles.card, { backgroundColor: tokens.surface, borderColor: tokens.border }]}>
           {/* Admin badge */}
-          <View style={[styles.badge, { backgroundColor: tokens.primary + '20' }]}Þ
-            <Text style={[styles.badgeText, { color: tokens.primary }]}Þ
+          <View style={[styles.badge, { backgroundColor: tokens.primary + '20' }]}>
+            <Text style={[styles.badgeText, { color: tokens.primary }]}>
               🔒 ADMIN ONLY
-            </TextÞ
-          </ViewÞ
+            </Text>
+          </View>
 
           <TextInput
             value={email}
@@ -161,11 +161,11 @@ export function AdminLoginScreen({ onLoginSuccess, onBackToApp }: AdminLoginScre
           />
 
           {error && (
-            <Text style={[styles.errorText, { color: tokens.error }]}Þ
+            <Text style={[styles.errorText, { color: tokens.error }]}>
               {error}
-            </TextÞ
+            </Text>
           )}
-        </ViewÞ
+        </View>
 
         <Button
           title="Back to App"
@@ -174,13 +174,13 @@ export function AdminLoginScreen({ onLoginSuccess, onBackToApp }: AdminLoginScre
           accessibilityLabel="Return to regular app login"
         />
 
-        <View style={styles.securityNotice}Þ
-          <Text style={[styles.securityText, { color: tokens.textMuted }]}Þ
+        <View style={styles.securityNotice}>
+          <Text style={[styles.securityText, { color: tokens.textMuted }]}>
             ⚠️ All admin actions are logged and audited for security.
-          </TextÞ
-        </ViewÞ
-      </ScrollViewÞ
-    </KeyboardAvoidingViewÞ
+          </Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -195,46 +195,45 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   title: {
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '700',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    marginTop: 8,
   },
   card: {
-    borderRadius: 16,
+    padding: 24,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 20,
     marginBottom: 16,
   },
   badge: {
     alignSelf: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    marginBottom: 16,
+    borderRadius: 6,
+    marginBottom: 20,
   },
   badgeText: {
-    fontWeight: '700',
     fontSize: 12,
-    letterSpacing: 1,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
     fontSize: 16,
   },
   errorText: {
     marginTop: 12,
-    textAlign: 'center',
     fontSize: 14,
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -242,11 +241,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 14,
+    marginTop: 12,
+    fontSize: 16,
   },
   securityNotice: {
-    marginTop: 24,
+    marginTop: 32,
     alignItems: 'center',
   },
   securityText: {
