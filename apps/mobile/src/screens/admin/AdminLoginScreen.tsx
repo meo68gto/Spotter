@@ -19,7 +19,7 @@ import { useTheme } from '../../theme/provider';
 import { useAdminAuth } from '../../hooks/useAdmin';
 
 interface AdminLoginScreenProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user: { id: string; email: string; display_name: string | null }) => void;
   onBackToApp: () => void;
 }
 
@@ -45,7 +45,11 @@ export function AdminLoginScreen({ onLoginSuccess, onBackToApp }: AdminLoginScre
   useEffect(() => {
     if (isAdmin && adminUser) {
       showToast({ type: 'success', title: 'Admin access granted' });
-      onLoginSuccess();
+      onLoginSuccess({
+        id: adminUser.id,
+        email: adminUser.email,
+        display_name: adminUser.display_name,
+      });
     }
   }, [isAdmin, adminUser, onLoginSuccess]);
 

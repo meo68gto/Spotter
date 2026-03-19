@@ -25,12 +25,19 @@ import {
   OrganizerEventDetailScreen,
   OrganizerRegistrationListScreen
 } from './dashboard/organizer';
+import {
+  AdminLoginScreen,
+  AdminDashboardScreen,
+  AdminUserManagementScreen,
+  AdminJobsScreen,
+  AdminFeatureFlagsScreen
+} from './admin';
 import { VideoScreen } from './VideoScreen';
 import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
-export type DeepLinkTarget = 'home' | 'feed' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network' | 'events' | 'organizer' | 'videos';
+export type DeepLinkTarget = 'home' | 'feed' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network' | 'events' | 'organizer' | 'videos' | 'admin';
 
 // BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events for Phase 2
 // Previously cut: feed, matches, videos, progress, expert console, call room, inbox
@@ -49,7 +56,8 @@ type TabKey =
   | 'network'
   | 'events'
   | 'organizer'
-  | 'videos';
+  | 'videos'
+  | 'admin';
 
 type Props = {
   session: Session;
@@ -60,6 +68,7 @@ type Props = {
 type NetworkView = 'network' | 'saved-members' | 'profile';
 type EventsView = 'list' | 'detail' | 'register';
 type OrganizerView = 'dashboard' | 'create' | 'detail' | 'registrations';
+type AdminView = 'login' | 'dashboard' | 'users' | 'jobs' | 'featureflags';
 
 type NavItem = {
   key: TabKey;
@@ -86,7 +95,8 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
   { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true },
   { key: 'coaching', label: 'Coaching', group: 'account', mobilePrimary: false }, // Secondary nav
-  { key: 'organizer', label: 'Organizer', group: 'account', mobilePrimary: false } // Secondary nav
+  { key: 'organizer', label: 'Organizer', group: 'account', mobilePrimary: false }, // Secondary nav
+  { key: 'admin', label: 'Admin', group: 'account', mobilePrimary: false } // Secondary nav - EPIC 15
 ];
 
 const WEB_PHOTO_TILES = [
@@ -112,6 +122,7 @@ const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
   if (target === 'events') return 'events';
   if (target === 'organizer') return 'organizer';
   if (target === 'videos') return 'videos';
+  if (target === 'admin') return 'admin';
   return 'home';
 };
 
@@ -126,6 +137,9 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   const [selectedEventPrice, setSelectedEventPrice] = useState<number>(0);
   const [organizerView, setOrganizerView] = useState<OrganizerView>('dashboard');
   const [selectedOrganizerEventId, setSelectedOrganizerEventId] = useState<string | null>(null);
+  // EPIC 15: Admin state
+  const [adminView, setAdminView] = useState<AdminView>('login');
+  const [adminUser, setAdminUser] = useState<{ id: string; email: string; display_name: string | null } | null>(null);
 
   useEffect(() => {
     const bootstrapFlags = async () => {
@@ -221,6 +235,33 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
 
   const handleOrganizerEventCreateComplete = () => {
     setOrganizerView('dashboard');
+  };
+
+  // EPIC 15: Admin navigation handlers
+  const handleAdminLoginSuccess = (user: { id: string; email: string; display_name: string | null }) => {
+    setAdminUser(user);
+    setAdminView('dashboard');
+  };
+
+  const handleAdminLogout = () => {
+    setAdminUser(null);
+    setAdminView('login');
+  };
+
+  const handleNavigateToAdminUsers = () => {
+    setAdminView('users');
+  };
+
+  const handleNavigateToAdminJobs = () => {
+    setAdminView('jobs');
+  };
+
+  const handleNavigateToAdminFeatureFlags = () => {
+    setAdminView('featureflags');
+  };
+
+  const handleNavigateToAdminDashboard = () => {
+    setAdminView('dashboard');
   };
 
   const renderContent = () => {
@@ -366,6 +407,47 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
         />
       );
     }
+    // EPIC 15: Admin tab content
+    if (tab === 'admin') {
+      if (adminView === 'login') {
+        return (
+          <AdminLoginScreen
+            onLoginSuccess={handleAdminLoginSuccess}
+            onBackToApp={() => setTab('home')}
+          />
+        );
+      }
+      if (adminView === 'users') {
+        return (
+          <AdminUserManagementScreen
+            onBack={handleNavigateToAdminDashboard}
+          />
+        );
+      }
+      if (adminView === 'jobs') {
+        return (
+          <AdminJobsScreen
+            onBack={handleNavigateToAdminDashboard}
+          />
+        );
+      }
+      if (adminView === 'featureflags') {
+        return (
+          <AdminFeatureFlagsScreen
+            onBack={handleNavigateToAdminDashboard}
+          />
+        );
+      }
+      return (
+        <AdminDashboardScreen
+          adminUser={adminUser}
+          onLogout={handleAdminLogout}
+          onNavigateToUsers={handleNavigateToAdminUsers}
+          onNavigateToJobs={handleNavigateToAdminJobs}
+          onNavigateToFeatureFlags={handleNavigateToAdminFeatureFlags}
+        />
+      );
+    }
     if (tab === 'ask') return <AskScreen session={session} />;
     if (tab === 'requests') return <RequestsScreen session={session} />;
     if (tab === 'sessions') return <SessionsScreen session={session} />;
@@ -399,6 +481,11 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
             if (newTab !== 'organizer') {
               setOrganizerView('dashboard');
               setSelectedOrganizerEventId(null);
+            }
+            // EPIC 15: Reset admin view when leaving admin tab
+            if (newTab !== 'admin') {
+              setAdminView('login');
+              setAdminUser(null);
             }
           }} />
         </View>
@@ -455,6 +542,10 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
                 if (key !== 'organizer') {
                   setOrganizerView('dashboard');
                   setSelectedOrganizerEventId(null);
+                }
+                if (key !== 'admin') {
+                  setAdminView('login');
+                  setAdminUser(null);
                 }
               }} 
               style={styles.mobileTabButton}

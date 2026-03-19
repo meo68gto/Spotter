@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Audio } from 'expo-av';
 import { Card } from '../Card';
 import { VideoPlayer } from '../VideoPlayer';
 import { invokeFunction } from '../../lib/api';
@@ -59,6 +60,14 @@ export function EngagementCard({
   const [liked, setLiked] = useState(isLiked);
   const [likes, setLikes] = useState(likesCount);
   const [isLiking, setIsLiking] = useState(false);
+  
+  // Audio playback state
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioPosition, setAudioPosition] = useState(0);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
 
   if (!engagement_requests) return null;
 
@@ -132,6 +141,78 @@ export function EngagementCard({
     }
   };
 
+  // Audio playback functions
+  const loadAudio = useCallback(async (audioUrl: string) => {
+    try {
+      setIsAudioLoading(true);
+      setAudioError(null);
+      
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: false },
+        onPlaybackStatusUpdate
+      );
+      
+      setSound(newSound);
+      const status = await newSound.getStatusAsync();
+      if (status.isLoaded) {
+        setAudioDuration(status.durationMillis || 0);
+      }
+    } catch (err) {
+      setAudioError('Failed to load audio');
+      console.error('Audio load error:', err);
+    } finally {
+      setIsAudioLoading(false);
+    }
+  }, []);
+
+  const onPlaybackStatusUpdate = useCallback((status: Audio.PlaybackStatus) => {
+    if (status.isLoaded) {
+      setAudioPosition(status.positionMillis);
+      setIsPlaying(status.isPlaying);
+      if (status.didJustFinish) {
+        setIsPlaying(false);
+        setAudioPosition(0);
+      }
+    }
+  }, []);
+
+  const toggleAudioPlayback = async () => {
+    if (!sound) return;
+    
+    try {
+      if (isPlaying) {
+        await sound.pauseAsync();
+      } else {
+        await sound.playAsync();
+      }
+    } catch (err) {
+      setAudioError('Playback error');
+      console.error('Audio playback error:', err);
+    }
+  };
+
+  const formatDuration = (ms: number): string => {
+    const seconds = Math.floor(ms / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Load audio when component mounts and audio URL is available
+  useEffect(() => {
+    if (hasAudio && firstResponse?.audio_url && !sound) {
+      loadAudio(firstResponse.audio_url);
+    }
+    
+    return () => {
+      // Cleanup audio on unmount
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [hasAudio, firstResponse?.audio_url, loadAudio, sound]);
+
   const handleShare = () => {
     // Implement share functionality
     if (onShare) {
@@ -171,10 +252,46 @@ export function EngagementCard({
       {hasAudio && firstResponse?.audio_url && !hasVideo && (
         <View style={styles.audioContainer}>
           <Text style={styles.audioLabel}>🎧 Audio Response</Text>
-          {/* Audio player would go here - using placeholder for now */}
-          <View style={styles.audioPlaceholder}>
-            <Text style={styles.audioText}>Audio playback not yet implemented</Text>
-          </View>
+          
+          {audioError ? (
+            <View style={styles.audioErrorContainer}>
+              <Text style={styles.audioErrorText}>⚠️ {audioError}</Text>
+            </View>
+          ) : (
+            <View style={styles.audioPlayer}>
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={toggleAudioPlayback}
+                disabled={isAudioLoading || !sound}
+              >
+                {isAudioLoading ? (
+                  <ActivityIndicator size="small" color={palette.navy600} />
+                ) : (
+                  <Text style={styles.playButtonIcon}>
+                    {isPlaying ? '⏸️' : '▶️'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              
+              <View style={styles.audioProgress}>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill,
+                      { 
+                        width: audioDuration > 0 
+                          ? `${(audioPosition / audioDuration) * 100}%` 
+                          : '0%' 
+                      }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.durationText}>
+                  {formatDuration(audioPosition)} / {formatDuration(audioDuration)}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -276,16 +393,52 @@ const styles = StyleSheet.create({
     color: palette.ink700,
     marginBottom: spacing.sm
   },
-  audioPlaceholder: {
-    height: 40,
-    backgroundColor: palette.sky200,
-    borderRadius: radius.sm,
+  audioPlayer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm
+  },
+  playButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: palette.navy600,
     justifyContent: 'center',
     alignItems: 'center'
   },
-  audioText: {
+  playButtonIcon: {
+    fontSize: 20
+  },
+  audioProgress: {
+    flex: 1,
+    marginLeft: spacing.sm
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: palette.sky200,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: spacing.xs
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: palette.navy600,
+    borderRadius: 2
+  },
+  durationText: {
+    fontSize: 11,
+    color: palette.ink500,
+    fontFamily: font.body
+  },
+  audioErrorContainer: {
+    padding: spacing.sm,
+    backgroundColor: palette.sky200,
+    borderRadius: radius.sm
+  },
+  audioErrorText: {
     fontSize: 12,
-    color: palette.ink500
+    color: palette.red500,
+    textAlign: 'center'
   },
   responseContainer: {
     backgroundColor: palette.sky100,
