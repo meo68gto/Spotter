@@ -29,5 +29,6 @@ export const getRuntimeEnv = () => ({
   legalTosUrl: Deno.env.get('LEGAL_TOS_URL') ?? '',
   legalPrivacyUrl: Deno.env.get('LEGAL_PRIVACY_URL') ?? '',
   legalCookieUrl: Deno.env.get('LEGAL_COOKIE_URL') ?? '',
-  sentryDsnFunctions: Deno.env.get('SENTRY_DSN_FUNCTIONS') ?? ''
+  sentryDsnFunctions: Deno.env.get('SENTRY_DSN_FUNCTIONS') ?? '',
+  internalApiKey: Deno.env.get('INTERNAL_API_KEY') ?? ''
 });

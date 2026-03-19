@@ -15,15 +15,24 @@ import { RoundInvitationsScreen } from './rounds/RoundInvitationsScreen';
 import { RoundDetailScreen } from './rounds/RoundDetailScreen';
 import { NetworkScreen } from './network/NetworkScreen';
 import { SavedMembersScreen } from './network/SavedMembersScreen';
+import { SponsoredEventsScreen } from './dashboard/SponsoredEventsScreen';
+import { EventDetailScreen } from './dashboard/EventDetailScreen';
+import { EventRegistrationScreen } from './dashboard/EventRegistrationScreen';
+import {
+  OrganizerDashboardScreen,
+  OrganizerEventCreateScreen,
+  OrganizerEventDetailScreen,
+  OrganizerRegistrationListScreen
+} from './dashboard/organizer';
 import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
-export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network';
+export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network' | 'events' | 'organizer';
 
-// BETA SCOPE: 9 tabs including Discovery, Rounds, and Network for Phase 2
-// Previously cut: events, feed, matches, videos, progress, expert console, call room, inbox
-// Kept: home, coaching, ask, requests, sessions, profile, discover, rounds, network
+// BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events for Phase 2
+// Previously cut: feed, matches, videos, progress, expert console, call room, inbox
+// Kept: home, coaching, ask, requests, sessions, profile, discover, rounds, network, events
 
 type TabKey =
   | 'home'
@@ -34,7 +43,9 @@ type TabKey =
   | 'profile'
   | 'discover'
   | 'rounds'
-  | 'network';
+  | 'network'
+  | 'events'
+  | 'organizer';
 
 type Props = {
   session: Session;
@@ -43,6 +54,8 @@ type Props = {
 };
 
 type NetworkView = 'network' | 'saved-members' | 'profile';
+type EventsView = 'list' | 'detail' | 'register';
+type OrganizerView = 'dashboard' | 'create' | 'detail' | 'registrations';
 
 type NavItem = {
   key: TabKey;
@@ -52,16 +65,20 @@ type NavItem = {
 };
 
 // REPOSITIONED: Coaching moved from 'core' to 'account' group (Epic 8)
+// ADDED: Events to core group
+// ADDED: Organizer to account group
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
   { key: 'discover', label: 'Discover', group: 'core', mobilePrimary: true },
   { key: 'rounds', label: 'Rounds', group: 'core', mobilePrimary: true },
+  { key: 'events', label: 'Events', group: 'core', mobilePrimary: true },
   { key: 'ask', label: 'Ask', group: 'core', mobilePrimary: true },
   { key: 'requests', label: 'Requests', group: 'core', mobilePrimary: true },
   { key: 'sessions', label: 'Sessions', group: 'core', mobilePrimary: true },
   { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
   { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true },
-  { key: 'coaching', label: 'Coaching', group: 'account', mobilePrimary: false } // Secondary nav
+  { key: 'coaching', label: 'Coaching', group: 'account', mobilePrimary: false }, // Secondary nav
+  { key: 'organizer', label: 'Organizer', group: 'account', mobilePrimary: false } // Secondary nav
 ];
 
 const WEB_PHOTO_TILES = [
@@ -72,7 +89,7 @@ const WEB_PHOTO_TILES = [
 const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
 
 const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
-  // BETA: All 9 valid destinations
+  // BETA: All 11 valid destinations
   if (target === 'home') return 'home';
   if (target === 'coaching') return 'coaching';
   if (target === 'ask') return 'ask';
@@ -82,6 +99,8 @@ const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
   if (target === 'discover') return 'discover';
   if (target === 'rounds') return 'rounds';
   if (target === 'network') return 'network';
+  if (target === 'events') return 'events';
+  if (target === 'organizer') return 'organizer';
   return 'home';
 };
 
@@ -91,6 +110,11 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const [networkView, setNetworkView] = useState<NetworkView>('network');
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [eventsView, setEventsView] = useState<EventsView>('list');
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedEventPrice, setSelectedEventPrice] = useState<number>(0);
+  const [organizerView, setOrganizerView] = useState<OrganizerView>('dashboard');
+  const [selectedOrganizerEventId, setSelectedOrganizerEventId] = useState<string | null>(null);
 
   useEffect(() => {
     const bootstrapFlags = async () => {
@@ -141,8 +165,32 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
     setNetworkView('profile');
   };
 
+  // Events sub-view navigation handlers
+  const handleEventPress = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setEventsView('detail');
+  };
+
+  const handleEventRegister = (eventId: string, price: number) => {
+    setSelectedEventId(eventId);
+    setSelectedEventPrice(price);
+    setEventsView('register');
+  };
+
+  const handleEventsBackToList = () => {
+    setEventsView('list');
+    setSelectedEventId(null);
+    setSelectedEventPrice(0);
+  };
+
+  const handleRegistrationComplete = () => {
+    setEventsView('list');
+    setSelectedEventId(null);
+    setSelectedEventPrice(0);
+  };
+
   const renderContent = () => {
-    // BETA SCOPE: 9 tabs including Discovery, Rounds, and Network
+    // BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
     if (tab === 'discover') return <DiscoveryScreen session={session} />;
     if (tab === 'network') {
@@ -212,6 +260,34 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
         />
       );
     }
+    if (tab === 'events') {
+      if (eventsView === 'detail' && selectedEventId) {
+        return (
+          <EventDetailScreen
+            session={session}
+            eventId={selectedEventId}
+            onRegister={handleEventRegister}
+            onBack={handleEventsBackToList}
+          />
+        );
+      }
+      if (eventsView === 'register' && selectedEventId) {
+        return (
+          <EventRegistrationScreen
+            session={session}
+            eventId={selectedEventId}
+            onComplete={handleRegistrationComplete}
+            onCancel={handleEventsBackToList}
+          />
+        );
+      }
+      return (
+        <SponsoredEventsScreen
+          session={session}
+          onEventPress={handleEventPress}
+        />
+      );
+    }
     if (tab === 'coaching') return <CoachingTabScreen session={session} />;
     if (tab === 'ask') return <AskScreen session={session} />;
     if (tab === 'requests') return <RequestsScreen session={session} />;
@@ -229,10 +305,16 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
           <NavGroup title="Core" items={NAV_ITEMS.filter((item) => item.group === 'core')} activeTab={tab} onSelect={(newTab) => {
             setTab(newTab);
             setRoundsView('list');
+            if (newTab !== 'events') {
+              setEventsView('list');
+              setSelectedEventId(null);
+            }
           }} />
           <NavGroup title="Account" items={NAV_ITEMS.filter((item) => item.group === 'account')} activeTab={tab} onSelect={(newTab) => {
             setTab(newTab);
             setRoundsView('list');
+            setEventsView('list');
+            setSelectedEventId(null);
           }} />
         </View>
 
@@ -280,6 +362,10 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
                 setTab(key);
                 if (key !== 'rounds') {
                   setRoundsView('list');
+                }
+                if (key !== 'events') {
+                  setEventsView('list');
+                  setSelectedEventId(null);
                 }
               }} 
               style={styles.mobileTabButton}

@@ -12,12 +12,24 @@
       "bundleIdentifier": "com.spotter.app",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Spotter uses your location to find nearby activity matches."
+        "NSLocationWhenInUseUsageDescription": "Spotter uses your location to find nearby activity matches.",
+        "NSUserNotificationUsageDescription": "Spotter sends notifications for round invitations, messages, and important updates.",
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
       "package": "com.spotter.app",
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK"
+      ],
+      "notification": {
+        "icon": "./assets/notification-icon.png",
+        "color": "#102a43",
+        "sound": true
+      }
     },
     "plugins": [
       [
@@ -28,7 +40,15 @@
         }
       ],
       "expo-apple-authentication",
-      "@sentry/react-native/expo"
+      "@sentry/react-native/expo",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#102a43",
+          "sounds": ["./assets/notification-sound.wav"]
+        }
+      ]
     ],
     "extra": {
       "eas": {

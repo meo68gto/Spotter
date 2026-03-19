@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { ActivityIndicator, Alert, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { invokeFunction } from '../../lib/api';
 import { stockPhotos } from '../../lib/stockPhotos';
@@ -7,6 +8,8 @@ import { supabase } from '../../lib/supabase';
 import { font, isWeb, palette, radius, spacing } from '../../theme/design';
 
 // Golf-only sponsored events (removed pickleball, tennis, padel)
+
+type RegistrationStatus = 'pending_approval' | 'confirmed' | 'cancelled' | 'checked_in' | null;
 
 type SponsoredEvent = {
   id: string;
@@ -18,37 +21,46 @@ type SponsoredEvent = {
   sponsor: string;
   format: 'Tournament' | 'Clinic' | 'Local Mixer';
   invitesOpen: boolean;
-  myRegistrationStatus?: string | null;
+  myRegistrationStatus?: RegistrationStatus;
   registrationCount?: number;
+  maxParticipants?: number;
+  description?: string;
+  venueName?: string;
+  price?: number;
+  requiresApproval?: boolean;
 };
 
-const initialEvents: SponsoredEvent[] = [
-  {
-    id: 'e-1',
-    title: 'Sunrise Golf Pairing Cup',
-    sport: 'Golf',
-    city: 'Scottsdale',
-    date: '2026-03-15',
-    sponsor: 'Desert Golf Supply',
-    format: 'Tournament',
-    invitesOpen: true
-  }
-];
+type Props = {
+  session: Session;
+  onEventPress?: (eventId: string) => void;
+};
 
-export function SponsoredEventsScreen() {
+export function SponsoredEventsScreen({ session, onEventPress }: Props) {
   const [activityId, setActivityId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
-  const [events, setEvents] = useState<SponsoredEvent[]>(initialEvents);
-  const [title, setTitle] = useState('');
-  const [sport, setSport] = useState('Golf');
-  const [city, setCity] = useState('');
-  const [sponsor, setSponsor] = useState('');
-  const [date, setDate] = useState('');
-  const [inviteRequests, setInviteRequests] = useState<string[]>([]);
+  const [events, setEvents] = useState<SponsoredEvent[]>([]);
+  const [userTier, setUserTier] = useState<string>('free');
 
-  const canCreate = useMemo(() => title.trim() && sport.trim() && city.trim() && sponsor.trim() && date.trim(), [title, sport, city, sponsor, date]);
+  // Load user's tier for visibility checks
+  useEffect(() => {
+    const loadUserTier = async () => {
+      const { data: user } = await supabase
+        .from('users')
+        .select('tier_id, membership_tiers (slug)')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (user?.membership_tiers) {
+        setUserTier((user.membership_tiers as { slug: string }).slug);
+      }
+    };
+    loadUserTier();
+  }, [session.user.id]);
 
+  // Load golf activity ID
   useEffect(() => {
     const loadActivity = async () => {
       const { data } = await supabase
@@ -61,175 +73,194 @@ export function SponsoredEventsScreen() {
     loadActivity();
   }, []);
 
-  const loadEvents = async () => {
-    setLoading(true);
+  const loadEvents = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    setError(null);
+    
     try {
       const response = await invokeFunction<Array<{
         id: string;
         activity_id: string;
         title: string;
+        description?: string;
         city: string | null;
+        venue_name?: string;
         start_time: string;
         sponsor_name?: string;
         registration_count?: number;
+        max_participants?: number;
         my_registration_status?: string | null;
+        price?: number;
+        requires_approval?: boolean;
+        target_tiers?: string[];
       }>>('sponsors-event-list', {
         method: 'POST',
         body: {
           activityId: activityId ?? undefined
         }
       });
-      const mapped: SponsoredEvent[] = response.map((item) => ({
+
+      // Filter events by user's tier visibility
+      const visibleEvents = (response || []).filter((item) => {
+        const targetTiers = item.target_tiers || ['free', 'select', 'summit'];
+        return targetTiers.includes(userTier);
+      });
+
+      const mapped: SponsoredEvent[] = visibleEvents.map((item) => ({
         id: item.id,
         activityId: item.activity_id,
         title: item.title,
-        sport: sport || 'Golf',
+        description: item.description,
+        sport: 'Golf',
         city: item.city ?? 'TBD',
         date: item.start_time.slice(0, 10),
         sponsor: item.sponsor_name ?? 'Sponsor',
         format: 'Tournament',
         invitesOpen: true,
-        myRegistrationStatus: item.my_registration_status ?? null,
-        registrationCount: item.registration_count ?? 0
+        myRegistrationStatus: (item.my_registration_status as RegistrationStatus) ?? null,
+        registrationCount: item.registration_count ?? 0,
+        maxParticipants: item.max_participants,
+        venueName: item.venue_name,
+        price: item.price ?? 0,
+        requiresApproval: item.requires_approval ?? false
       }));
-      if (mapped.length) setEvents(mapped);
-    } catch {
-      setEvents(initialEvents);
+      
+      setEvents(mapped);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load events';
+      setError(message);
+      // Don't show alert on initial load, just display error state
+      if (isRefresh) {
+        Alert.alert('Error', message);
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [activityId, userTier]);
 
   useEffect(() => {
-    loadEvents();
-  }, [activityId, sport]);
-
-  const createSponsoredEvent = async () => {
-    if (!canCreate) return;
-    if (!activityId) {
-      Alert.alert('Missing activity', 'Please select a supported sport first.');
-      return;
+    if (activityId) {
+      loadEvents();
     }
-    try {
-      await invokeFunction('sponsors-event-create', {
-        method: 'POST',
-        body: {
-          sponsorName: sponsor.trim(),
-          title: title.trim(),
-          activityId,
-          city: city.trim(),
-          venueName: `${city.trim()} Community Courts`,
-          startTime: `${date.trim()}T09:00:00.000Z`,
-          endTime: `${date.trim()}T13:00:00.000Z`,
-          maxParticipants: 64
-        }
-      });
-      setTitle('');
-      setSport('Golf');
-      setCity('');
-      setSponsor('');
-      setDate('');
-      await loadEvents();
-    } catch (error) {
-      Alert.alert('Create failed', error instanceof Error ? error.message : 'Could not create sponsored event');
+  }, [activityId, loadEvents]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadEvents(true);
+  }, [loadEvents]);
+
+  const handleEventPress = (eventId: string) => {
+    if (onEventPress) {
+      onEventPress(eventId);
     }
   };
 
-  const requestInvite = async (eventId: string) => {
-    if (inviteRequests.includes(eventId)) return;
-    setActioningId(eventId);
-    try {
-      await invokeFunction('sponsors-event-rsvp', {
-        method: 'POST',
-        body: {
-          eventId,
-          action: 'register'
-        }
-      });
-      setInviteRequests((prev) => [...prev, eventId]);
-      await loadEvents();
-    } catch (error) {
-      Alert.alert('RSVP failed', error instanceof Error ? error.message : 'Could not request invite');
-    } finally {
-      setActioningId(null);
+  const getRegistrationButtonProps = (event: SponsoredEvent) => {
+    const status = event.myRegistrationStatus;
+    
+    if (status === 'confirmed') {
+      return { title: 'Registered ✓', disabled: true, tone: 'secondary' as const };
     }
+    if (status === 'pending_approval') {
+      return { title: 'Pending Approval', disabled: true, tone: 'secondary' as const };
+    }
+    if (status === 'checked_in') {
+      return { title: 'Checked In ✓', disabled: true, tone: 'secondary' as const };
+    }
+    if (status === 'cancelled') {
+      return { title: 'Register Again', disabled: false, tone: 'primary' as const };
+    }
+    if (event.price && event.price > 0) {
+      return { title: `Register ($${event.price})`, disabled: false, tone: 'primary' as const };
+    }
+    return { title: 'Register', disabled: false, tone: 'primary' as const };
   };
 
-  const inviteLocals = async (eventId: string) => {
-    setActioningId(eventId);
-    try {
-      await invokeFunction('sponsors-event-invite-locals', {
-        method: 'POST',
-        body: {
-          eventId,
-          radiusKm: 50,
-          limit: 20,
-          message: 'Local sponsor invite: tournament registration open on Spotter.'
-        }
-      });
-      Alert.alert('Locals invited', 'Spotter has sent local invites to nearby players.');
-    } catch (error) {
-      Alert.alert('Invite locals failed', error instanceof Error ? error.message : 'Could not invite locals');
-    } finally {
-      setActioningId(null);
-    }
+  const renderEventCard = (event: SponsoredEvent) => {
+    const buttonProps = getRegistrationButtonProps(event);
+    const isFull = event.maxParticipants && event.registrationCount && event.registrationCount >= event.maxParticipants;
+    
+    return (
+      <TouchableOpacity 
+        key={event.id} 
+        style={styles.eventCard}
+        onPress={() => handleEventPress(event.id)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.eventTitle}>{event.title}</Text>
+        {event.description ? (
+          <Text style={styles.description} numberOfLines={2}>{event.description}</Text>
+        ) : null}
+        <Text style={styles.meta}>
+          {event.sport} • {event.format} • {event.date}
+        </Text>
+        <Text style={styles.meta}>
+          {event.city} {event.venueName ? `• ${event.venueName}` : ''}
+        </Text>
+        <Text style={styles.meta}>
+          Sponsored by {event.sponsor}
+        </Text>
+        <View style={styles.registrationRow}>
+          <Text style={styles.registrationCount}>
+            {event.registrationCount ?? 0} / {event.maxParticipants ?? '∞'} registered
+          </Text>
+          {isFull && !event.myRegistrationStatus && (
+            <Text style={styles.fullBadge}>Event Full</Text>
+          )}
+        </View>
+        {event.myRegistrationStatus && (
+          <Text style={styles.myStatus}>
+            Your status: <Text style={styles.statusValue}>{event.myRegistrationStatus.replace('_', ' ')}</Text>
+          </Text>
+        )}
+        <Button
+          title={isFull && !event.myRegistrationStatus ? 'Event Full' : buttonProps.title}
+          onPress={() => handleEventPress(event.id)}
+          disabled={buttonProps.disabled || isFull}
+          tone={buttonProps.tone}
+        />
+      </TouchableOpacity>
+    );
   };
+
+  if (loading && !refreshing && events.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={palette.navy600} />
+        <Text style={styles.loadingText}>Loading events...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
       contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={loadEvents} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <ImageBackground source={{ uri: stockPhotos.eventsHero }} style={styles.hero} imageStyle={styles.heroImage}>
-        <Text style={styles.title}>Sponsored Events</Text>
+        <View style={styles.heroOverlay}>
+          <Text style={styles.title}>Sponsored Events</Text>
+          <Text style={styles.subtitle}>Golf tournaments and clinics</Text>
+        </View>
       </ImageBackground>
-      <Text style={styles.subtitle}>Create tournaments, activate sponsors, and invite locals based on activity fit.</Text>
 
-      <View style={styles.layout}>
-        <View style={styles.createCard}>
-          <Text style={styles.sectionTitle}>Create Tournament</Text>
-          <TextInput value={title} onChangeText={setTitle} placeholder="Event title" style={styles.input} placeholderTextColor={palette.ink500} />
-          <TextInput
-            value={sport}
-            onChangeText={setSport}
-            placeholder="Sport (Golf)"
-            style={styles.input}
-            placeholderTextColor={palette.ink500}
-          />
-          <TextInput value={city} onChangeText={setCity} placeholder="City" style={styles.input} placeholderTextColor={palette.ink500} />
-          <TextInput value={sponsor} onChangeText={setSponsor} placeholder="Sponsor name" style={styles.input} placeholderTextColor={palette.ink500} />
-          <TextInput value={date} onChangeText={setDate} placeholder="Date (YYYY-MM-DD)" style={styles.input} placeholderTextColor={palette.ink500} />
-          <Button title="Publish Sponsored Tournament" onPress={createSponsoredEvent} disabled={!canCreate} />
-          <Button title={loading ? 'Refreshing...' : 'Refresh Sponsored Events'} onPress={loadEvents} disabled={loading} tone="secondary" />
+      {error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button title="Try Again" onPress={() => loadEvents()} tone="secondary" />
         </View>
+      ) : null}
 
-        <View style={styles.eventsPane}>
-          {loading ? <ActivityIndicator color={palette.navy600} /> : null}
-          {events.map((event) => {
-            const requested = inviteRequests.includes(event.id);
-            return (
-              <View key={event.id} style={styles.eventCard}>
-                <Text style={styles.eventTitle}>{event.title}</Text>
-                <Text style={styles.meta}>
-                  {event.sport} • {event.format} • {event.date}
-                </Text>
-                <Text style={styles.meta}>
-                  {event.city} • Sponsored by {event.sponsor}
-                </Text>
-                <Text style={styles.meta}>
-                  Registered: {event.registrationCount ?? 0}
-                  {event.myRegistrationStatus ? ` • Your status: ${event.myRegistrationStatus}` : ''}
-                </Text>
-                <Button
-                  title={requested ? 'Invite Request Sent' : 'Request Local Invite'}
-                  onPress={() => requestInvite(event.id)}
-                  disabled={requested || !event.invitesOpen || actioningId === event.id}
-                />
-                <Button title="Invite Locals as Sponsor" onPress={() => inviteLocals(event.id)} disabled={actioningId === event.id} tone="secondary" />
-              </View>
-            );
-          })}
-        </View>
+      <View style={styles.eventsPane}>
+        {events.length === 0 && !loading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No Events Available</Text>
+            <Text style={styles.emptyText}>Check back soon for upcoming golf tournaments and clinics.</Text>
+          </View>
+        ) : (
+          events.map(renderEventCard)
+        )}
       </View>
     </ScrollView>
   );
@@ -240,59 +271,43 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md
   },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    color: palette.ink700,
+    fontSize: 16
+  },
   hero: {
-    height: 150,
+    height: 180,
     justifyContent: 'flex-end',
-    padding: spacing.md
+    borderRadius: radius.md,
+    overflow: 'hidden'
   },
   heroImage: {
     borderRadius: radius.md
   },
-  layout: {
-    ...(isWeb
-      ? {
-          flexDirection: 'row',
-          gap: spacing.md,
-          alignItems: 'flex-start'
-        }
-      : {
-          gap: spacing.md
-        })
+  heroOverlay: {
+    backgroundColor: 'rgba(8, 47, 67, 0.6)',
+    padding: spacing.md
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: font.display,
     fontWeight: '800',
     color: palette.white
   },
   subtitle: {
-    color: palette.ink700
-  },
-  createCard: {
-    backgroundColor: palette.white,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: palette.sky300,
-    padding: spacing.md,
-    gap: spacing.xs,
-    ...(isWeb ? { flex: 1, maxWidth: 420 } : {})
+    fontSize: 14,
+    color: '#CBE4F3',
+    marginTop: 4
   },
   eventsPane: {
-    gap: spacing.md,
-    ...(isWeb ? { flex: 1.5 } : {})
-  },
-  sectionTitle: {
-    fontWeight: '700',
-    color: palette.ink900
-  },
-  input: {
-    backgroundColor: '#F8FBFD',
-    borderWidth: 1,
-    borderColor: palette.sky300,
-    borderRadius: radius.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: palette.ink900
+    gap: spacing.md
   },
   eventCard: {
     backgroundColor: palette.white,
@@ -307,7 +322,66 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: palette.ink900
   },
+  description: {
+    color: palette.ink700,
+    fontSize: 14,
+    lineHeight: 20
+  },
   meta: {
-    color: palette.ink700
+    color: palette.ink700,
+    fontSize: 14
+  },
+  registrationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.xs
+  },
+  registrationCount: {
+    color: palette.ink500,
+    fontSize: 13
+  },
+  fullBadge: {
+    color: palette.red500,
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  myStatus: {
+    color: palette.ink700,
+    fontSize: 14,
+    marginTop: spacing.xs
+  },
+  statusValue: {
+    fontWeight: '600',
+    color: palette.navy600
+  },
+  errorContainer: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm
+  },
+  errorText: {
+    color: palette.red500,
+    textAlign: 'center'
+  },
+  emptyState: {
+    backgroundColor: palette.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    padding: spacing.xl,
+    alignItems: 'center'
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: palette.ink900,
+    marginBottom: spacing.xs
+  },
+  emptyText: {
+    color: palette.ink700,
+    textAlign: 'center'
   }
 });

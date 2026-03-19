@@ -199,3 +199,15 @@ verify_jwt = false
 
 [functions.sponsors-event-rsvp]
 verify_jwt = false
+
+[functions.notifications-token-mgmt]
+verify_jwt = false
+
+[functions.notifications-send]
+verify_jwt = false
+
+[functions.notifications-settings]
+verify_jwt = false
+
+[functions.notifications-history]
+verify_jwt = false

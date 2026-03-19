@@ -14,6 +14,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { TierBadge, TierSlug } from '../components/TierBadge';
 import { ProfileTrustSection } from '../components/ProfileTrustSection';
+import { NotificationSettings } from '../components/NotificationSettings';
 import { supabase } from '../lib/supabase';
 import { palette, radius, shadows, spacing } from '../theme/design';
 
@@ -189,6 +190,7 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
   const [professionalIdentity, setProfessionalIdentity] = useState<any>(null);
   const [golfIdentity, setGolfIdentity] = useState<any>(null);
   const [networkingPreferences, setNetworkingPreferences] = useState<any>(null);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -285,6 +287,14 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
     Alert.alert('Settings', 'Settings flow would open here');
   };
 
+  const handleNotifications = () => {
+    setShowNotificationSettings(true);
+  };
+
+  const handleCloseNotifications = () => {
+    setShowNotificationSettings(false);
+  };
+
   const handleUpgrade = () => {
     Alert.alert('Upgrade', 'Tier upgrade flow would open here');
   };
@@ -292,6 +302,22 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
   const tier = userWithTier?.tier?.slug || 'free';
   const showUpgradeCTA = tier === 'free' || tier === 'select';
   const nextTier: TierSlug | null = tier === 'free' ? 'select' : tier === 'select' ? 'summit' : null;
+
+  // Show notification settings screen if selected
+  if (showNotificationSettings) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.notificationHeader}>
+          <TouchableOpacity onPress={handleCloseNotifications} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.notificationHeaderTitle}>Notifications</Text>
+          <View style={styles.backButton} />
+        </View>
+        <NotificationSettings userId={session.user.id} sessionToken={session.access_token} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -544,6 +570,14 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
           <TouchableOpacity style={styles.settingsRow} onPress={handleSettings}>
             <Text style={styles.settingsIcon}>⚙️</Text>
             <Text style={styles.settingsText}>Settings</Text>
+            <Text style={styles.settingsArrow}>→</Text>
+          </TouchableOpacity>
+
+          <View style={styles.settingsDivider} />
+
+          <TouchableOpacity style={styles.settingsRow} onPress={handleNotifications}>
+            <Text style={styles.settingsIcon}>🔔</Text>
+            <Text style={styles.settingsText}>Notifications</Text>
             <Text style={styles.settingsArrow}>→</Text>
           </TouchableOpacity>
 
@@ -806,5 +840,30 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     color: palette.red500,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: palette.white,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.sky200,
+  },
+  backButton: {
+    padding: spacing.sm,
+    width: 80,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: palette.navy600,
+    fontWeight: '600',
+  },
+  notificationHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: palette.ink900,
+    fontFamily: font.display,
   },
 });
