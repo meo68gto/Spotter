@@ -88,7 +88,7 @@ export function OrganizerEventDetailScreen({ session, eventId, onBack, onNavigat
   const handleCheckIn = async (registrationId: string) => {
     setActioningId(registrationId);
     try {
-      await invokeFunction('organizer-registrations/check-in', {
+      await invokeFunction('organizer-registrations', {
         method: 'POST',
         body: { registrationId }
       });
