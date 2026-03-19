@@ -1,0 +1,97 @@
+version: '3.8'
+
+# Staging Docker Compose Stack
+# Mirrors production configuration for testing
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: spotter-postgres-staging
+    environment:
+      POSTGRES_USER: spotter_staging
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD:-staging_dev_pass}
+      POSTGRES_DB: spotter_staging
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spotter_staging -d spotter_staging"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spotter-staging
+
+  redis:
+    image: redis:7-alpine
+    container_name: spotter-redis-staging
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_staging_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spotter-staging
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: spotter-web-staging
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=staging
+      - EXPO_PUBLIC_SUPABASE_URL=${EXPO_PUBLIC_SUPABASE_URL}
+      - EXPO_PUBLIC_SUPABASE_ANON_KEY=${EXPO_PUBLIC_SUPABASE_ANON_KEY}
+      - EXPO_PUBLIC_API_BASE_URL=${EXPO_PUBLIC_API_BASE_URL}
+      - EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN=${EXPO_PUBLIC_MAPBOX_PUBLIC_TOKEN}
+      - EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=${EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+    env_file:
+      - .env.staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - spotter-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx reverse proxy for staging
+  nginx:
+    image: nginx:alpine
+    container_name: spotter-nginx-staging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/staging.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+    networks:
+      - spotter-staging
+    restart: unless-stopped
+
+volumes:
+  postgres_staging_data:
+  redis_staging_data:
+
+networks:
+  spotter-staging:
+    driver: bridge
