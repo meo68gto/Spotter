@@ -133,15 +133,40 @@ export function HomeScreen({ session, onNavigate }: HomeScreenProps) {
         .neq('id', session.user.id)
         .limit(5);
 
-      // Calculate mutual connections (simplified - in real app would query)
-      const suggestionsWithMutuals: ConnectionSuggestion[] = (suggestionsData || []).map((s: any) => ({
-        id: s.id,
-        displayName: s.display_name,
-        avatarUrl: s.avatar_url,
-        company: s.company,
-        role: s.role,
-        mutualConnections: Math.floor(Math.random() * 5), // Placeholder
-      }));
+      // Calculate actual mutual connections for each suggestion
+      const suggestionsWithMutuals: ConnectionSuggestion[] = await Promise.all(
+        (suggestionsData || []).map(async (s: any) => {
+          // Get current user's connections
+          const { data: myConnections } = await supabase
+            .from('connections')
+            .select('connected_user_id')
+            .eq('user_id', session.user.id)
+            .eq('status', 'accepted');
+
+          const myConnectionIds = myConnections?.map(c => c.connected_user_id) || [];
+
+          // Get suggestion's connections
+          const { data: theirConnections } = await supabase
+            .from('connections')
+            .select('connected_user_id')
+            .eq('user_id', s.id)
+            .eq('status', 'accepted');
+
+          const theirConnectionIds = theirConnections?.map(c => c.connected_user_id) || [];
+
+          // Calculate intersection
+          const mutualCount = myConnectionIds.filter(id => theirConnectionIds.includes(id)).length;
+
+          return {
+            id: s.id,
+            displayName: s.display_name,
+            avatarUrl: s.avatar_url,
+            company: s.company,
+            role: s.role,
+            mutualConnections: mutualCount,
+          };
+        })
+      );
 
       setSuggestedMembers(suggestionsWithMutuals);
     } catch (error) {
@@ -165,6 +190,25 @@ export function HomeScreen({ session, onNavigate }: HomeScreenProps) {
 
   const handleFindMembers = () => {
     onNavigate('requests');
+  };
+
+  const handleConnect = async (memberId: string) => {
+    try {
+      const { error } = await supabase
+        .from('connections')
+        .insert({
+          user_id: session.user.id,
+          connected_user_id: memberId,
+          status: 'pending',
+        });
+
+      if (error) throw error;
+
+      Alert.alert('Success', 'Connection request sent!');
+    } catch (err) {
+      console.error('Error sending connection request:', err);
+      Alert.alert('Error', 'Failed to send connection request');
+    }
   };
 
   return (
@@ -313,7 +357,7 @@ export function HomeScreen({ session, onNavigate }: HomeScreenProps) {
                 </View>
                 <Button
                   title="Connect"
-                  onPress={() => {}}
+                  onPress={() => handleConnect(member.id)}
                   tone="secondary"
                 />
               </View>
