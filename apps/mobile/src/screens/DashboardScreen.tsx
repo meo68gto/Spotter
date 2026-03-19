@@ -189,6 +189,29 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
     setSelectedEventPrice(0);
   };
 
+  // Organizer navigation handlers
+  const handleNavigateToOrganizerDashboard = () => {
+    setOrganizerView('dashboard');
+    setSelectedOrganizerEventId(null);
+  };
+
+  const handleNavigateToOrganizerEventCreate = () => {
+    setOrganizerView('create');
+  };
+
+  const handleNavigateToOrganizerEventDetail = (eventId: string) => {
+    setSelectedOrganizerEventId(eventId);
+    setOrganizerView('detail');
+  };
+
+  const handleNavigateToOrganizerRegistrations = () => {
+    setOrganizerView('registrations');
+  };
+
+  const handleOrganizerEventCreateComplete = () => {
+    setOrganizerView('dashboard');
+  };
+
   const renderContent = () => {
     // BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
@@ -289,6 +312,46 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
       );
     }
     if (tab === 'coaching') return <CoachingTabScreen session={session} />;
+    if (tab === 'organizer') {
+      if (organizerView === 'create') {
+        return (
+          <OrganizerEventCreateScreen
+            session={session}
+            onComplete={handleOrganizerEventCreateComplete}
+            onCancel={handleNavigateToOrganizerDashboard}
+          />
+        );
+      }
+      if (organizerView === 'detail' && selectedOrganizerEventId) {
+        return (
+          <OrganizerEventDetailScreen
+            session={session}
+            eventId={selectedOrganizerEventId}
+            onBack={handleNavigateToOrganizerDashboard}
+            onNavigateToRegistrations={handleNavigateToOrganizerRegistrations}
+          />
+        );
+      }
+      if (organizerView === 'registrations') {
+        return (
+          <OrganizerRegistrationListScreen
+            session={session}
+            eventId={selectedOrganizerEventId || undefined}
+            onBack={selectedOrganizerEventId ? () => {
+              setOrganizerView('detail');
+            } : handleNavigateToOrganizerDashboard}
+          />
+        );
+      }
+      return (
+        <OrganizerDashboardScreen
+          session={session}
+          onNavigateToEventCreate={handleNavigateToOrganizerEventCreate}
+          onNavigateToEventDetail={handleNavigateToOrganizerEventDetail}
+          onNavigateToRegistrations={handleNavigateToOrganizerRegistrations}
+        />
+      );
+    }
     if (tab === 'ask') return <AskScreen session={session} />;
     if (tab === 'requests') return <RequestsScreen session={session} />;
     if (tab === 'sessions') return <SessionsScreen session={session} />;
@@ -309,12 +372,20 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
               setEventsView('list');
               setSelectedEventId(null);
             }
+            if (newTab !== 'organizer') {
+              setOrganizerView('dashboard');
+              setSelectedOrganizerEventId(null);
+            }
           }} />
           <NavGroup title="Account" items={NAV_ITEMS.filter((item) => item.group === 'account')} activeTab={tab} onSelect={(newTab) => {
             setTab(newTab);
             setRoundsView('list');
             setEventsView('list');
             setSelectedEventId(null);
+            if (newTab !== 'organizer') {
+              setOrganizerView('dashboard');
+              setSelectedOrganizerEventId(null);
+            }
           }} />
         </View>
 
@@ -366,6 +437,10 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
                 if (key !== 'events') {
                   setEventsView('list');
                   setSelectedEventId(null);
+                }
+                if (key !== 'organizer') {
+                  setOrganizerView('dashboard');
+                  setSelectedOrganizerEventId(null);
                 }
               }} 
               style={styles.mobileTabButton}
