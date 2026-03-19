@@ -1,0 +1,5 @@
+project_id = "spotter-local"
+
+[functions.network-save-member]
+enabled = true
+verify_jwt = true
