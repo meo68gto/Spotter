@@ -7,7 +7,7 @@ import { Session } from '@supabase/supabase-js';
 import { Button } from '../../../components/Button';
 import { invokeFunction } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
-import { font, isWeb, palette, radius, spacing } from '../../../theme/design';
+import { font, palette, radius, spacing } from '../../../theme/design';
 
 // Types defined locally following project pattern
 type EventType = 'tournament' | 'scramble' | 'charity' | 'corporate' | 'social';

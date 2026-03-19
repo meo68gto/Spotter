@@ -416,7 +416,7 @@ export function EventRegistrationScreen({ session, eventId, onComplete, onCancel
         <View style={styles.actions}>
           <Button
             title={isSubmitting ? 'Registering...' : eventInfo?.price && eventInfo.price > 0 ? `Pay & Register ($${eventInfo.price})` : 'Complete Registration'}
-            onPress={handleSimpleRegister}
+            onPress={handleSubmit}
             disabled={isSubmitting || !agreeToTerms}
           />
           <Button title="Cancel" onPress={onCancel} tone="secondary" disabled={isSubmitting} />

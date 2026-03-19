@@ -37,6 +37,14 @@ interface DashboardStats {
   upcomingEvents: number;
 }
 
+interface OrganizerQuotaInfo {
+  tier: OrganizerTier;
+  eventsUsed: number;
+  eventsLimit: number | null;
+  registrationsUsed: number;
+  registrationsLimit: number | null;
+}
+
 type Props = {
   session: Session;
   onNavigateToEventCreate: () => void;
@@ -126,13 +134,7 @@ export function OrganizerDashboardScreen({ session, onNavigateToEventCreate, onN
       };
     } catch (err) {
       console.error('Error fetching stats:', err);
-      // Return default stats on error
-      return {
-        totalEvents: 0,
-        activeEvents: 0,
-        totalRegistrations: 0,
-        upcomingEvents: 0
-      };
+      throw err;
     }
   }, []);
 
