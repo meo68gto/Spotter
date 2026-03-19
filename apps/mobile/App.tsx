@@ -23,6 +23,12 @@ import { env, validateMobileEnv } from './src/types/env';
 
 type Stage = 'splash' | 'welcome' | 'login' | 'signup' | 'legal' | 'onboarding' | 'dashboard' | 'guest';
 
+type ParseTargetResult = {
+  authStage?: Extract<Stage, 'welcome' | 'login' | 'signup' | 'guest'>;
+  tabTarget?: DeepLinkTarget;
+  verificationToken?: string;
+};
+
 const SPLASH_MIN_MS = 900;
 const sentryEnabled = Boolean(env.sentryDsnMobile);
 const WebStripeProvider = ({ children }: { publishableKey: string; children: ReactNode }) => <>{children}</>;
@@ -62,6 +68,7 @@ function RootApp() {
   const [demoMode, setDemoMode] = useState(false);
   const [stage, setStage] = useState<Stage>('splash');
   const [deepLinkTarget, setDeepLinkTarget] = useState<DeepLinkTarget | null>(null);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [envErrors] = useState<string[]>(validateMobileEnv());
 
   useEffect(() => {
@@ -81,7 +88,7 @@ function RootApp() {
     });
   }, [session]);
 
-  const parseTarget = useCallback((url: string | null): { authStage?: Extract<Stage, 'welcome' | 'login' | 'signup'>; tabTarget?: DeepLinkTarget } => {
+  const parseTarget = useCallback((url: string | null): ParseTargetResult => {
     if (!url) return {};
     const parsed = Linking.parse(url);
     const rawPath = ((parsed.path ?? parsed.hostname ?? '') as string).replace(/^\/+/, '').toLowerCase();
@@ -99,6 +106,8 @@ function RootApp() {
     if (rawPath === 'profile') return { tabTarget: 'profile' };
     if (rawPath === 'network') return { tabTarget: 'network' };
     if (rawPath === 'rounds' || rawPath.startsWith('rounds/')) return { tabTarget: 'rounds' };
+    // EPIC 14: Guest verification deep link
+    if (rawPath === 'verify') return { authStage: 'guest', verificationToken: parsed.queryParams?.token as string };
     return {};
   }, []);
 
@@ -122,6 +131,7 @@ function RootApp() {
       const startedAt = Date.now();
       const initial = parseTarget(await Linking.getInitialURL());
       if (initial.tabTarget) setDeepLinkTarget(initial.tabTarget);
+      if (initial.verificationToken) setVerificationToken(initial.verificationToken);
 
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
@@ -146,6 +156,7 @@ function RootApp() {
     const linkSub = Linking.addEventListener('url', async ({ url }) => {
       const target = parseTarget(url);
       if (target.tabTarget) setDeepLinkTarget(target.tabTarget);
+      if (target.verificationToken) setVerificationToken(target.verificationToken);
       if (target.authStage) {
         const current = await supabase.auth.getSession();
         if (!current.data.session) setStage(target.authStage);
@@ -211,6 +222,7 @@ function RootApp() {
       <GuestFlow
         onSignIn={() => setStage('login')}
         onComplete={() => setStage('welcome')}
+        initialVerificationToken={verificationToken || undefined}
       />
     );
     return <WelcomeScreen onLogin={() => setStage('login')} onSignUp={() => setStage('signup')} onDemoMode={() => setDemoMode(true)} onGuestBrowse={() => setStage('guest')} />;

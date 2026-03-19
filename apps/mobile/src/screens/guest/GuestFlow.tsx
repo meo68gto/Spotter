@@ -26,12 +26,14 @@ type GuestFlowState = {
 type Props = {
   onSignIn: () => void;
   onComplete: () => void;
+  initialVerificationToken?: string;
 };
 
-export function GuestFlow({ onSignIn, onComplete }: Props) {
+export function GuestFlow({ onSignIn, onComplete, initialVerificationToken }: Props) {
   const [state, setState] = useState<GuestFlowState>({
-    step: 'browser',
+    step: initialVerificationToken ? 'verification' : 'browser',
     eventPrice: 0,
+    verificationToken: initialVerificationToken,
   });
 
   const navigateTo = useCallback((step: GuestFlowStep, updates?: Partial<GuestFlowState>) => {
@@ -49,7 +51,9 @@ export function GuestFlow({ onSignIn, onComplete }: Props) {
       // If event is free, go directly to ticket
       // If paid, go to checkout
       if (state.eventPrice === 0) {
-        // For free events, create a mock order ID and go to ticket
+        // TODO: Backend should support free event registration via guest-start-checkout
+        // For now, free events use a placeholder order ID - this is NOT production-ready
+        // The backend should return a proper order ID for free registrations
         const orderId = `guest-free-${Date.now()}`;
         navigateTo('ticket', { guestSessionId, guestEmail: email, orderId });
       } else {

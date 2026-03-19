@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { invokeFunction } from '../../lib/api';
+import { invokeGuestFunction } from '../../lib/api';
 import { palette, radius, spacing } from '../../theme/design';
 import { useStripe } from '../../hooks/useStripe';
 
@@ -59,7 +59,7 @@ export function GuestCheckoutScreen({
     const loadEventInfo = async () => {
       setStatus('loading');
       try {
-        const response = await invokeFunction<Array<{
+        const response = await invokeGuestFunction<Array<{
           id: string;
           title: string;
           price?: number;
@@ -105,7 +105,7 @@ export function GuestCheckoutScreen({
 
       // First, let's try to create a payment intent directly for guests
       // This is a simplified approach - in production, you'd have a dedicated guest-payment endpoint
-      const response = await invokeFunction<{
+      const response = await invokeGuestFunction<{
         data: {
           id: string;
           clientSecret: string;
@@ -140,7 +140,7 @@ export function GuestCheckoutScreen({
       // If the authenticated endpoint fails, fall back to creating a simple payment intent
       // This handles the guest case where no auth token is available
       try {
-        const response = await invokeFunction<{
+        const response = await invokeGuestFunction<{
           clientSecret: string;
           paymentIntentId: string;
         }>('stripe-create-payment-intent', {
@@ -159,7 +159,8 @@ export function GuestCheckoutScreen({
           },
         });
 
-        const orderId = `guest-order-${Date.now()}`;
+        // Use the actual payment intent ID from Stripe as the order ID
+        const orderId = response.paymentIntentId;
         setReviewOrderId(orderId);
         setOrderInfo({
           id: orderId,
@@ -212,7 +213,7 @@ export function GuestCheckoutScreen({
     if (!reviewOrderId) return;
 
     try {
-      await invokeFunction<{ data: { id: string; status: string } }>('payments-review-order-confirm', {
+      await invokeGuestFunction<{ data: { id: string; status: string } }>('payments-review-order-confirm', {
         method: 'POST',
         body: {
           reviewOrderId,

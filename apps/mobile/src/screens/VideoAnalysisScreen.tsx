@@ -53,9 +53,7 @@ export function VideoAnalysisScreen({
   React.useEffect(() => {
     const getUrl = async () => {
       try {
-        const { data } = await session.user;
-        // Get signed URL from Supabase storage
-        const { createClient } = await import('@supabase/supabase-js');
+        // Use existing supabase client from lib/supabase
         const { supabase } = await import('../lib/supabase');
         
         const { data: urlData } = await supabase

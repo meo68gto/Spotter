@@ -7,6 +7,10 @@ export type ApiError = {
   details?: Record<string, unknown>;
 };
 
+/**
+ * Invoke a Supabase Edge Function with authentication.
+ * Requires a valid session token.
+ */
 export const invokeFunction = async <T>(
   path: string,
   options?: {
@@ -23,6 +27,42 @@ export const invokeFunction = async <T>(
     throw new Error('Session missing. Please sign in again.');
   }
 
+  return invokeWithToken<T>(path, token, options);
+};
+
+/**
+ * Invoke a Supabase Edge Function without authentication.
+ * For guest-only endpoints that don't require auth.
+ */
+export const invokeGuestFunction = async <T>(
+  path: string,
+  options?: {
+    method?: 'GET' | 'POST';
+    body?: Record<string, unknown>;
+    params?: Record<string, string>;
+  }
+): Promise<T> => {
+  // Check if we're in demo mode
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+  if (token?.startsWith('demo-')) {
+    return mockFunctionResponse<T>(path, options?.body);
+  }
+
+  // For guest functions, we don't require a token
+  // The backend should validate via guest session ID in the body
+  return invokeWithToken<T>(path, undefined, options);
+};
+
+const invokeWithToken = async <T>(
+  path: string,
+  token: string | undefined,
+  options?: {
+    method?: 'GET' | 'POST';
+    body?: Record<string, unknown>;
+    params?: Record<string, string>;
+  }
+): Promise<T> => {
+
   // Build URL with query params for GET requests
   let url = toFunctionsUrl(path);
   if (options?.params) {
@@ -33,7 +73,7 @@ export const invokeFunction = async <T>(
   const response = await fetch(url, {
     method: options?.method ?? 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       'content-type': 'application/json'
     },
     body: options?.body && options?.method !== 'GET' ? JSON.stringify(options.body) : undefined
