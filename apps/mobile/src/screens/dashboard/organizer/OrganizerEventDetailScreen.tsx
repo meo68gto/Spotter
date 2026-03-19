@@ -50,9 +50,8 @@ export function OrganizerEventDetailScreen({ session, eventId, onBack, onNavigat
             totalRevenue: number;
           };
         };
-      }>(`organizer-events`, {
-        method: 'GET',
-        params: { eventId }
+      }>(`organizer-events/get/${eventId}`, {
+        method: 'GET'
       });
 
       setEventData(response.data);
@@ -88,7 +87,7 @@ export function OrganizerEventDetailScreen({ session, eventId, onBack, onNavigat
   const handleCheckIn = async (registrationId: string) => {
     setActioningId(registrationId);
     try {
-      await invokeFunction('organizer-registrations', {
+      await invokeFunction('organizer-registrations/check-in', {
         method: 'POST',
         body: { registrationId }
       });
