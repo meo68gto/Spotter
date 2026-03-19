@@ -543,3 +543,84 @@ export {
   isValidEventStatus,
   isValidOrganizerRole,
 } from "./organizer.js";
+
+// ============================================================================
+// Discovery Types Re-exports
+// ============================================================================
+
+export type {
+  // Filter Types
+  HandicapBand,
+  NetworkingIntentFilter,
+  SearchFilters,
+  // Golfer Types
+  DiscoverableProfessionalIdentity,
+  DiscoverableGolfIdentity,
+  DiscoverableNetworkingPreferences,
+  DiscoverableGolfer,
+  // Result Types
+  DiscoveryPagination,
+  CallerTierInfo,
+  DiscoveryResult,
+  // Input Types
+  DiscoverySearchInput,
+  // Error Types
+  DiscoveryError,
+  DiscoveryErrorCode,
+  // Helper Types
+  DiscoverGolfersRow,
+} from "./discovery.js";
+
+export {
+  // Constants
+  HANDICAP_BANDS,
+  NETWORKING_INTENT_FILTERS,
+  DISCOVERY_DEFAULTS,
+  // Type Guards
+  isValidHandicapBand,
+  isValidNetworkingIntentFilter,
+  validateDiscoveryInput,
+  // Transformers
+  transformDiscoverableGolfer,
+} from "./discovery.js";
+
+// ============================================================================
+// Matching Engine Types Re-exports
+// ============================================================================
+
+export type {
+  // Match Score Types
+  CompatibilityFactor,
+  MatchScore,
+  MatchSuggestion,
+  TopMatchesResponse,
+  CalculateMatchRequest,
+  CalculateMatchResponse,
+  // Configuration Types
+  MatchWeights,
+  // Input Types
+  GetTopMatchesInput,
+  GetMatchWithUserInput,
+} from "./matching.js";
+
+export {
+  // Constants
+  DEFAULT_MATCH_WEIGHTS,
+  HANDICAP_THRESHOLDS,
+  HANDICAP_SCORES,
+  NETWORKING_INTENT_COMPATIBILITY,
+  LOCATION_THRESHOLDS,
+  LOCATION_SCORES,
+  GROUP_SIZE_COMPATIBILITY,
+  MATCH_TIERS,
+  DEFAULT_MATCH_LIMIT,
+  MIN_MATCH_SCORE,
+  // Helper Functions
+  calculateHandicapScore,
+  calculateNetworkingIntentScore,
+  calculateLocationScore,
+  calculateGroupSizeScore,
+  getMatchTier,
+  formatMatchScore,
+  generateMatchReasoning,
+} from "./matching.js";

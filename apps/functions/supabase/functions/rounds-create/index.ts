@@ -1,52 +1,46 @@
-// Golf Rounds Create Edge Function
-// Handles creating new golf rounds with tier validation
+// Phase 2: Golf Rounds Create Edge Function
+// Handles creating new golf rounds with same-tier enforcement and tier limits
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
-import { TIER_SLUGS, getTierFeatures, TierSlug, TIER_PRIORITY } from '../_shared/tier-gate.ts';
+import { TIER_SLUGS, getTierFeatures, TierSlug } from '../_shared/tier-gate.ts';
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Valid round formats
-const VALID_FORMATS = ['casual', 'competitive', 'scramble', 'best_ball', 'match_play'] as const;
-type RoundFormat = typeof VALID_FORMATS[number];
+// Valid max players options
+const VALID_MAX_PLAYERS = [2, 3, 4] as const;
+type MaxPlayers = typeof VALID_MAX_PLAYERS[number];
 
-// Valid visibility levels
-const VALID_VISIBILITY = ['public', 'tier_only', 'invite_only'] as const;
-type RoundVisibility = typeof VALID_VISIBILITY[number];
+// Valid cart preferences
+const VALID_CART_PREFERENCES = ['walking', 'cart', 'either'] as const;
+type CartPreference = typeof VALID_CART_PREFERENCES[number];
 
 interface CreateRoundRequest {
   courseId: string;
-  roundDate: string;
-  teeTime: string;
-  format: RoundFormat;
-  totalSpots?: number;
-  visibility?: RoundVisibility;
-  handicapMin?: number;
-  handicapMax?: number;
+  scheduledAt: string; // ISO 8601 datetime
+  maxPlayers?: MaxPlayers;
+  cartPreference?: CartPreference;
   notes?: string;
 }
 
 interface RoundResponse {
   id: string;
+  creatorId: string;
   courseId: string;
   courseName: string;
   courseCity: string;
   courseState: string;
-  organizerId: string;
-  roundDate: string;
-  teeTime: string;
-  format: RoundFormat;
-  totalSpots: number;
-  spotsAvailable: number;
-  visibility: RoundVisibility;
-  handicapMin: number | null;
-  handicapMax: number | null;
-  notes: string | null;
+  scheduledAt: string;
+  maxPlayers: number;
+  cartPreference: CartPreference;
+  tierId: string;
+  tierSlug: string;
   status: string;
+  confirmedParticipants: number;
+  notes: string | null;
   createdAt: string;
 }
 
@@ -108,65 +102,48 @@ serve(async (req) => {
       );
     }
 
-    if (!body.roundDate) {
+    if (!body.scheduledAt) {
       return new Response(
-        JSON.stringify({ error: 'round_date is required', code: 'missing_round_date' }),
+        JSON.stringify({ error: 'scheduled_at is required', code: 'missing_scheduled_at' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!body.teeTime) {
+    // Validate scheduled_at is a valid future date
+    const scheduledAt = new Date(body.scheduledAt);
+    const now = new Date();
+    if (isNaN(scheduledAt.getTime())) {
       return new Response(
-        JSON.stringify({ error: 'tee_time is required', code: 'missing_tee_time' }),
+        JSON.stringify({ error: 'scheduled_at must be a valid ISO 8601 datetime', code: 'invalid_scheduled_at' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (scheduledAt <= now) {
+      return new Response(
+        JSON.stringify({ error: 'scheduled_at must be in the future', code: 'past_scheduled_at' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!body.format) {
-      return new Response(
-        JSON.stringify({ error: 'format is required', code: 'missing_format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate format
-    if (!VALID_FORMATS.includes(body.format as RoundFormat)) {
+    // Validate max_players if provided
+    const maxPlayers = body.maxPlayers || 4;
+    if (!VALID_MAX_PLAYERS.includes(maxPlayers as MaxPlayers)) {
       return new Response(
         JSON.stringify({ 
-          error: `Invalid format. Must be one of: ${VALID_FORMATS.join(', ')}`, 
-          code: 'invalid_format' 
+          error: `Invalid max_players. Must be one of: ${VALID_MAX_PLAYERS.join(', ')}`, 
+          code: 'invalid_max_players' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate round_date is in the future
-    const roundDate = new Date(body.roundDate);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    if (roundDate < now) {
-      return new Response(
-        JSON.stringify({ error: 'round_date must be in the future', code: 'invalid_round_date' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate tee_time format (HH:MM)
-    const teeTimeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!teeTimeRegex.test(body.teeTime)) {
-      return new Response(
-        JSON.stringify({ error: 'tee_time must be in HH:MM format', code: 'invalid_tee_time' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate visibility
-    const visibility = body.visibility || 'public';
-    if (!VALID_VISIBILITY.includes(visibility as RoundVisibility)) {
+    // Validate cart_preference if provided
+    const cartPreference = body.cartPreference || 'either';
+    if (!VALID_CART_PREFERENCES.includes(cartPreference as CartPreference)) {
       return new Response(
         JSON.stringify({ 
-          error: `Invalid visibility. Must be one of: ${VALID_VISIBILITY.join(', ')}`, 
-          code: 'invalid_visibility' 
+          error: `Invalid cart_preference. Must be one of: ${VALID_CART_PREFERENCES.join(', ')}`, 
+          code: 'invalid_cart_preference' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -194,9 +171,10 @@ serve(async (req) => {
       );
     }
 
-    const tier = userData.membership_tiers as { slug: TierSlug } | null;
+    const tier = userData.membership_tiers as { id: string; slug: TierSlug } | null;
     const tierSlug = tier?.slug || TIER_SLUGS.FREE;
     const tierFeatures = getTierFeatures(tierSlug);
+    const tierId = tier?.id || '';
 
     // Check if user can create rounds (tier check)
     if (!tierFeatures.canCreateRounds) {
@@ -230,9 +208,9 @@ serve(async (req) => {
       startOfMonth.setHours(0, 0, 0, 0);
 
       const { count: roundsThisMonth, error: countError } = await supabase
-        .from('golf_rounds')
+        .from('rounds')
         .select('*', { count: 'exact', head: true })
-        .eq('organizer_id', user.id)
+        .eq('creator_id', user.id)
         .gte('created_at', startOfMonth.toISOString());
 
       if (countError) {
@@ -253,7 +231,7 @@ serve(async (req) => {
     // Validate course exists
     const { data: course, error: courseError } = await supabase
       .from('golf_courses')
-      .select('id, name, city, state, active')
+      .select('id, name, city, state, is_active')
       .eq('id', body.courseId)
       .single();
 
@@ -264,32 +242,27 @@ serve(async (req) => {
       );
     }
 
-    if (!course.active) {
+    if (!course.is_active) {
       return new Response(
         JSON.stringify({ error: 'Course is not active', code: 'course_inactive' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create the round
-    const totalSpots = body.totalSpots || 4;
+    // Create the round (creator is auto-added as participant via trigger)
     const { data: round, error: roundError } = await supabase
-      .from('golf_rounds')
+      .from('rounds')
       .insert({
+        creator_id: user.id,
         course_id: body.courseId,
-        organizer_id: user.id,
-        round_date: body.roundDate,
-        tee_time: body.teeTime,
-        format: body.format,
-        total_spots: totalSpots,
-        spots_available: totalSpots - 1, // Organizer takes first spot
-        visibility: visibility,
-        handicap_min: body.handicapMin ?? null,
-        handicap_max: body.handicapMax ?? null,
-        notes: body.notes ?? null,
+        scheduled_at: body.scheduledAt,
+        max_players: maxPlayers,
+        cart_preference: cartPreference,
+        tier_id: tierId,
+        notes: body.notes?.substring(0, 500) ?? null,
         status: 'open'
       })
-      .select('id, course_id, round_date, tee_time, format, total_spots, spots_available, visibility, handicap_min, handicap_max, notes, status, created_at')
+      .select('id, creator_id, course_id, scheduled_at, max_players, cart_preference, tier_id, status, notes, created_at')
       .single();
 
     if (roundError || !round) {
@@ -300,39 +273,28 @@ serve(async (req) => {
       );
     }
 
-    // Add organizer as first participant
-    const { error: participantError } = await supabase
-      .from('golf_round_participants')
-      .insert({
-        round_id: round.id,
-        user_id: user.id,
-        status: 'confirmed',
-        joined_at: new Date().toISOString()
-      });
-
-    if (participantError) {
-      console.error('Error adding organizer as participant:', participantError);
-      // Don't fail the request, but log the error
-    }
+    // Get participant count
+    const { count: participantCount } = await supabase
+      .from('round_participants_v2')
+      .select('*', { count: 'exact', head: true })
+      .eq('round_id', round.id);
 
     // Build response
     const response: RoundResponse = {
       id: round.id,
+      creatorId: round.creator_id,
       courseId: round.course_id,
       courseName: course.name,
       courseCity: course.city,
       courseState: course.state,
-      organizerId: user.id,
-      roundDate: round.round_date,
-      teeTime: round.tee_time,
-      format: round.format as RoundFormat,
-      totalSpots: round.total_spots,
-      spotsAvailable: round.spots_available,
-      visibility: round.visibility as RoundVisibility,
-      handicapMin: round.handicap_min,
-      handicapMax: round.handicap_max,
-      notes: round.notes,
+      scheduledAt: round.scheduled_at,
+      maxPlayers: round.max_players,
+      cartPreference: round.cart_preference as CartPreference,
+      tierId: round.tier_id,
+      tierSlug: tierSlug,
       status: round.status,
+      confirmedParticipants: participantCount || 1,
+      notes: round.notes,
       createdAt: round.created_at
     };
 
