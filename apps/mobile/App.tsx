@@ -96,6 +96,7 @@ function RootApp() {
     if (rawPath === 'sessions') return { tabTarget: 'sessions' };
     if (rawPath === 'profile') return { tabTarget: 'profile' };
     if (rawPath === 'network') return { tabTarget: 'network' };
+    if (rawPath === 'rounds' || rawPath.startsWith('rounds/')) return { tabTarget: 'rounds' };
     return {};
   }, []);
 

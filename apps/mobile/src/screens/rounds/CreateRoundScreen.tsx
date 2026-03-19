@@ -16,6 +16,7 @@ import {
 import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { UpgradeModal } from '../../components/UpgradeModal';
 import { invokeFunction } from '../../lib/api';
 import { palette, radius, spacing } from '../../theme/design';
 import {
@@ -42,9 +43,11 @@ interface NetworkUser {
 }
 
 interface UserTierInfo {
-  slug: string;
+  slug: 'free' | 'select' | 'summit';
   monthlyRoundsCount: number;
   maxRoundsPerMonth: number | null;
+  canCreateRounds: boolean;
+  tierStatus: string;
 }
 
 interface CreateRoundScreenProps {
@@ -61,15 +64,16 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
   const [cartPreference, setCartPreference] = useState<CartPreference>('either');
   const [notes, setNotes] = useState('');
   const [creating, setCreating] = useState(false);
-  
+
   // Epic 5: Network invitation state
   const [enableNetworkInvites, setEnableNetworkInvites] = useState(false);
   const [networkUsers, setNetworkUsers] = useState<NetworkUser[]>([]);
   const [selectedInvitees, setSelectedInvitees] = useState<Set<string>>(new Set());
-  
-  // Epic 5: Free tier limit state
+
+  // Epic 7: Tier enforcement state
   const [userTier, setUserTier] = useState<UserTierInfo | null>(null);
   const [loadingTier, setLoadingTier] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Date/time input states
   const [dateInput, setDateInput] = useState(() => {
@@ -95,15 +99,37 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
 
   const fetchUserTier = async () => {
     try {
-      // TODO: Replace with actual API call when available
-      // For now, mock data - in production fetch from /users/me or similar
+      const response = await invokeFunction<{
+        user: {
+          tier: { slug: 'free' | 'select' | 'summit' } | null;
+          tierStatus: { status: string; isActive: boolean };
+        };
+        computed: {
+          monthlyRoundsCount: number;
+          maxRoundsPerMonth: number | null;
+          canCreateRounds: boolean;
+        };
+      }>('user-with-tier', {
+        method: 'GET',
+      });
+
       setUserTier({
-        slug: 'free',
-        monthlyRoundsCount: 2,
-        maxRoundsPerMonth: 3,
+        slug: response.user.tier?.slug || 'free',
+        monthlyRoundsCount: response.computed.monthlyRoundsCount || 0,
+        maxRoundsPerMonth: response.computed.maxRoundsPerMonth,
+        canCreateRounds: response.computed.canCreateRounds,
+        tierStatus: response.user.tierStatus.status,
       });
     } catch (error) {
       console.error('Error fetching tier:', error);
+      // Default to free tier on error - free users cannot create rounds
+      setUserTier({
+        slug: 'free',
+        monthlyRoundsCount: 0,
+        maxRoundsPerMonth: 0,
+        canCreateRounds: false,
+        tierStatus: 'active',
+      });
     } finally {
       setLoadingTier(false);
     }
@@ -111,11 +137,37 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
 
   const fetchNetworkUsers = async () => {
     try {
-      // TODO: Replace with actual API call
-      // This would call the get_network_round_eligible_users RPC or similar endpoint
-      setNetworkUsers([]);
+      const response = await invokeFunction<{
+        data: Array<{
+          id: string;
+          member: {
+            id: string;
+            displayName: string;
+            avatarUrl?: string;
+            golf?: { handicap?: number };
+          };
+          relationshipState: string;
+          strengthScore: number;
+        }>;
+      }>('network-connections', {
+        method: 'GET',
+      });
+
+      const users: NetworkUser[] = response.data
+        .filter((conn) => conn.member)
+        .map((conn) => ({
+          id: conn.member.id,
+          displayName: conn.member.displayName,
+          avatarUrl: conn.member.avatarUrl,
+          currentHandicap: conn.member.golf?.handicap,
+          connectionType: conn.relationshipState || 'connection',
+          mutualCount: conn.strengthScore || 0,
+        }));
+
+      setNetworkUsers(users);
     } catch (error) {
       console.error('Error fetching network users:', error);
+      setNetworkUsers([]);
     }
   };
 
@@ -168,19 +220,25 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
       return;
     }
 
-    // Check free tier limit
-    if (userTier?.slug === 'free' && userTier.monthlyRoundsCount >= (userTier.maxRoundsPerMonth || 0)) {
-      Alert.alert(
-        'Free Tier Limit Reached',
-        'Free tier users can only create 3 rounds per month. Upgrade to Select for unlimited rounds.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Upgrade', onPress: () => {
-            // Navigate to upgrade
-          }},
-        ]
-      );
+    // Epic 7: Check tier permissions
+    if (!userTier?.canCreateRounds) {
+      setShowUpgradeModal(true);
       return;
+    }
+
+    // Epic 7: Check Select tier monthly limit
+    if (userTier?.maxRoundsPerMonth !== null) {
+      if (userTier.monthlyRoundsCount >= userTier.maxRoundsPerMonth) {
+        Alert.alert(
+          'Monthly Limit Reached',
+          `You've reached your limit of ${userTier.maxRoundsPerMonth} rounds per month. Upgrade to Summit for unlimited rounds.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Upgrade', onPress: () => setShowUpgradeModal(true) },
+          ]
+        );
+        return;
+      }
     }
 
     setCreating(true);
@@ -251,32 +309,72 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
     });
   };
 
-  // Free tier warning component
-  const FreeTierWarning = () => {
-    if (!userTier || userTier.slug !== 'free') return null;
-    
-    const remaining = (userTier.maxRoundsPerMonth || 3) - userTier.monthlyRoundsCount;
-    
-    return (
-      <Card>
-        <View style={styles.tierWarningContainer}>
-          <Text style={styles.tierWarningTitle}>Free Tier Limit</Text>
-          <Text style={styles.tierWarningText}>
-            {remaining > 0 
-              ? `You have ${remaining} of ${userTier.maxRoundsPerMonth} rounds remaining this month.`
-              : 'You have reached your monthly round limit.'}
-          </Text>
-          {remaining <= 0 && (
-            <TouchableOpacity style={styles.upgradeButton}>
+  // Epic 7: Updated tier warning component
+  const TierWarning = () => {
+    if (!userTier || userTier.canCreateRounds === false) return null;
+
+    // Free tier warning (cannot create rounds)
+    if (!userTier.canCreateRounds) {
+      return (
+        <Card>
+          <View style={styles.tierWarningContainer}>
+            <Text style={styles.tierWarningTitle}>Upgrade Required</Text>
+            <Text style={styles.tierWarningText}>
+              Free users cannot create rounds. Upgrade to Select to start creating rounds.
+            </Text>
+            <TouchableOpacity 
+              style={styles.upgradeButton}
+              onPress={() => setShowUpgradeModal(true)}
+            >
               <Text style={styles.upgradeButtonText}>Upgrade to Select →</Text>
             </TouchableOpacity>
-          )}
-        </View>
-      </Card>
-    );
+          </View>
+        </Card>
+      );
+    }
+
+    // Select tier limit warning
+    if (userTier.maxRoundsPerMonth !== null) {
+      const remaining = userTier.maxRoundsPerMonth - userTier.monthlyRoundsCount;
+
+      if (remaining <= 0) {
+        return (
+          <Card>
+            <View style={styles.tierWarningContainer}>
+              <Text style={styles.tierWarningTitle}>Monthly Limit Reached</Text>
+              <Text style={styles.tierWarningText}>
+                You've used all {userTier.maxRoundsPerMonth} rounds this month.
+              </Text>
+              <TouchableOpacity 
+                style={styles.upgradeButton}
+                onPress={() => setShowUpgradeModal(true)}
+              >
+                <Text style={styles.upgradeButtonText}>Upgrade to Summit →</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        );
+      }
+
+      if (remaining <= 2) {
+        return (
+          <Card>
+            <View style={styles.tierWarningContainer}>
+              <Text style={styles.tierWarningTitle}>Select Tier</Text>
+              <Text style={styles.tierWarningText}>
+                You have {remaining} of {userTier.maxRoundsPerMonth} rounds remaining this month.
+              </Text>
+            </View>
+          </Card>
+        );
+      }
+    }
+
+    return null;
   };
 
   return (
+    <>
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <Text style={styles.title}>Create Round</Text>
@@ -284,8 +382,8 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
       </View>
 
       <View style={styles.content}>
-        {/* Free Tier Warning */}
-        <FreeTierWarning />
+        {/* Epic 7: Tier Warning */}
+        <TierWarning />
 
         <Card>
           <Text style={styles.sectionTitle}>Course</Text>
@@ -532,6 +630,12 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
         </View>
       </View>
     </ScrollView>
+    <UpgradeModal
+      visible={showUpgradeModal}
+      onClose={() => setShowUpgradeModal(false)}
+      currentTier={userTier?.slug || 'free'}
+    />
+    </>
   );
 }
 

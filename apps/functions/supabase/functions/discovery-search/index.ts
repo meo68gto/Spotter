@@ -5,6 +5,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
+import { TIER_SLUGS, getTierFeatures } from '../_shared/tier-gate.ts';
 import { createTierViolationResponse, TIER_VIOLATION_STATUS } from '../_shared/enforcement.ts';
 
 // Initialize Supabase client
@@ -148,6 +149,23 @@ serve(async (req) => {
         JSON.stringify({ error: 'Invalid JSON body', code: 'invalid_json' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Epic 7: Get tier features for discovery limit enforcement
+    const tierSlug = (callerData.membership_tiers as any)?.slug || TIER_SLUGS.FREE;
+    const tierFeatures = getTierFeatures(tierSlug);
+    
+    // Epic 7: Enforce discovery limits for free tier
+    const maxSearchResults = tierFeatures.maxSearchResults;
+    if (maxSearchResults !== null) {
+      // Free tier is limited to 20 results
+      if (body.limit && body.limit > maxSearchResults) {
+        body.limit = maxSearchResults;
+      }
+      // If no limit provided, use the tier limit
+      if (!body.limit) {
+        body.limit = maxSearchResults;
+      }
     }
 
     // Validate and sanitize filters

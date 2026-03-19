@@ -99,8 +99,8 @@ export function AuthScreen({ onDemoMode }: Props) {
     <View style={styles.container}>
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>SPOTTER</Text>
-        <Text style={styles.title}>Build your local sports network.</Text>
-        <Text style={styles.subtitle}>Pair with golfers, pickleball players, and coaches. Join sponsored events that match your level.</Text>
+        <Text style={styles.title}>Build your local golf network.</Text>
+        <Text style={styles.subtitle}>Pair with golfers and coaches. Join sponsored events that match your level.</Text>
         <View style={styles.heroPoints}>
           <Text style={styles.heroPoint}>- Smart partner matching by skill + distance</Text>
           <Text style={styles.heroPoint}>- Sponsor-powered tournament invites</Text>

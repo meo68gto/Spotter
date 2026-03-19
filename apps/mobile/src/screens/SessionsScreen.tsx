@@ -377,7 +377,7 @@ export function SessionsScreen({ session }: SessionsScreenProps) {
             <Text style={styles.emptyText}>
               Book a coaching session to improve your game
             </Text>
-            <Button title="Find a Coach" onPress={() => {}} />
+            <Button title="Find a Golf Coach" onPress={() => {}} />
           </View>
         </Card>
       )}

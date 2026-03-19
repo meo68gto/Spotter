@@ -23,6 +23,7 @@ type PlayerCard = {
   score?: number;
 };
 
+// Golf-only networking (removed pickleball, tennis, padel, soccer)
 const seedPlayers: PlayerCard[] = [
   {
     id: 'u-1',
@@ -36,18 +37,18 @@ const seedPlayers: PlayerCard[] = [
   {
     id: 'u-2',
     name: 'Jamie R.',
-    sport: 'Pickleball',
+    sport: 'Golf',
     level: 'Advanced',
-    city: 'Austin',
+    city: 'Scottsdale',
     openToInvite: true,
-    note: 'Great drill partner, evenings only.'
+    note: 'Available for early morning rounds.'
   },
   {
     id: 'u-3',
     name: 'Taylor S.',
-    sport: 'Tennis',
+    sport: 'Golf',
     level: 'Intermediate',
-    city: 'San Diego',
+    city: 'Scottsdale',
     openToInvite: false,
     note: 'Booked this week, available next weekend.'
   }
@@ -69,16 +70,15 @@ export function NetworkingHubScreen() {
       const { data } = await supabase
         .from('activities')
         .select('id, slug, name')
-        .in('slug', ['golf', 'pickleball', 'tennis', 'padel', 'soccer'])
-        .order('name', { ascending: true });
-      if (!data?.length) {
+        .eq('slug', 'golf')
+        .single();
+      if (!data) {
         setLoading(false);
         return;
       }
-      setActivities(data as ActivityItem[]);
-      const preferred = data.find((item) => item.slug === 'golf') ?? data.find((item) => item.slug === 'pickleball') ?? data[0];
-      setActivityId(preferred.id);
-      setSportFilter(preferred.name);
+      setActivities([data] as ActivityItem[]);
+      setActivityId(data.id);
+      setSportFilter(data.name);
     };
     loadActivities();
   }, []);
@@ -229,7 +229,7 @@ export function NetworkingHubScreen() {
                 if (match) setActivityId(match.id);
                 setSportFilter(value);
               }}
-              placeholder="Primary sport (Golf, Pickleball...)"
+              placeholder="Primary sport (Golf)"
               style={styles.input}
               placeholderTextColor={palette.ink500}
             />

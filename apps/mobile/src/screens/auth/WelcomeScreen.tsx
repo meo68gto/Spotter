@@ -38,8 +38,8 @@ export function WelcomeScreen({
         image: stockPhotos.welcomePanelTwo
       },
       {
-        title: 'Book coaching when it matters',
-        body: 'Move from quick answers to live sessions with a clean booking flow.',
+        title: 'Book golf coaching when it matters',
+        body: 'Move from quick answers to live sessions with expert golf coaches.',
         image: stockPhotos.welcomePanelThree
       }
     ],

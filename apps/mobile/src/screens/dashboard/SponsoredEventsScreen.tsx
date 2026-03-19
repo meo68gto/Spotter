@@ -6,15 +6,17 @@ import { stockPhotos } from '../../lib/stockPhotos';
 import { supabase } from '../../lib/supabase';
 import { font, isWeb, palette, radius, spacing } from '../../theme/design';
 
+// Golf-only sponsored events (removed pickleball, tennis, padel)
+
 type SponsoredEvent = {
   id: string;
   title: string;
   activityId?: string;
-  sport: 'Golf' | 'Pickleball' | 'Tennis' | 'Padel' | string;
+  sport: 'Golf';
   city: string;
   date: string;
   sponsor: string;
-  format: 'Tournament' | 'Clinic' | 'Local Mixer' | string;
+  format: 'Tournament' | 'Clinic' | 'Local Mixer';
   invitesOpen: boolean;
   myRegistrationStatus?: string | null;
   registrationCount?: number;
@@ -28,16 +30,6 @@ const initialEvents: SponsoredEvent[] = [
     city: 'Scottsdale',
     date: '2026-03-15',
     sponsor: 'Desert Golf Supply',
-    format: 'Tournament',
-    invitesOpen: true
-  },
-  {
-    id: 'e-2',
-    title: 'Downtown Pickleball Ladder',
-    sport: 'Pickleball',
-    city: 'Austin',
-    date: '2026-03-20',
-    sponsor: 'ATX Paddle Co',
     format: 'Tournament',
     invitesOpen: true
   }
@@ -62,10 +54,9 @@ export function SponsoredEventsScreen() {
       const { data } = await supabase
         .from('activities')
         .select('id, slug')
-        .in('slug', ['golf', 'pickleball', 'tennis', 'padel'])
-        .order('slug', { ascending: true });
-      const preferred = data?.find((item) => item.slug === 'golf') ?? data?.[0];
-      if (preferred) setActivityId(preferred.id);
+        .eq('slug', 'golf')
+        .single();
+      if (data) setActivityId(data.id);
     };
     loadActivity();
   }, []);
@@ -201,7 +192,7 @@ export function SponsoredEventsScreen() {
           <TextInput
             value={sport}
             onChangeText={setSport}
-            placeholder="Sport (Golf, Pickleball, Tennis, Padel)"
+            placeholder="Sport (Golf)"
             style={styles.input}
             placeholderTextColor={palette.ink500}
           />

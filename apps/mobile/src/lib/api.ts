@@ -215,17 +215,17 @@ const mockFunctionResponse = async <T>(path: string, body?: Record<string, unkno
       {
         id: 'demo-event-2',
         sponsor_id: 'demo-sponsor-2',
-        activity_id: (body?.activityId as string | undefined) ?? 'demo-activity-pickleball',
-        title: 'City Pickleball Ladder',
-        description: 'Sponsored local ladder event',
-        city: 'Austin',
-        venue_name: 'Downtown Courts',
+        activity_id: (body?.activityId as string | undefined) ?? 'demo-activity-golf',
+        title: 'Scottsdale Golf Classic',
+        description: 'Sponsored local golf event',
+        city: 'Scottsdale',
+        venue_name: 'McCormick Ranch Golf Club',
         start_time: plusDays(14),
         end_time: plusDays(14),
         status: 'published',
         max_participants: 48,
         created_at: now.toISOString(),
-        sponsor_name: 'CourtSide Partners',
+        sponsor_name: 'Desert Golf Supply',
         registration_count: 27,
         my_registration_status: null
       }

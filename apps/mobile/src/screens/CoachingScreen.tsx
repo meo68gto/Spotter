@@ -18,14 +18,14 @@ import { supabase } from '../lib/supabase';
 import { invokeFunction } from '../lib/api';
 import { palette, radius, shadows, spacing } from '../theme/design';
 
-type Sport = 'golf' | 'pickleball' | 'tennis';
+// Coaching is golf-only (removed pickleball, tennis)
 
 type Coach = {
   id: string;
   userId: string;
   displayName: string;
   avatarUrl?: string;
-  sport: Sport;
+  sport: 'golf';
   hourlyRate: number;
   rating: number;
   reviewCount: number;
@@ -51,7 +51,7 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [mySessions, setMySessions] = useState<CoachingSession[]>([]);
-  const [selectedSport, setSelectedSport] = useState<Sport | 'all'>('all');
+  // Removed sport filter - golf only
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'discover' | 'my-sessions'>('discover');
   const [loading, setLoading] = useState(false);
@@ -128,13 +128,12 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
   };
 
   const filteredCoaches = coaches.filter((coach) => {
-    const matchesSport = selectedSport === 'all' || coach.sport === selectedSport;
     const matchesSearch =
       !searchQuery ||
       coach.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       coach.bio?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       coach.specialties.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSport && matchesSearch;
+    return matchesSearch;
   });
 
   const upcomingSessions = mySessions.filter((s) => s.status === 'upcoming');
@@ -173,7 +172,6 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
           <View style={styles.coachInfo}>
             <Text style={styles.coachName}>{item.displayName}</Text>
             <View style={styles.coachMeta}>
-              <Text style={styles.sportBadge}>{item.sport.charAt(0).toUpperCase() + item.sport.slice(1)}</Text>
               {renderStars(item.rating)}
               <Text style={styles.reviewCount}>({item.reviewCount})</Text>
             </View>
@@ -195,7 +193,7 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
         <View style={styles.coachFooter}>
           <Text style={styles.price}>${item.hourlyRate}/hr</Text>
           <Button
-            title="Book Session"
+            title="Book Golf Lesson"
             onPress={() => handleBookSession(item.id)}
             tone="secondary"
           />
@@ -317,39 +315,16 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListHeaderComponent={
             <View>
-              <Text style={styles.title}>Find a Coach</Text>
-              <Text style={styles.subtitle}>Book sessions with expert coaches</Text>
+              <Text style={styles.title}>Find a Golf Coach</Text>
+              <Text style={styles.subtitle}>Book golf lessons with expert coaches</Text>
 
               {/* Search */}
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search coaches, specialties..."
+                placeholder="Search golf coaches, specialties..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
-
-              {/* Sport Filters */}
-              <View style={styles.filters}>
-                {(['all', 'golf', 'pickleball', 'tennis'] as const).map((sport) => (
-                  <TouchableOpacity
-                    key={sport}
-                    style={[
-                      styles.filterChip,
-                      selectedSport === sport && styles.filterChipActive,
-                    ]}
-                    onPress={() => setSelectedSport(sport)}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        selectedSport === sport && styles.filterChipTextActive,
-                      ]}
-                    >
-                      {sport === 'all' ? 'All Sports' : sport.charAt(0).toUpperCase() + sport.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
             </View>
           }
           ListEmptyComponent={
@@ -393,7 +368,7 @@ export function CoachingScreen({ session }: CoachingScreenProps) {
                   Book your first coaching session to get started
                 </Text>
                 <Button
-                  title="Find a Coach"
+                  title="Find a Golf Coach"
                   onPress={() => setActiveTab('discover')}
                 />
               </View>

@@ -74,7 +74,10 @@ export function StandingFoursomesScreen({
           style: 'destructive',
           onPress: async () => {
             try {
-              // TODO: Implement pause API
+              await invokeFunction('standing-foursomes-pause', {
+                method: 'POST',
+                body: { foursomeId: foursome.id },
+              });
               Alert.alert('Success', 'Group paused');
               fetchFoursomes();
             } catch {

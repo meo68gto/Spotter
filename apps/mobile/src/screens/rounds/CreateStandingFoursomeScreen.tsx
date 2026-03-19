@@ -50,15 +50,45 @@ export function CreateStandingFoursomeScreen({
   const [searchResults, setSearchResults] = useState<Connection[]>([]);
   const [creating, setCreating] = useState(false);
 
-  // Mock search - in real implementation, this would call the API
   const searchConnections = async (query: string) => {
     if (query.length < 2) {
       setSearchResults([]);
       return;
     }
-    // TODO: Implement actual search
-    // For now, return empty
-    setSearchResults([]);
+    try {
+      const response = await invokeFunction<{
+        data: Array<{
+          id: string;
+          member: {
+            id: string;
+            displayName: string;
+            avatarUrl?: string;
+            golf?: { handicap?: number };
+          };
+          relationshipState: string;
+          strengthScore: number;
+        }>;
+      }>('network-connections', {
+        method: 'GET',
+      });
+
+      // Filter connections by search query
+      const filtered = response.data
+        .filter((conn) =>
+          conn.member?.displayName?.toLowerCase().includes(query.toLowerCase())
+        )
+        .map((conn) => ({
+          id: conn.member.id,
+          displayName: conn.member.displayName,
+          avatarUrl: conn.member.avatarUrl,
+          currentHandicap: conn.member.golf?.handicap,
+        }));
+
+      setSearchResults(filtered);
+    } catch (error) {
+      console.error('Error searching connections:', error);
+      setSearchResults([]);
+    }
   };
 
   const toggleMember = (connection: Connection) => {

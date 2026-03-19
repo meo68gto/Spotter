@@ -193,8 +193,8 @@ serve(async (req) => {
       );
     }
 
-    // FREE TIER ENFORCEMENT: Check monthly round limit (3 rounds/month)
-    if (tierSlug === TIER_SLUGS.FREE) {
+    // Epic 7: Check monthly round limits for tiers with limits (Select: 4/month)
+    if (tierFeatures.maxRoundsPerMonth !== null) {
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       const resetMonth = userData.rounds_count_reset_at 
@@ -217,13 +217,12 @@ serve(async (req) => {
         userData.monthly_rounds_count = 0;
       }
 
-      const FREE_TIER_MONTHLY_LIMIT = 3;
-      if ((userData.monthly_rounds_count || 0) >= FREE_TIER_MONTHLY_LIMIT) {
+      if ((userData.monthly_rounds_count || 0) >= tierFeatures.maxRoundsPerMonth) {
         return new Response(
           JSON.stringify({ 
-            error: `Free tier users can only create ${FREE_TIER_MONTHLY_LIMIT} rounds per month. Upgrade to create more rounds.`, 
-            code: 'free_tier_round_limit_reached',
-            limit: FREE_TIER_MONTHLY_LIMIT,
+            error: `You have reached your monthly limit of ${tierFeatures.maxRoundsPerMonth} rounds. Upgrade to create more rounds.`, 
+            code: 'round_limit_reached',
+            limit: tierFeatures.maxRoundsPerMonth,
             used: userData.monthly_rounds_count,
             upgradeUrl: '/upgrade'
           }),

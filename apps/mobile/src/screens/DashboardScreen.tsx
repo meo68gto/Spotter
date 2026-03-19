@@ -12,6 +12,7 @@ import { MatchingScreen } from './matching/MatchingScreen';
 import { RoundsScreen } from './rounds/RoundsScreen';
 import { CreateRoundScreen } from './rounds/CreateRoundScreen';
 import { RoundInvitationsScreen } from './rounds/RoundInvitationsScreen';
+import { RoundDetailScreen } from './rounds/RoundDetailScreen';
 import { NetworkScreen } from './network/NetworkScreen';
 import { SavedMembersScreen } from './network/SavedMembersScreen';
 import { stockPhotos } from '../lib/stockPhotos';
@@ -50,23 +51,22 @@ type NavItem = {
   mobilePrimary?: boolean;
 };
 
-// BETA NAV: 9 primary tabs including Discovery, Rounds, and Network (Phase 2)
+// REPOSITIONED: Coaching moved from 'core' to 'account' group (Epic 8)
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
   { key: 'discover', label: 'Discover', group: 'core', mobilePrimary: true },
   { key: 'rounds', label: 'Rounds', group: 'core', mobilePrimary: true },
-  { key: 'coaching', label: 'Coaching', group: 'core', mobilePrimary: true },
   { key: 'ask', label: 'Ask', group: 'core', mobilePrimary: true },
   { key: 'requests', label: 'Requests', group: 'core', mobilePrimary: true },
   { key: 'sessions', label: 'Sessions', group: 'core', mobilePrimary: true },
   { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
-  { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true }
+  { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true },
+  { key: 'coaching', label: 'Coaching', group: 'account', mobilePrimary: false } // Secondary nav
 ];
 
 const WEB_PHOTO_TILES = [
   { label: 'Golf Pairing', image: stockPhotos.dashboardHeroGolf },
-  { label: 'Pickleball Community', image: stockPhotos.dashboardHeroPickleball },
-  { label: 'Coaching Progress', image: stockPhotos.dashboardHeroProgress }
+  { label: 'Improve Your Game', image: stockPhotos.dashboardHeroProgress } // Changed from Pickleball Community
 ];
 
 const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
@@ -189,6 +189,18 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
           <RoundInvitationsScreen
             session={session}
             onRoundPress={handleRoundPress}
+          />
+        );
+      }
+      if (roundsView === 'detail' && selectedRoundId) {
+        return (
+          <RoundDetailScreen
+            session={session}
+            roundId={selectedRoundId}
+            onBack={() => {
+              setRoundsView('list');
+              setSelectedRoundId(null);
+            }}
           />
         );
       }

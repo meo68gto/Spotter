@@ -17,6 +17,7 @@ import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { TierBadge } from '../../components/TierBadge';
+import { UpgradeModal } from '../../components/UpgradeModal';
 import { invokeFunction } from '../../lib/api';
 import { palette, radius, spacing } from '../../theme/design';
 import {
@@ -50,6 +51,10 @@ export function MatchingScreen({ session }: { session: Session }) {
   const [metadata, setMetadata] = useState<TopMatchesResponse['metadata'] | null>(null);
   const [pendingIntroIds, setPendingIntroIds] = useState<Set<string>>(new Set());
   const [requestingIntroIds, setRequestingIntroIds] = useState<Set<string>>(new Set());
+  
+  // Epic 7: Upgrade modal state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [currentTier, setCurrentTier] = useState<'free' | 'select' | 'summit'>('free');
 
   const fetchMatches = useCallback(async () => {
     setLoading(true);
@@ -86,6 +91,38 @@ export function MatchingScreen({ session }: { session: Session }) {
 
   const handleRequestIntroduction = async (match: MatchSuggestion) => {
     if (requestingIntroIds.has(match.user.id) || pendingIntroIds.has(match.user.id)) return;
+
+    // Epic 7: Check tier permissions before requesting introduction
+    try {
+      const { data: userTierData } = await invokeFunction<{
+        user: { tier: { slug: string } | null; tierStatus: { isActive: boolean } };
+        computed: {
+          canSendIntros: boolean;
+          introCreditsRemaining: number;
+          introCreditsMonthly: number | null;
+          introCreditsResetAt: string | null;
+        };
+      }>('user-with-tier', { method: 'GET' });
+
+      if (!userTierData.computed.canSendIntros) {
+        setCurrentTier(userTierData.user.tier?.slug || 'free');
+        setShowUpgradeModal(true);
+        return;
+      }
+
+      // Check intro credits for Select tier
+      if (userTierData.computed.introCreditsMonthly !== null) {
+        if (userTierData.computed.introCreditsRemaining <= 0) {
+          setCurrentTier(userTierData.user.tier?.slug || 'free');
+          setShowUpgradeModal(true);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking tier:', error);
+      Alert.alert('Error', 'Unable to verify your membership. Please try again.');
+      return;
+    }
 
     // Check if there are mutual connections
     if (match.mutualConnections === 0) {
@@ -438,6 +475,12 @@ export function MatchingScreen({ session }: { session: Session }) {
       />
 
       {renderMatchDetail()}
+
+      <UpgradeModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentTier={currentTier}
+      />
     </View>
   );
 }

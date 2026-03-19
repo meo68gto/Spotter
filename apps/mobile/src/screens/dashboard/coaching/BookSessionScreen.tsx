@@ -139,7 +139,7 @@ export function BookSessionScreen({ coachId, selectedSlot, initialMode, onDone, 
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <Text style={styles.title}>Book Session</Text>
+      <Text style={styles.title}>Book Golf Lesson</Text>
       <BookingStepHeader step={STEP_UI_INDEX[booking.step]} />
 
       {booking.step === 'idle' || booking.step === 'completed' ? (

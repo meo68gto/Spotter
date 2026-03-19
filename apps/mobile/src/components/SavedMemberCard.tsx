@@ -1,6 +1,7 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SavedMemberTier, getSavedMemberTierLabel } from '@spotter/types';
 import { Card } from './Card';
+import { TierBadge, TierSlug } from './TierBadge';
 import { palette, radius, spacing } from '../theme/design';
 
 interface SavedMemberCardProps {
@@ -54,10 +55,16 @@ export function SavedMemberCard({
                 <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
               </View>
             )}
-            {/* Tier Badge */}
-            <View style={[styles.tierBadge, { backgroundColor: tierColor }]}>
-              <Text style={styles.tierText}>{tierLabel}</Text>
+            {/* Saved Member Tier Badge */}
+            <View style={[styles.savedTierBadge, { backgroundColor: tierColor }]}>
+              <Text style={styles.savedTierText}>{tierLabel}</Text>
             </View>
+            {/* Epic 7: Membership Tier Badge */}
+            {tier && (
+              <View style={styles.membershipTierBadge}>
+                <TierBadge tier={tier as TierSlug} size="sm" />
+              </View>
+            )}
           </View>
 
           {/* Info Section */}
@@ -196,6 +203,24 @@ const styles = StyleSheet.create({
     color: palette.white,
     fontSize: 10,
     fontWeight: '600',
+  },
+  savedTierBadge: {
+    position: 'absolute',
+    bottom: -4,
+    left: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  savedTierText: {
+    color: palette.white,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  membershipTierBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: 0,
   },
   infoSection: {
     flex: 1,

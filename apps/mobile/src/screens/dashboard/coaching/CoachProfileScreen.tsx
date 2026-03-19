@@ -166,7 +166,7 @@ export function CoachProfileScreen({ coach, mode, setMode, onBook, onBack, refre
         <Button title="Back to Browse" onPress={onBack} tone="secondary" />
         <View style={styles.bookButtonContainer}>
           <Button 
-            title={currentPrice > 0 ? `Book for ${formatPrice(currentPrice)}` : 'Book Session'} 
+            title={currentPrice > 0 ? `Book Golf Lesson for ${formatPrice(currentPrice)}` : 'Book Golf Lesson'} 
             onPress={onBook} 
           />
         </View>
