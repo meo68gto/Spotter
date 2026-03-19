@@ -8,7 +8,38 @@ import { Button } from '../../../components/Button';
 import { invokeFunction } from '../../../lib/api';
 import { supabase } from '../../../lib/supabase';
 import { font, isWeb, palette, radius, spacing } from '../../../theme/design';
-import type { OrganizerEvent, RegistrationWithUser, RegistrationStatus } from '../../../../../packages/types/src/organizer';
+
+// Types defined locally following project pattern
+type EventType = 'tournament' | 'scramble' | 'charity' | 'corporate' | 'social';
+type EventStatus = 'draft' | 'published' | 'registration_open' | 'full' | 'in_progress' | 'completed' | 'cancelled';
+type RegistrationStatus = 'registered' | 'waitlisted' | 'confirmed' | 'checked_in' | 'no_show' | 'cancelled';
+
+interface OrganizerEvent {
+  id: string;
+  title: string;
+  description?: string;
+  type: EventType;
+  status: EventStatus;
+  courseId: string;
+  courseName: string;
+  startTime: string;
+  endTime: string;
+  maxParticipants: number;
+  price: number;
+  isPublic: boolean;
+}
+
+interface RegistrationWithUser {
+  id: string;
+  eventId: string;
+  userId?: string;
+  displayName?: string;
+  email?: string;
+  status: RegistrationStatus;
+  registeredAt: string;
+  checkedInAt?: string;
+  paymentStatus?: string;
+}
 
 interface EventDetailData {
   event: OrganizerEvent;
