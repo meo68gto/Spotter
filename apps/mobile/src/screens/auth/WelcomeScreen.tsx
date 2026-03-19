@@ -4,6 +4,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Button } from '../../components/Button';
 import { stockPhotos } from '../../lib/stockPhotos';
 import { useTheme } from '../../theme/provider';
+import { flags } from '../../lib/flags';
 
 const { width } = Dimensions.get('window');
 
@@ -86,7 +87,10 @@ export function WelcomeScreen({
         </View>
         <Button title="Log In" onPress={onLogin} />
         <Button title="Create Account" onPress={onSignUp} tone="secondary" />
-        {onGuestBrowse ? <Button title="Browse as Guest" onPress={onGuestBrowse} tone="ghost" /> : null}
+        {/* EPIC 14: Guest checkout - only show if feature flag enabled */}
+        {onGuestBrowse && flags.engagementGuestCheckout ? (
+          <Button title="Browse as Guest" onPress={onGuestBrowse} tone="ghost" />
+        ) : null}
         {onDemoMode ? <Button title="Explore Demo Mode" onPress={onDemoMode} tone="ghost" /> : null}
       </View>
     </View>

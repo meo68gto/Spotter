@@ -9,7 +9,8 @@ export const flags = {
   matchingV2: asBool(process.env.EXPO_PUBLIC_FLAG_MATCHING_V2, false),
   videoPipeline: asBool(process.env.EXPO_PUBLIC_FLAG_VIDEO_PIPELINE, true),
   engagementAsyncAnswers: asBool(process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_ASYNC_ANSWERS, true),
-  engagementGuestCheckout: asBool(process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_GUEST_CHECKOUT, true),
+  // EPIC 14: Guest checkout disabled by default - backend functions require auth
+  engagementGuestCheckout: asBool(process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_GUEST_CHECKOUT, false),
   engagementPublicFeed: asBool(process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_PUBLIC_FEED, true),
   engagementVideoCallDaily: asBool(process.env.EXPO_PUBLIC_FLAG_ENGAGEMENT_VIDEO_CALL_DAILY, true),
   inboxV2: asBool(process.env.EXPO_PUBLIC_FLAG_INBOX_V2, true),
