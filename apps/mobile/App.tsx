@@ -17,10 +17,11 @@ import { WelcomeScreen } from './src/screens/auth/WelcomeScreen';
 import { DashboardScreen, DeepLinkTarget } from './src/screens/DashboardScreen';
 import { LegalConsentScreen } from './src/screens/LegalConsentScreen';
 import { OnboardingWizardScreenPhase1 } from './src/screens/onboarding/OnboardingWizardScreenPhase1';
+import { GuestFlow } from './src/screens/guest';
 import { ThemeProvider } from './src/theme/provider';
 import { env, validateMobileEnv } from './src/types/env';
 
-type Stage = 'splash' | 'welcome' | 'login' | 'signup' | 'legal' | 'onboarding' | 'dashboard';
+type Stage = 'splash' | 'welcome' | 'login' | 'signup' | 'legal' | 'onboarding' | 'dashboard' | 'guest';
 
 const SPLASH_MIN_MS = 900;
 const sentryEnabled = Boolean(env.sentryDsnMobile);
@@ -90,6 +91,7 @@ function RootApp() {
     if (rawPath === 'signup') return { authStage: 'signup' };
 
     if (rawPath === 'home') return { tabTarget: 'home' };
+    if (rawPath === 'feed') return { tabTarget: 'feed' };
     if (rawPath === 'coaching' || rawPath.startsWith('coaching/')) return { tabTarget: 'coaching' };
     if (rawPath === 'ask') return { tabTarget: 'ask' };
     if (rawPath === 'requests') return { tabTarget: 'requests' };
@@ -205,7 +207,13 @@ function RootApp() {
     if (stage === 'splash') return <SplashScreen subtitle="Loading Spotter" />;
     if (stage === 'login') return <LoginScreen onSwitchToSignUp={() => setStage('signup')} onDemoMode={() => setDemoMode(true)} />;
     if (stage === 'signup') return <SignUpScreen onSwitchToLogin={() => setStage('login')} />;
-    return <WelcomeScreen onLogin={() => setStage('login')} onSignUp={() => setStage('signup')} onDemoMode={() => setDemoMode(true)} />;
+    if (stage === 'guest') return (
+      <GuestFlow
+        onSignIn={() => setStage('login')}
+        onComplete={() => setStage('welcome')}
+      />
+    );
+    return <WelcomeScreen onLogin={() => setStage('login')} onSignUp={() => setStage('signup')} onDemoMode={() => setDemoMode(true)} onGuestBrowse={() => setStage('guest')} />;
   }
 
   if (stage === 'splash') return <SplashScreen />;

@@ -16,11 +16,13 @@ type Panel = {
 export function WelcomeScreen({
   onLogin,
   onSignUp,
-  onDemoMode
+  onDemoMode,
+  onGuestBrowse
 }: {
   onLogin: () => void;
   onSignUp: () => void;
   onDemoMode?: () => void;
+  onGuestBrowse?: () => void;
 }) {
   const { tokens } = useTheme();
   const [index, setIndex] = useState(0);
@@ -84,6 +86,7 @@ export function WelcomeScreen({
         </View>
         <Button title="Log In" onPress={onLogin} />
         <Button title="Create Account" onPress={onSignUp} tone="secondary" />
+        {onGuestBrowse ? <Button title="Browse as Guest" onPress={onGuestBrowse} tone="ghost" /> : null}
         {onDemoMode ? <Button title="Explore Demo Mode" onPress={onDemoMode} tone="ghost" /> : null}
       </View>
     </View>

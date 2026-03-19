@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { HomeScreen } from './HomeScreen';
+import { FeedScreen } from './FeedScreen';
 import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
 import { AskScreen } from './AskScreen';
 import { RequestsScreen } from './RequestsScreen';
@@ -24,11 +25,12 @@ import {
   OrganizerEventDetailScreen,
   OrganizerRegistrationListScreen
 } from './dashboard/organizer';
+import { VideoScreen } from './VideoScreen';
 import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
-export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network' | 'events' | 'organizer';
+export type DeepLinkTarget = 'home' | 'feed' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network' | 'events' | 'organizer' | 'videos';
 
 // BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events for Phase 2
 // Previously cut: feed, matches, videos, progress, expert console, call room, inbox
@@ -36,6 +38,7 @@ export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'session
 
 type TabKey =
   | 'home'
+  | 'feed'
   | 'coaching'
   | 'ask'
   | 'requests'
@@ -45,7 +48,8 @@ type TabKey =
   | 'rounds'
   | 'network'
   | 'events'
-  | 'organizer';
+  | 'organizer'
+  | 'videos';
 
 type Props = {
   session: Session;
@@ -64,14 +68,18 @@ type NavItem = {
   mobilePrimary?: boolean;
 };
 
+// EPIC 14: Added Feed tab for content discovery
+// EPIC 17: Added Videos tab for video content & analysis
 // REPOSITIONED: Coaching moved from 'core' to 'account' group (Epic 8)
 // ADDED: Events to core group
 // ADDED: Organizer to account group
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
+  { key: 'feed', label: 'Feed', group: 'core', mobilePrimary: true },
   { key: 'discover', label: 'Discover', group: 'core', mobilePrimary: true },
   { key: 'rounds', label: 'Rounds', group: 'core', mobilePrimary: true },
   { key: 'events', label: 'Events', group: 'core', mobilePrimary: true },
+  { key: 'videos', label: 'Videos', group: 'core', mobilePrimary: true },
   { key: 'ask', label: 'Ask', group: 'core', mobilePrimary: true },
   { key: 'requests', label: 'Requests', group: 'core', mobilePrimary: true },
   { key: 'sessions', label: 'Sessions', group: 'core', mobilePrimary: true },
@@ -89,8 +97,10 @@ const WEB_PHOTO_TILES = [
 const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
 
 const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
-  // BETA: All 11 valid destinations
+  // EPIC 14: Added feed to valid destinations
+  // EPIC 17: Added videos to valid destinations
   if (target === 'home') return 'home';
+  if (target === 'feed') return 'feed';
   if (target === 'coaching') return 'coaching';
   if (target === 'ask') return 'ask';
   if (target === 'requests') return 'requests';
@@ -101,6 +111,7 @@ const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
   if (target === 'network') return 'network';
   if (target === 'events') return 'events';
   if (target === 'organizer') return 'organizer';
+  if (target === 'videos') return 'videos';
   return 'home';
 };
 
@@ -213,8 +224,10 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   };
 
   const renderContent = () => {
+    // EPIC 14: Added Feed tab for content discovery
     // BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
+    if (tab === 'feed') return <FeedScreen session={session} onNavigate={jumpToQuickAction} />;
     if (tab === 'discover') return <DiscoveryScreen session={session} />;
     if (tab === 'network') {
       if (networkView === 'saved-members') {
@@ -312,6 +325,7 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
       );
     }
     if (tab === 'coaching') return <CoachingTabScreen session={session} />;
+    if (tab === 'videos') return <VideoScreen session={session} />;
     if (tab === 'organizer') {
       if (organizerView === 'create') {
         return (
