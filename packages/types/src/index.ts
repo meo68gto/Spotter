@@ -473,3 +473,73 @@ export {
   isValidIntroStatus,
   isValidReputationComponent,
 } from "./profile.js";
+
+// ============================================================================
+// Organizer Types Re-exports
+// ============================================================================
+
+export type {
+  // Organizer Account Types
+  OrganizerAccount,
+  OrganizerTier,
+  OrganizerStatus,
+  OrganizerWithStats,
+  OrganizerQuotaInfo,
+  // Organizer Member Types
+  OrganizerMember,
+  OrganizerRole,
+  OrganizerPermissions,
+  OrganizerMemberWithUser,
+  // Event Types
+  OrganizerEvent,
+  EventType,
+  EventStatus,
+  OrganizerEventWithCourse,
+  OrganizerEventWithStats,
+  EventTargetTiers,
+  // Registration Types
+  EventRegistration,
+  RegistrationStatus,
+  PaymentStatus,
+  RegistrationWithUser,
+  RegistrationWithEvent,
+  // Invite Types
+  OrganizerInvite,
+  InviteStatus,
+  OrganizerInviteWithEvent,
+  InviteQuotaInfo,
+  // Analytics Types
+  OrganizerAnalytics,
+  AnalyticsMetricType,
+  RegistrationMetrics,
+  AttendanceMetrics,
+  RevenueMetrics,
+  EngagementMetrics,
+  // API Key Types
+  OrganizerApiKey,
+  ApiKeyWithPermissions,
+  ApiKeyUsage,
+  // Input Types
+  CreateOrganizerInput,
+  UpdateOrganizerInput,
+  CreateEventInput,
+  UpdateEventInput,
+  RegisterForEventInput,
+  SendInviteInput,
+  CreateApiKeyInput,
+} from "./organizer.js";
+
+export {
+  // Constants
+  ORGANIZER_TIERS,
+  EVENT_TYPES,
+  EVENT_STATUSES,
+  ORGANIZER_ROLES,
+  REGISTRATION_STATUSES,
+  ANALYTICS_METRICS,
+  // Type Guards
+  isValidOrganizerTier,
+  isValidEventType,
+  isValidEventStatus,
+  isValidOrganizerRole,
+} from "./organizer.js";
