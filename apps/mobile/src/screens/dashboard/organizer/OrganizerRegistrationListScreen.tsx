@@ -83,7 +83,7 @@ export function OrganizerRegistrationListScreen({ session, eventId, onBack }: Pr
     if (!selectedEventId) return;
 
     try {
-      const response = await invokeFunction<RegistrationData>('organizer-registrations/list', {
+      const response = await invokeFunction<RegistrationData>('organizer-registrations', {
         method: 'GET',
         params: { 
           eventId: selectedEventId,
