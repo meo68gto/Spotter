@@ -624,3 +624,58 @@ export {
   formatMatchScore,
   generateMatchReasoning,
 } from "./matching.js";
+
+// ============================================================================
+// Round Coordination Types Re-exports
+// ============================================================================
+
+export type {
+  // Round Types
+  Round,
+  RoundWithCourse,
+  RoundStatus,
+  // Invitation Types
+  RoundInvitation,
+  RoundInvitationWithRound,
+  InvitationStatus,
+  // Participant Types
+  RoundParticipant,
+  RoundParticipantWithUser,
+  // Input Types
+  CreateRoundInput,
+  UpdateRoundInput,
+  InviteToRoundInput,
+  RespondToRoundInput,
+  RoundFilters,
+  // Response Types
+  RoundApiResponse,
+  InvitationApiResponse,
+  RoundListResponse,
+  // Preference Types
+  CartPreference,
+} from "./rounds.js";
+
+export {
+  // Constants
+  CART_PREFERENCE_OPTIONS,
+  ROUND_STATUS_META,
+  INVITATION_STATUS_META,
+  ROUND_DEFAULTS,
+  VALID_MAX_PLAYERS,
+  // Type Guards
+  isValidRoundStatus,
+  isValidInvitationStatus,
+  isValidCartPreference,
+  isValidMaxPlayers,
+  canJoinRound,
+  canEditRound,
+  canCancelRound,
+} from "./rounds.js";
+
+// ============================================================================
+// Golf/Course Types Re-exports (needed for rounds)
+// ============================================================================
+
+export type {
+  Course,
+} from "./golf.js";

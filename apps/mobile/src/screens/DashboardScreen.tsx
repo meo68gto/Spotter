@@ -7,15 +7,20 @@ import { AskScreen } from './AskScreen';
 import { RequestsScreen } from './RequestsScreen';
 import { SessionsScreen } from './SessionsScreen';
 import { ProfileScreen } from './ProfileScreen';
+import { DiscoveryScreen } from './discovery/DiscoveryScreen';
+import { MatchingScreen } from './matching/MatchingScreen';
+import { RoundsScreen } from './rounds/RoundsScreen';
+import { CreateRoundScreen } from './rounds/CreateRoundScreen';
+import { RoundInvitationsScreen } from './rounds/RoundInvitationsScreen';
 import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
-export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile';
+export type DeepLinkTarget = 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds';
 
-// BETA SCOPE: 6 primary tabs only
-// Cut from beta: network, events, discover, feed, matches, videos, progress, expert console, call room, inbox
-// Kept: home, coaching, ask, requests, sessions, profile
+// BETA SCOPE: 8 tabs including Discovery and Rounds for Phase 2
+// Cut from beta: network, events, feed, matches, videos, progress, expert console, call room, inbox
+// Kept: home, coaching, ask, requests, sessions, profile, discover, rounds
 
 type TabKey =
   | 'home'
@@ -23,7 +28,9 @@ type TabKey =
   | 'ask'
   | 'requests'
   | 'sessions'
-  | 'profile';
+  | 'profile'
+  | 'discover'
+  | 'rounds';
 
 type Props = {
   session: Session;
@@ -38,17 +45,17 @@ type NavItem = {
   mobilePrimary?: boolean;
 };
 
-// BETA NAV: 6 primary tabs only (coaching beta)
+// BETA NAV: 8 primary tabs including Discovery and Rounds (Phase 2)
 const NAV_ITEMS: NavItem[] = [
   { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
+  { key: 'discover', label: 'Discover', group: 'core', mobilePrimary: true },
+  { key: 'rounds', label: 'Rounds', group: 'core', mobilePrimary: true },
   { key: 'coaching', label: 'Coaching', group: 'core', mobilePrimary: true },
   { key: 'ask', label: 'Ask', group: 'core', mobilePrimary: true },
   { key: 'requests', label: 'Requests', group: 'core', mobilePrimary: true },
   { key: 'sessions', label: 'Sessions', group: 'core', mobilePrimary: true },
   { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true }
 ];
-
-// BETA ONLY - 6 tabs. All other features cut for launch.
 
 const WEB_PHOTO_TILES = [
   { label: 'Golf Pairing', image: stockPhotos.dashboardHeroGolf },
@@ -59,18 +66,22 @@ const WEB_PHOTO_TILES = [
 const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
 
 const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
-  // BETA: Only 6 valid destinations
+  // BETA: All 8 valid destinations
   if (target === 'home') return 'home';
   if (target === 'coaching') return 'coaching';
   if (target === 'ask') return 'ask';
   if (target === 'requests') return 'requests';
   if (target === 'sessions') return 'sessions';
   if (target === 'profile') return 'profile';
+  if (target === 'discover') return 'discover';
+  if (target === 'rounds') return 'rounds';
   return 'home';
 };
 
 export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
   const [tab, setTab] = useState<TabKey>('home');
+  const [roundsView, setRoundsView] = useState<'list' | 'create' | 'invitations' | 'detail'>('list');
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
 
   useEffect(() => {
     const bootstrapFlags = async () => {
@@ -90,9 +101,53 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
 
   const jumpToQuickAction = (target: DeepLinkTarget) => setTab(mapDeepLinkToTab(target));
 
+  const handleCreateRound = () => {
+    setRoundsView('create');
+  };
+
+  const handleRoundPress = (roundId: string) => {
+    setSelectedRoundId(roundId);
+    setRoundsView('detail');
+  };
+
+  const handleRoundComplete = () => {
+    setRoundsView('list');
+  };
+
+  const handleCancelCreate = () => {
+    setRoundsView('list');
+  };
+
   const renderContent = () => {
-    // BETA SCOPE: 6 tabs only (coaching beta)
+    // BETA SCOPE: 8 tabs including Discovery and Rounds
     if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
+    if (tab === 'discover') return <DiscoveryScreen session={session} />;
+    if (tab === 'rounds') {
+      if (roundsView === 'create') {
+        return (
+          <CreateRoundScreen
+            session={session}
+            onComplete={handleRoundComplete}
+            onCancel={handleCancelCreate}
+          />
+        );
+      }
+      if (roundsView === 'invitations') {
+        return (
+          <RoundInvitationsScreen
+            session={session}
+            onRoundPress={handleRoundPress}
+          />
+        );
+      }
+      return (
+        <RoundsScreen
+          session={session}
+          onCreateRound={handleCreateRound}
+          onRoundPress={(round) => handleRoundPress(round.id)}
+        />
+      );
+    }
     if (tab === 'coaching') return <CoachingScreen session={session} />;
     if (tab === 'ask') return <AskScreen session={session} />;
     if (tab === 'requests') return <RequestsScreen session={session} />;
@@ -107,10 +162,14 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
           <Text style={styles.webBrand}>Spotter</Text>
           <Text style={styles.sidebarSubtitle}>Match, improve, compete.</Text>
 
-          <NavGroup title="Core" items={NAV_ITEMS.filter((item) => item.group === 'core')} activeTab={tab} onSelect={setTab} />
-          <NavGroup title="Growth" items={NAV_ITEMS.filter((item) => item.group === 'growth')} activeTab={tab} onSelect={setTab} />
-          <NavGroup title="Operations" items={NAV_ITEMS.filter((item) => item.group === 'ops')} activeTab={tab} onSelect={setTab} />
-          <NavGroup title="Account" items={NAV_ITEMS.filter((item) => item.group === 'account')} activeTab={tab} onSelect={setTab} />
+          <NavGroup title="Core" items={NAV_ITEMS.filter((item) => item.group === 'core')} activeTab={tab} onSelect={(newTab) => {
+            setTab(newTab);
+            setRoundsView('list');
+          }} />
+          <NavGroup title="Account" items={NAV_ITEMS.filter((item) => item.group === 'account')} activeTab={tab} onSelect={(newTab) => {
+            setTab(newTab);
+            setRoundsView('list');
+          }} />
         </View>
 
         <View style={styles.webMain}>
@@ -151,7 +210,16 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
           const label = NAV_ITEMS.find((item) => item.key === key)?.label ?? key;
           const active = tab === key;
           return (
-            <TouchableOpacity key={key} onPress={() => setTab(key)} style={styles.mobileTabButton}>
+            <TouchableOpacity 
+              key={key} 
+              onPress={() => {
+                setTab(key);
+                if (key !== 'rounds') {
+                  setRoundsView('list');
+                }
+              }} 
+              style={styles.mobileTabButton}
+            >
               <View style={[styles.mobileTabIcon, active ? styles.mobileTabIconActive : null]}>
                 <Text style={[styles.mobileTabIconText, active ? styles.mobileTabIconTextActive : null]}>{label.charAt(0)}</Text>
               </View>
@@ -160,8 +228,6 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
           );
         })}
       </View>
-
-      {/* BETA: No "More" menu - all 7 beta tabs are in the tab bar */}
     </View>
   );
 }
@@ -250,17 +316,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800'
   },
-  hamburgerButton: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: palette.sky300,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.white
-  },
-  hamburgerText: { fontSize: 24, color: palette.navy600, marginTop: -2 },
   headerTitle: {
     color: palette.ink900,
     fontFamily: font.display,
@@ -302,14 +357,6 @@ const styles = StyleSheet.create({
   mobileTabIconActive: { backgroundColor: palette.navy600 },
   mobileTabIconText: { color: palette.ink700, fontWeight: '700', fontSize: 12 },
   mobileTabIconTextActive: { color: palette.white },
-  mobileTabText: { color: palette.ink700, fontSize: 12, fontWeight: '600' },
+  mobileTabText: { color: palette.ink700, fontSize: 10, fontWeight: '600' },
   mobileTabTextActive: { color: palette.navy600 },
-  menuOverlay: { flex: 1, justifyContent: 'flex-end' },
-  menuBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(16, 42, 67, 0.4)' },
-  menuPanel: { backgroundColor: palette.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, paddingBottom: spacing.xxl },
-  menuTitle: { fontSize: 18, fontWeight: '800', color: palette.ink900, marginBottom: spacing.sm },
-  menuItem: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.sm, marginBottom: 6 },
-  menuItemActive: { backgroundColor: palette.sky100 },
-  menuItemText: { color: palette.ink700, fontWeight: '600' },
-  menuItemTextActive: { color: palette.navy700 }
 });
