@@ -91,7 +91,7 @@ export function GuestCheckoutScreen({
     loadEventInfo();
   }, [eventId]);
 
-  // Create order using payments-review-order-create
+  // Create order using guest-payment-intent endpoint
   const createOrder = useCallback(async () => {
     if (!eventInfo) return;
 
@@ -99,23 +99,16 @@ export function GuestCheckoutScreen({
     setError(null);
 
     try {
-      // For guest checkout, we need to adapt the payment flow
-      // The payments-review-order-create expects authenticated user
-      // We'll use a guest-specific endpoint or modify the flow
-
-      // First, let's try to create a payment intent directly for guests
-      // This is a simplified approach - in production, you'd have a dedicated guest-payment endpoint
+      // Use the new guest-payment-intent endpoint
       const response = await invokeGuestFunction<{
         data: {
-          id: string;
           clientSecret: string;
-          amount_cents: number;
-          currency: string;
+          paymentIntentId: string;
+          orderId: string;
         };
-      }>('payments-review-order-create', {
+      }>('guest-payment-intent', {
         method: 'POST',
         body: {
-          // For guest checkout, we pass guest session info
           guestSessionId,
           email,
           eventId,
@@ -124,57 +117,23 @@ export function GuestCheckoutScreen({
         },
       });
 
-      if (!response.data?.id) {
+      if (!response.data?.orderId) {
         throw new Error('Failed to create order');
       }
 
-      setReviewOrderId(response.data.id);
+      setReviewOrderId(response.data.orderId);
       setOrderInfo({
-        id: response.data.id,
+        id: response.data.orderId,
         clientSecret: response.data.clientSecret,
-        amountCents: response.data.amount_cents,
-        currency: response.data.currency,
+        amountCents: eventInfo.price * 100,
+        currency: eventInfo.currency,
       });
       setStatus('idle');
     } catch (err) {
-      // If the authenticated endpoint fails, fall back to creating a simple payment intent
-      // This handles the guest case where no auth token is available
-      try {
-        const response = await invokeGuestFunction<{
-          clientSecret: string;
-          paymentIntentId: string;
-        }>('stripe-create-payment-intent', {
-          method: 'POST',
-          body: {
-            guestSessionId,
-            email,
-            eventId,
-            amount: eventInfo.price * 100,
-            currency: eventInfo.currency,
-            metadata: {
-              guest_session_id: guestSessionId,
-              event_id: eventId,
-              email,
-            },
-          },
-        });
-
-        // Use the actual payment intent ID from Stripe as the order ID
-        const orderId = response.paymentIntentId;
-        setReviewOrderId(orderId);
-        setOrderInfo({
-          id: orderId,
-          clientSecret: response.clientSecret,
-          amountCents: eventInfo.price * 100,
-          currency: eventInfo.currency,
-        });
-        setStatus('idle');
-      } catch (fallbackErr) {
-        const message = fallbackErr instanceof Error ? fallbackErr.message : 'Failed to create order';
-        setError(message);
-        setStatus('error');
-        Alert.alert('Order Creation Failed', message);
-      }
+      const message = err instanceof Error ? err.message : 'Failed to create order';
+      setError(message);
+      setStatus('error');
+      Alert.alert('Order Creation Failed', message);
     }
   }, [eventInfo, guestSessionId, email, eventId]);
 
@@ -208,36 +167,17 @@ export function GuestCheckoutScreen({
     }
   }, [orderInfo, eventInfo, processPayment]);
 
-  // Confirm order using payments-review-order-confirm
-  const confirmOrder = useCallback(async () => {
+  // Confirm order - webhook handles backend confirmation
+  const confirmOrder = useCallback(() => {
     if (!reviewOrderId) return;
-
-    try {
-      await invokeGuestFunction<{ data: { id: string; status: string } }>('payments-review-order-confirm', {
-        method: 'POST',
-        body: {
-          reviewOrderId,
-          status: 'paid',
-        },
-      });
-
-      setStatus('success');
-      Alert.alert(
-        'Payment Successful!',
-        'Your registration is complete. Check your email for your ticket.',
-        [{ text: 'View Ticket', onPress: () => onComplete(reviewOrderId) }]
-      );
-    } catch (err) {
-      // Even if confirmation fails, payment succeeded
-      // Log this for manual reconciliation
-      console.warn('Order confirmation failed after payment:', err);
-      setStatus('success');
-      Alert.alert(
-        'Payment Successful!',
-        'Your payment was processed. Your ticket will be emailed shortly.',
-        [{ text: 'OK', onPress: () => onComplete(reviewOrderId) }]
-      );
-    }
+    // Webhook will update order status in backend
+    // Just show success to user
+    setStatus('success');
+    Alert.alert(
+      'Payment Successful!',
+      'Your registration is complete. Check your email for your ticket.',
+      [{ text: 'View Ticket', onPress: () => onComplete(reviewOrderId) }]
+    );
   }, [reviewOrderId, onComplete]);
 
   // Format price
