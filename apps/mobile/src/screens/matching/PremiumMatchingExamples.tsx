@@ -275,7 +275,7 @@ export function DiscoveryWithFiltersExample() {
         onSaveFilters={handleSaveFilters}
       />
       
-      {</* Golfers list would go here */}>
+      {/* Golfers list would go here */}
       <View style={styles.placeholderList}>
         <Text style={styles.placeholderText}>Discovery results would appear here</Text>
         <Text style={styles.placeholderSubtext}>Active filters: {activeFilterCount}</Text>

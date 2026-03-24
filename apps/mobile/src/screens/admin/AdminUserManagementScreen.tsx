@@ -363,10 +363,7 @@ export function AdminUserManagementScreen({ onBack }: AdminUserManagementScreenP
                   <Text style={[styles.detailLabel, { color: tokens.textMuted }]}>
                     User ID
                   </Text>
-                  <Text
-                    style={[styles.detailValue, { color: tokens.text }]}>
-                    selectable
-                  >
+                  <Text style={[styles.detailValue, { color: tokens.text }]}>
                     {selectedUser.id}
                   </Text>
                 </View>

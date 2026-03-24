@@ -794,27 +794,15 @@ export type {
   TierStatus,
   TierFeatures,
   MembershipTier,
-  UserTierInfo,
-  TierValidationResult,
+  UserTierState,
   UserWithTier,
 } from "./tier.js";
 
 export {
   TIER_DEFINITIONS,
   TIER_PRICES,
-  TIER_ORDER,
-  FREE_TIER,
-  SELECT_TIER,
-  SUMMIT_TIER,
-  PAID_TIERS,
   isValidTier,
   isPaidTier,
-  getTierBySlug,
-  getNextTier,
-  formatTierPrice,
-  getTierFeatures,
-  hasTierFeature,
-  compareTiers,
 } from "./tier.js";
 
 // ============================================================================

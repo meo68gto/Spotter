@@ -117,7 +117,8 @@ export function TrustBadgeDisplay({
         {!showAll && hiddenCount > 0 && (
           <View style={[
             styles.moreBadge,
-            size === 'sm' > { paddingHorizontal: spacing.xs, paddingVertical: 4 }
+            size === 'sm' 
+              ? { paddingHorizontal: spacing.xs, paddingVertical: 4 }
               : size === 'md' 
               ? { paddingHorizontal: spacing.sm, paddingVertical: 6 }
               : { paddingHorizontal: spacing.md, paddingVertical: 8 }
