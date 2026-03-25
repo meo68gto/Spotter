@@ -195,7 +195,7 @@ function RootApp() {
           </Text>
         ))}
         <View style={styles.actions}>
-          <Button title="Continue in Demo Mode" onPress={() => setDemoMode(true)} />
+          {__DEV__ && <Button title="Continue in Demo Mode" onPress={() => setDemoMode(true)} />}
           {__DEV__ && sentryEnabled ? (
             <Button
               title="Crash Test (Sentry)"
@@ -216,7 +216,7 @@ function RootApp() {
     }
 
     if (stage === 'splash') return <SplashScreen subtitle="Loading Spotter" />;
-    if (stage === 'login') return <LoginScreen onSwitchToSignUp={() => setStage('signup')} onDemoMode={() => setDemoMode(true)} />;
+    if (stage === 'login') return <LoginScreen onSwitchToSignUp={() => setStage('signup')} onDemoMode={__DEV__ ? () => setDemoMode(true) : undefined} />;
     if (stage === 'signup') return <SignUpScreen onSwitchToLogin={() => setStage('login')} />;
     if (stage === 'guest') return (
       <GuestFlow
@@ -225,7 +225,7 @@ function RootApp() {
         initialVerificationToken={verificationToken || undefined}
       />
     );
-    return <WelcomeScreen onLogin={() => setStage('login')} onSignUp={() => setStage('signup')} onDemoMode={() => setDemoMode(true)} onGuestBrowse={() => setStage('guest')} />;
+    return <WelcomeScreen onLogin={() => setStage('login')} onSignUp={() => setStage('signup')} onDemoMode={__DEV__ ? () => setDemoMode(true) : undefined} onGuestBrowse={() => setStage('guest')} />;
   }
 
   if (stage === 'splash') return <SplashScreen />;
@@ -254,14 +254,19 @@ function RootApp() {
   return <StripeProvider publishableKey={env.stripePublishableKey}>{app}</StripeProvider>;
 }
 
+/**
+ * Demo session for development-only exploration mode.
+ * This session is only accessible in __DEV__ builds.
+ * NEVER shipped to production.
+ */
 const demoSession: Session = {
-  access_token: 'demo-access-token',
-  refresh_token: 'demo-refresh-token',
+  access_token: 'dev-only-demo-access-token',
+  refresh_token: 'dev-only-demo-refresh-token',
   expires_in: 3600,
   expires_at: Math.floor(Date.now() / 1000) + 3600,
   token_type: 'bearer',
   user: {
-    id: 'demo-user',
+    id: 'dev-demo-user',
     aud: 'authenticated',
     role: 'authenticated',
     email: 'demo@spotter.app',

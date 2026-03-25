@@ -66,6 +66,10 @@ export const verifyStripeWebhookSignature = async (
   const signatures = pairs.filter(([key]) => key === 'v1').map(([, value]) => value);
   if (!timestamp || signatures.length === 0) return false;
 
+  // Reject webhooks with timestamps older than 5 minutes (replay attack protection)
+  const ageSeconds = Math.floor(Date.now() / 1000) - parseInt(timestamp, 10);
+  if (isNaN(ageSeconds) || ageSeconds > 300 || ageSeconds < -5) return false;
+
   const payload = `${timestamp}.${rawBody}`;
   const cryptoKey = await crypto.subtle.importKey(
     'raw',

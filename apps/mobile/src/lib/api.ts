@@ -20,7 +20,7 @@ export const invokeFunction = async <T>(
   }
 ): Promise<T> => {
   const token = (await supabase.auth.getSession()).data.session?.access_token;
-  if (token?.startsWith('demo-')) {
+  if (token?.startsWith('dev-only-demo-')) {
     return mockFunctionResponse<T>(path, options?.body);
   }
   if (!token) {
@@ -44,7 +44,7 @@ export const invokeGuestFunction = async <T>(
 ): Promise<T> => {
   // Check if we're in demo mode
   const token = (await supabase.auth.getSession()).data.session?.access_token;
-  if (token?.startsWith('demo-')) {
+  if (token?.startsWith('dev-only-demo-')) {
     return mockFunctionResponse<T>(path, options?.body);
   }
 

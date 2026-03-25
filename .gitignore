@@ -14,3 +14,6 @@ apps/mobile/.expo-shared
 supabase/.branches
 supabase/.temp
 .artifacts
+
+# Batcave vault (encrypted credentials)
+.vault/
