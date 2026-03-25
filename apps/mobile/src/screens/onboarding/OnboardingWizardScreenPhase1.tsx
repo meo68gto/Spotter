@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -117,6 +119,7 @@ const TEE_TIME_PREFERENCES = [
 
 // Step configuration
 const STEPS = [
+  { key: 'age', name: 'Age Verification', photo: stockPhotos.onboardingSport },
   { key: 'tier', name: 'Membership', photo: stockPhotos.onboardingSport },
   { key: 'golf', name: 'Golf Identity', photo: stockPhotos.onboardingSkill },
   { key: 'professional', name: 'Professional', photo: stockPhotos.onboardingLocation },
@@ -129,6 +132,10 @@ type StepKey = typeof STEPS[number]['key'];
 interface OnboardingDraft {
   // Tier selection
   tierSlug: TierSlug;
+
+  // COPPA age verification
+  dateOfBirth: string; // ISO date string 'YYYY-MM-DD'
+  ageVerified: boolean; // true once age gate passed
 
   // Golf identity
   handicapBand: string;
@@ -162,6 +169,8 @@ interface OnboardingDraft {
 
 const initialDraft: OnboardingDraft = {
   tierSlug: 'free',
+  dateOfBirth: '',
+  ageVerified: false,
   handicapBand: '',
   typicalScore: 0,
   homeCourse: '',
@@ -215,25 +224,50 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
   // Validation per step
   const validateStep = (): boolean => {
     switch (step) {
-      case 0: // Tier
+      case 0: // COPPA Age Gate
+        if (!draft.dateOfBirth) {
+          Alert.alert('Date of birth required', 'Please enter your date of birth to continue.');
+          return false;
+        }
+        if (!draft.ageVerified) {
+          // Calculate age
+          const dob = new Date(draft.dateOfBirth);
+          const today = new Date();
+          let age = today.getFullYear() - dob.getFullYear();
+          const monthDiff = today.getMonth() - dob.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+            age--;
+          }
+          if (age < 18) {
+            Alert.alert(
+              'Not eligible',
+              'Spotter is available only to members who are 18 years of age or older. Please contact support@spotter.golf if you believe this is an error.',
+              [{ text: 'OK' }]
+            );
+            return false;
+          }
+        }
+        return true;
+
+      case 1: // Tier
         if (!draft.tierSlug) {
           Alert.alert('Select a tier', 'Choose your membership level to continue.');
           return false;
         }
         return true;
 
-      case 1: // Golf Identity
+      case 2: // Golf Identity
         if (!draft.handicapBand) {
           Alert.alert('Select skill level', 'Choose your handicap band to continue.');
           return false;
         }
         return true;
 
-      case 2: // Professional
+      case 3: // Professional
         // Optional step - allow skipping
         return true;
 
-      case 3: // Networking
+      case 4: // Networking
         if (!draft.networkingIntent) {
           Alert.alert('Select networking intent', 'Let us know what you\'re looking for.');
           return false;
@@ -253,6 +287,10 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
     try {
       // Epic 1: Comprehensive onboarding payload
       const payload = {
+        // COPPA age verification
+        dateOfBirth: draft.dateOfBirth,
+        ageVerified: draft.ageVerified,
+
         // Tier selection
         tierSlug: draft.tierSlug,
 
@@ -343,6 +381,112 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
         return (
           <ScrollView style={styles.panel} showsVerticalScrollIndicator={false}>
             <Text style={[styles.stepDescription, { color: tokens.textSecondary }]}>
+              We are required to verify your age before creating an account, in compliance with applicable law.
+            </Text>
+
+            <Text style={[styles.sectionLabel, { color: tokens.text }]}>
+              Date of Birth
+            </Text>
+            <Text style={[styles.helperText, { color: tokens.textMuted }]}>
+              Spotter is available only to members 18 years of age or older.
+            </Text>
+            <TextInput
+              value={draft.dateOfBirth}
+              onChangeText={(text) => {
+                // Auto-format as YYYY-MM-DD
+                let cleaned = text.replace(/[^0-9]/g, '');
+                let formatted = cleaned;
+                if (cleaned.length > 4) {
+                  formatted = cleaned.slice(0, 4) + '-' + cleaned.slice(4);
+                }
+                if (cleaned.length > 6) {
+                  formatted = cleaned.slice(0, 4) + '-' + cleaned.slice(4, 6) + '-' + cleaned.slice(6, 8);
+                }
+                setDraft((prev) => ({ ...prev, dateOfBirth: formatted.slice(0, 10) }));
+              }}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={tokens.textMuted}
+              keyboardType="number-pad"
+              maxLength={10}
+              style={[
+                styles.input,
+                {
+                  borderColor: tokens.borderStrong,
+                  color: tokens.text,
+                  backgroundColor: tokens.backgroundElevated,
+                },
+              ]}
+            />
+
+            <View style={[styles.ageGateDisclosure, { backgroundColor: tokens.backgroundElevated, borderColor: tokens.border }]}>
+              <Text style={[styles.disclosureTitle, { color: tokens.text }]}>
+                Privacy Notice
+              </Text>
+              <Text style={[styles.disclosureText, { color: tokens.textSecondary }]}>
+                Your date of birth is collected solely to verify eligibility and is not used for any other purpose without your consent. We do not knowingly collect personal information from individuals under 18. For more information, see our{' '}
+                <Text style={[styles.disclosureLink, { color: tokens.primary }]}>
+                  Privacy Policy
+                </Text>{' '}
+                at spotter.golf/legal/privacy.
+              </Text>
+              <Text style={[styles.disclosureText, { color: tokens.textSecondary, marginTop: 8 }]}>
+                You have the right to know what data we collect, to access it, and to request its deletion at any time. Contact us at{' '}
+                <Text style={[styles.disclosureLink, { color: tokens.primary }]}>
+                  privacy@spotter.golf
+                </Text>{' '}
+                for any privacy-related requests.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.verifyButton}
+              onPress={() => {
+                if (!draft.dateOfBirth) {
+                  Alert.alert('Date of birth required', 'Please enter your date of birth to continue.');
+                  return;
+                }
+                const dob = new Date(draft.dateOfBirth);
+                const today = new Date();
+                if (isNaN(dob.getTime())) {
+                  Alert.alert('Invalid date', 'Please enter a valid date in YYYY-MM-DD format.');
+                  return;
+                }
+                if (dob > today) {
+                  Alert.alert('Invalid date', 'Date of birth cannot be in the future.');
+                  return;
+                }
+                let age = today.getFullYear() - dob.getFullYear();
+                const monthDiff = today.getMonth() - dob.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                  age--;
+                }
+                if (age < 18) {
+                  Alert.alert(
+                    'Not eligible',
+                    'Spotter is available only to members who are 18 years of age or older. Please contact support@spotter.golf if you believe this is an error.',
+                    [{ text: 'OK' }]
+                  );
+                  return;
+                }
+                setDraft((prev) => ({ ...prev, ageVerified: true }));
+                Alert.alert(
+                  'Age verified',
+                  `You are ${age} years old. Welcome to Spotter!`,
+                  [{ text: 'Continue', onPress: () => setStep((prev) => Math.min(prev + 1, STEPS.length - 1)) }]
+                );
+              }}
+            >
+              <Text style={[styles.verifyButtonText, { color: '#fff' }]}>
+                Verify Age
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        );
+
+      case 1:
+        return (
+          <ScrollView style={styles.panel} showsVerticalScrollIndicator={false}>
+            <Text style={[styles.stepDescription, { color: tokens.textSecondary }]}>
               Choose your membership tier. You can only connect with members in the same tier.
             </Text>
 
@@ -420,7 +564,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
           </ScrollView>
         );
 
-      case 1:
+      case 2:
         return (
           <ScrollView style={styles.panel} showsVerticalScrollIndicator={false}>
             <Text style={[styles.stepDescription, { color: tokens.textSecondary }]}>
@@ -522,7 +666,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
           </ScrollView>
         );
 
-      case 2:
+      case 3:
         return (
           <ScrollView style={styles.panel} showsVerticalScrollIndicator={false}>
             <Text style={[styles.stepDescription, { color: tokens.textSecondary }]}>
@@ -605,7 +749,7 @@ export function OnboardingWizardScreenPhase1({ onComplete }: { onComplete: () =>
           </ScrollView>
         );
 
-      case 3:
+      case 4:
         return (
           <ScrollView style={styles.panel} showsVerticalScrollIndicator={false}>
             <Text style={[styles.stepDescription, { color: tokens.textSecondary }]}>
@@ -1134,5 +1278,36 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 8,
     marginBottom: 4,
+  },
+  // COPPA Age Gate
+  ageGateDisclosure: {
+    marginTop: 20,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  disclosureTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  disclosureText: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  disclosureLink: {
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  verifyButton: {
+    marginTop: 20,
+    backgroundColor: '#16a34a',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  verifyButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

@@ -15,6 +15,8 @@ const corsHeaders = {
 // ============================================================================
 
 interface OnboardingPayload {
+  dateOfBirth: string; // ISO date 'YYYY-MM-DD' — COPPA age verification
+  ageVerified: boolean; // true if passed the age gate
   tierSlug: string;
   golfIdentity: {
     handicapBand: string; // 'beginner', 'intermediate', 'advanced', 'expert'
@@ -158,6 +160,8 @@ Deno.serve(async (req) => {
         tier_status: 'active',
         city: payload.location.city || null,
         timezone: payload.location.timezone,
+        date_of_birth: payload.dateOfBirth || null,
+        age_verified: payload.ageVerified ?? false,
         updated_at: now.toISOString(),
       })
       .eq('id', user.id);
