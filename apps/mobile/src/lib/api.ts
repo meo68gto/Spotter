@@ -20,11 +20,13 @@ export const invokeFunction = async <T>(
   }
 ): Promise<T> => {
   const token = (await supabase.auth.getSession()).data.session?.access_token;
-  if (token?.startsWith('dev-only-demo-')) {
-    return mockFunctionResponse<T>(path, options?.body);
-  }
   if (!token) {
     throw new Error('Session missing. Please sign in again.');
+  }
+
+  // NEVER mock in production or non-dev builds — demo tokens must not bypass real API
+  if (process.env.NODE_ENV === 'development' && token.startsWith('dev-only-demo-')) {
+    return mockFunctionResponse<T>(path, options?.body);
   }
 
   return invokeWithToken<T>(path, token, options);

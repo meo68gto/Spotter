@@ -1,5 +1,3 @@
-import { requireKeys } from '@spotter/env';
-
 export const env = {
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
@@ -19,40 +17,40 @@ export const env = {
 };
 
 export const validateMobileEnv = (): string[] => {
-  const missing = requireKeys(
-    {
-      EXPO_PUBLIC_SUPABASE_URL: env.supabaseUrl,
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: env.supabaseAnonKey,
-      EXPO_PUBLIC_API_BASE_URL: env.apiBaseUrl,
-      EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: env.stripePublishableKey,
-      EXPO_PUBLIC_LEGAL_TOS_URL: env.legalTosUrl,
-      EXPO_PUBLIC_LEGAL_PRIVACY_URL: env.legalPrivacyUrl,
-      EXPO_PUBLIC_LEGAL_COOKIE_URL: env.legalCookieUrl,
-      EXPO_PUBLIC_LEGAL_TOS_VERSION: env.legalTosVersion,
-      EXPO_PUBLIC_LEGAL_PRIVACY_VERSION: env.legalPrivacyVersion,
-      EXPO_PUBLIC_LEGAL_COOKIE_VERSION: env.legalCookieVersion
-    },
-    [
-      'EXPO_PUBLIC_SUPABASE_URL',
-      'EXPO_PUBLIC_SUPABASE_ANON_KEY',
-      'EXPO_PUBLIC_API_BASE_URL',
-      'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY',
-      'EXPO_PUBLIC_LEGAL_TOS_URL',
-      'EXPO_PUBLIC_LEGAL_PRIVACY_URL',
-      'EXPO_PUBLIC_LEGAL_COOKIE_URL',
-      'EXPO_PUBLIC_LEGAL_TOS_VERSION',
-      'EXPO_PUBLIC_LEGAL_PRIVACY_VERSION',
-      'EXPO_PUBLIC_LEGAL_COOKIE_VERSION'
-    ]
-  );
+  const missing: string[] = [];
+
+  // Read live from process.env at call time so that tests can set vars before calling.
+  // This also ensures production always validates the actual current env state.
+  const requiredVars: Array<{ key: string; value: string }> = [
+    { key: 'EXPO_PUBLIC_SUPABASE_URL', value: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '' },
+    { key: 'EXPO_PUBLIC_SUPABASE_ANON_KEY', value: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '' },
+    { key: 'EXPO_PUBLIC_API_BASE_URL', value: process.env.EXPO_PUBLIC_API_BASE_URL ?? '' },
+    { key: 'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY', value: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '' },
+    { key: 'EXPO_PUBLIC_LEGAL_TOS_URL', value: process.env.EXPO_PUBLIC_LEGAL_TOS_URL ?? '' },
+    { key: 'EXPO_PUBLIC_LEGAL_PRIVACY_URL', value: process.env.EXPO_PUBLIC_LEGAL_PRIVACY_URL ?? '' },
+    { key: 'EXPO_PUBLIC_LEGAL_COOKIE_URL', value: process.env.EXPO_PUBLIC_LEGAL_COOKIE_URL ?? '' },
+    { key: 'EXPO_PUBLIC_LEGAL_TOS_VERSION', value: process.env.EXPO_PUBLIC_LEGAL_TOS_VERSION ?? '' },
+    { key: 'EXPO_PUBLIC_LEGAL_PRIVACY_VERSION', value: process.env.EXPO_PUBLIC_LEGAL_PRIVACY_VERSION ?? '' },
+    { key: 'EXPO_PUBLIC_LEGAL_COOKIE_VERSION', value: process.env.EXPO_PUBLIC_LEGAL_COOKIE_VERSION ?? '' },
+  ];
+
+  for (const { key, value } of requiredVars) {
+    if (!value) missing.push(key);
+  }
 
   const invalid: string[] = [];
-  if (env.supabaseUrl.includes('example.supabase.co')) invalid.push('EXPO_PUBLIC_SUPABASE_URL');
-  if (env.supabaseAnonKey.includes('placeholder')) invalid.push('EXPO_PUBLIC_SUPABASE_ANON_KEY');
-  if (env.apiBaseUrl.includes('example.supabase.co')) invalid.push('EXPO_PUBLIC_API_BASE_URL');
-  if (!/^https?:\/\//.test(env.apiBaseUrl)) invalid.push('EXPO_PUBLIC_API_BASE_URL');
-  if (env.stripePublishableKey.includes('replace_me')) invalid.push('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY');
-  if (env.appleWebClientId && !env.appleWebClientId.includes('.')) invalid.push('EXPO_PUBLIC_APPLE_WEB_CLIENT_ID');
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+  const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
+  const stripeKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+  const appleWebClientId = process.env.EXPO_PUBLIC_APPLE_WEB_CLIENT_ID ?? '';
+
+  if (supabaseUrl.includes('example.supabase.co')) invalid.push('EXPO_PUBLIC_SUPABASE_URL');
+  if (supabaseAnonKey.includes('placeholder')) invalid.push('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+  if (apiBaseUrl.includes('example.supabase.co')) invalid.push('EXPO_PUBLIC_API_BASE_URL');
+  if (apiBaseUrl && !/^https:\/\/.+/.test(apiBaseUrl)) invalid.push('EXPO_PUBLIC_API_BASE_URL');
+  if (stripeKey.includes('replace_me')) invalid.push('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+  if (appleWebClientId && !appleWebClientId.includes('.')) invalid.push('EXPO_PUBLIC_APPLE_WEB_CLIENT_ID');
 
   return [...new Set([...missing, ...invalid])];
 };

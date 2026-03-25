@@ -61,15 +61,13 @@ export function HomeScreen({
 
       setCoachId(coach.id);
 
-      const { data } = await supabase
-        .from('engagement_requests')
-        .select('id, question_text, status')
-        .eq('coach_id', coach.id)
-        .in('status', ['awaiting_expert', 'created'])
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      setPending((data ?? []) as PendingItem[]);
+      // Use the shared API layer so auth, error handling, and demo bypass are consistent.
+      // Previously this used a direct supabase.from() call, bypassing the invokeFunction middleware.
+      const pending = await invokeFunction<PendingItem[]>('coaches-pending-requests', {
+        method: 'GET',
+        params: { coachId: coach.id },
+      });
+      setPending(pending);
     } catch (error) {
       Alert.alert('Home load failed', error instanceof Error ? error.message : 'Unknown error');
     }

@@ -2,11 +2,35 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import LoginForm from './LoginForm';
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_DELETION_TOKEN = process.env.ADMIN_DELETION_TOKEN;
+
+const isConfigMissing = !ADMIN_EMAIL || !ADMIN_PASSWORD || !ADMIN_DELETION_TOKEN;
+
 export default async function AdminHome() {
+  if (isConfigMissing) {
+    return (
+      <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 400, margin: '80px auto' }}>
+        <h1 style={{ marginBottom: 8 }}>Spotter Admin</h1>
+        <p style={{ color: '#c0392b', marginBottom: 24, fontWeight: 600 }}>
+          ⚠️ Server misconfiguration: admin credentials are not configured.
+          Set <code>ADMIN_EMAIL</code>, <code>ADMIN_PASSWORD</code>, and{' '}
+          <code>ADMIN_DELETION_TOKEN</code> env vars to enable this portal.
+        </p>
+        <p style={{ color: '#486581', marginBottom: 24 }}>
+          Internal operations dashboard. Authenticate to continue.
+        </p>
+        <div style={{ padding: 16, background: '#fde8e8', borderRadius: 8, color: '#c0392b' }}>
+          Configuration missing — admin login is disabled.
+        </div>
+      </main>
+    );
+  }
+
   const cookieStore = await cookies();
   const adminToken = cookieStore.get('admin_token')?.value;
-  const expectedToken = process.env.ADMIN_DELETION_TOKEN;
-  const isAuthenticated = adminToken === expectedToken;
+  const isAuthenticated = adminToken === ADMIN_DELETION_TOKEN;
 
   if (!isAuthenticated) {
     return (

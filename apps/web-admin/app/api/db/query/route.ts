@@ -9,11 +9,15 @@ const pool = new Pool({
   password: process.env.PGPASSWORD ?? 'postgres',
 });
 
+const ADMIN_DELETION_TOKEN = process.env.ADMIN_DELETION_TOKEN;
+
 /** Auth guard: rejects if the admin token cookie doesn't match env */
 function adminGuard(request: NextRequest): NextResponse | null {
+  if (!ADMIN_DELETION_TOKEN) {
+    return NextResponse.json({ error: 'Admin not configured' }, { status: 503 });
+  }
   const adminToken = request.cookies.get('admin_token')?.value;
-  const expected = process.env.ADMIN_DELETION_TOKEN;
-  if (!adminToken || !expected || adminToken !== expected) {
+  if (!adminToken || adminToken !== ADMIN_DELETION_TOKEN) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;
@@ -48,8 +52,21 @@ export async function POST(request: NextRequest) {
 
     const client = await pool.connect();
     try {
-      // Parameterized query (sql is built from our own path builder, but we still use parameterized for safety)
+      // sql is built server-side from our own path builder; still use parameterized for safety
       const result = await client.query(sql);
+
+      // Audit log: record every DB query for compliance
+      console.info(
+        JSON.stringify({
+          type: 'admin_db_query',
+          action: 'db_select',
+          table,
+          row_count: result.rowCount ?? 0,
+          timestamp: new Date().toISOString(),
+          remote_ip: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+        })
+      );
+
       return NextResponse.json(result.rows);
     } finally {
       client.release();

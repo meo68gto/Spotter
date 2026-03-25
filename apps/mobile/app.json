@@ -52,7 +52,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        // ⚠️  Replace with your actual EAS project ID from `eas project:create` or `eas project:configure`.
+        // A fake UUID here will cause EAS Build to fail or mis-route artifacts.
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
       }
     }
   }

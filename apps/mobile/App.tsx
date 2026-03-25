@@ -1,7 +1,7 @@
 import { Session } from '@supabase/supabase-js';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import * as Linking from 'expo-linking';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Sentry from '@sentry/react-native';
 import { AppErrorBoundary } from './src/components/AppErrorBoundary';
@@ -181,9 +181,16 @@ function RootApp() {
     };
   }, [parseTarget, resolveStageForSession]);
 
+  // CRITICAL: In production, any env error is fatal — demo mode must never be available.
+  // Only __DEV__ builds may continue in demo mode for local exploration.
   if (envErrors.length) {
-    if (demoMode) {
-      return <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} deepLinkTarget={deepLinkTarget} />;
+    if (__DEV__ && demoMode) {
+      return (
+        <>
+          <DemoModeBanner onDismiss={() => setDemoMode(false)} />
+          <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} deepLinkTarget={deepLinkTarget} />
+        </>
+      );
     }
 
     return (
@@ -194,25 +201,33 @@ function RootApp() {
             - {key}
           </Text>
         ))}
-        <View style={styles.actions}>
-          {__DEV__ && <Button title="Continue in Demo Mode" onPress={() => setDemoMode(true)} />}
-          {__DEV__ && sentryEnabled ? (
-            <Button
-              title="Crash Test (Sentry)"
-              tone="secondary"
-              onPress={() => {
-                throw new Error('Sentry crash smoke test from env error screen');
-              }}
-            />
-          ) : null}
-        </View>
+        {__DEV__ && (
+          <View style={styles.actions}>
+            <Button title="Continue in Demo Mode" onPress={() => setDemoMode(true)} />
+            {sentryEnabled ? (
+              <Button
+                title="Crash Test (Sentry)"
+                tone="secondary"
+                onPress={() => {
+                  throw new Error('Sentry crash smoke test from env error screen');
+                }}
+              />
+            ) : null}
+          </View>
+        )}
       </View>
     );
   }
 
   if (!session) {
-    if (demoMode) {
-      return <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} deepLinkTarget={deepLinkTarget} />;
+    // Demo mode only allowed in __DEV__ builds
+    if (__DEV__ && demoMode) {
+      return (
+        <>
+          <DemoModeBanner onDismiss={() => setDemoMode(false)} />
+          <DashboardScreen session={demoSession} onSignOut={() => setDemoMode(false)} deepLinkTarget={deepLinkTarget} />
+        </>
+      );
     }
 
     if (stage === 'splash') return <SplashScreen subtitle="Loading Spotter" />;
@@ -275,6 +290,50 @@ const demoSession: Session = {
     created_at: new Date().toISOString()
   }
 };
+
+/**
+ * Persistent banner shown when the app is running in demo mode.
+ * Only rendered in __DEV__ builds. Clearly identifies demo state
+ * to prevent users mistaking demo data for real data.
+ */
+function DemoModeBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <View style={demoBannerStyles.container}>
+      <Text style={demoBannerStyles.text}>🧪 DEMO MODE — Data is simulated, not real</Text>
+      <TouchableOpacity onPress={onDismiss} accessibilityLabel="Dismiss demo banner">
+        <Text style={demoBannerStyles.dismiss}>✕</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const demoBannerStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#f59e0b',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    zIndex: 9999,
+  },
+  text: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  dismiss: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {

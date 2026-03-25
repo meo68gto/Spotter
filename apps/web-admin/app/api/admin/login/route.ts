@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_DELETION_TOKEN = process.env.ADMIN_DELETION_TOKEN;
+
+/** Server startup validation: crash the worker if required env vars are absent */
+function validateConfig(): void {
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !ADMIN_DELETION_TOKEN) {
+    // In Next.js, throwing in module scope only crashes the specific worker on first request.
+    // Log loudly so operators notice in production.
+    console.error(
+      '[Spotter Admin] FATAL: ADMIN_EMAIL, ADMIN_PASSWORD, or ADMIN_DELETION_TOKEN ' +
+      'is not set. Admin login is disabled. Set these env vars to enable the admin portal.'
+    );
+  }
+}
+validateConfig();
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
@@ -9,21 +26,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-
-    if (!adminEmail || !adminPassword) {
-      console.error('Admin credentials not configured');
-      return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+    // If env vars are missing entirely, surface a clear server-misconfiguration error
+    // rather than silently failing every login attempt as "invalid credentials".
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+      console.error('[Spotter Admin] Login attempted but ADMIN_EMAIL or ADMIN_PASSWORD is not configured');
+      return NextResponse.json(
+        { error: 'Server misconfiguration: admin credentials not set. Contact system administrator.' },
+        { status: 500 }
+      );
     }
 
-    if (email !== adminEmail || password !== adminPassword) {
+    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const adminToken = process.env.ADMIN_DELETION_TOKEN;
-    if (!adminToken) {
-      return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+    if (!ADMIN_DELETION_TOKEN) {
+      return NextResponse.json(
+        { error: 'Server misconfiguration: admin session token not configured. Contact system administrator.' },
+        { status: 500 }
+      );
     }
 
     // Set secure session cookies
@@ -35,7 +56,7 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 8, // 8 hours
       path: '/',
     });
-    cookieStore.set('admin_token', adminToken, {
+    cookieStore.set('admin_token', ADMIN_DELETION_TOKEN, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',

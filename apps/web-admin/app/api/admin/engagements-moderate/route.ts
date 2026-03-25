@@ -9,11 +9,15 @@ const pool = new Pool({
   password: process.env.PGPASSWORD ?? 'postgres',
 });
 
+const ADMIN_DELETION_TOKEN = process.env.ADMIN_DELETION_TOKEN;
+
 /** Auth guard: rejects if the admin token cookie doesn't match env */
 function adminGuard(request: NextRequest): NextResponse | null {
+  if (!ADMIN_DELETION_TOKEN) {
+    return NextResponse.json({ error: 'Admin not configured' }, { status: 503 });
+  }
   const adminToken = request.cookies.get('admin_token')?.value;
-  const expected = process.env.ADMIN_DELETION_TOKEN;
-  if (!adminToken || !expected || adminToken !== expected) {
+  if (!adminToken || adminToken !== ADMIN_DELETION_TOKEN) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;
@@ -36,6 +40,19 @@ export async function POST(request: NextRequest) {
         'UPDATE engagement_requests SET moderation_status = $1, updated_at = NOW() WHERE id = $2',
         [moderationStatus, engagementRequestId]
       );
+
+      // Audit log: record the moderation action for compliance tracking
+      console.info(
+        JSON.stringify({
+          type: 'admin_moderation',
+          action: 'engagement_moderate',
+          engagement_request_id: engagementRequestId,
+          status: moderationStatus,
+          timestamp: new Date().toISOString(),
+          remote_ip: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+        })
+      );
+
       return NextResponse.json({ success: true });
     } finally {
       client.release();
