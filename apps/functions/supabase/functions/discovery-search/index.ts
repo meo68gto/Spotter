@@ -238,7 +238,6 @@ serve(async (req) => {
       });
 
     if (discoveryError) {
-      console.error('Discovery query error:', discoveryError);
       return new Response(
         JSON.stringify({ 
           error: 'Discovery query failed', 
@@ -305,7 +304,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Discovery search error:', error);
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : 'Internal server error', 

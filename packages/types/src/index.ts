@@ -461,7 +461,7 @@ export type {
   SendConnectionRequestInput,
   RespondToConnectionInput,
   RequestIntroInput,
-} from "./profile.js";
+} from "./profile";
 
 export {
   // Constants
@@ -486,7 +486,7 @@ export {
   // Epic 1: Additional Type Guards (Note: isValidHandicapBand also exported from discovery.js)
   isValidRoundFrequency,
   isValidMobilityPreference,
-} from "./profile.js";
+} from "./profile";
 
 // ============================================================================
 // Epic 4: Network Graph & Saved Members Types Re-exports
@@ -519,7 +519,7 @@ export type {
   RespondToIntroductionInput,
   NetworkConnectionsFilter,
   NetworkGraphInput,
-} from "./networking.js";
+} from "./networking";
 
 export {
   // Constants
@@ -536,7 +536,7 @@ export {
   getNextRelationshipState,
   getStrengthScoreColor,
   getStrengthScoreLabel,
-} from "./networking.js";
+} from "./networking";
 
 // ============================================================================
 // Organizer Types Re-exports
@@ -591,7 +591,7 @@ export type {
   RegisterForEventInput,
   SendInviteInput,
   CreateApiKeyInput,
-} from "./organizer.js";
+} from "./organizer";
 
 export {
   // Constants
@@ -606,7 +606,7 @@ export {
   isValidEventType,
   isValidEventStatus,
   isValidOrganizerRole,
-} from "./organizer.js";
+} from "./organizer";
 
 // ============================================================================
 // Discovery Types Re-exports
@@ -633,7 +633,7 @@ export type {
   DiscoveryErrorCode,
   // Helper Types
   DiscoverGolfersRow,
-} from "./discovery.js";
+} from "./discovery";
 
 export {
   // Constants
@@ -646,7 +646,7 @@ export {
   validateDiscoveryInput,
   // Transformers
   transformDiscoverableGolfer,
-} from "./discovery.js";
+} from "./discovery";
 
 // ============================================================================
 // Matching Engine Types Re-exports
@@ -665,7 +665,7 @@ export type {
   // Input Types
   GetTopMatchesInput,
   GetMatchWithUserInput,
-} from "./matching.js";
+} from "./matching";
 
 export {
   // Constants
@@ -687,7 +687,7 @@ export {
   getMatchTier,
   formatMatchScore,
   generateMatchReasoning,
-} from "./matching.js";
+} from "./matching";
 
 // ============================================================================
 // Round Coordination Types Re-exports
@@ -741,7 +741,7 @@ export type {
   RoundRatingApiResponse,
   // Preference Types
   CartPreference,
-} from "./rounds.js";
+} from "./rounds";
 
 export {
   // Constants
@@ -774,7 +774,7 @@ export {
   canInviteToRound,
   getRoundLifecycleLabel,
   getRoundSourceLabel,
-} from "./rounds.js";
+} from "./rounds";
 
 // ============================================================================
 // Golf/Course Types Re-exports (needed for rounds)
@@ -782,7 +782,7 @@ export {
 
 export type {
   Course,
-} from "./golf.js";
+} from "./golf";
 
 // ============================================================================
 // Tier System Types Re-exports
@@ -796,14 +796,14 @@ export type {
   MembershipTier,
   UserTierState,
   UserWithTier,
-} from "./tier.js";
+} from "./tier";
 
 export {
   TIER_DEFINITIONS,
   TIER_PRICES,
   isValidTier,
   isPaidTier,
-} from "./tier.js";
+} from "./tier";
 
 // ============================================================================
 // Trust & Reliability Types Re-exports - Epic 6
@@ -835,7 +835,7 @@ export type {
   // Input Types
   CreateVouchInput,
   RevokeVouchInput,
-} from "./trust.js";
+} from "./trust";
 
 export {
   // Constants
@@ -853,7 +853,7 @@ export {
   isValidIncidentCategory,
   isValidTrustBadgeType,
   isValidReliabilityLabel,
-} from "./trust.js";
+} from "./trust";
 
 // ============================================================================
 // Trust & Reliability Configuration - Epic 6
@@ -863,4 +863,4 @@ export {
   TRUST_CONFIG,
   calculateDiscoveryBoost,
   getReliabilityLabel,
-} from "./trust-config.js";
+} from "./trust-config";

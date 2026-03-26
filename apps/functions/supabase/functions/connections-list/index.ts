@@ -96,7 +96,6 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('Connections list error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error', code: 'internal_error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -3,9 +3,9 @@ import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } 
 import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { invokeFunction } from '../../lib/api';
 import { trackEvent } from '../../lib/analytics';
 import { supabase } from '../../lib/supabase';
-import { env } from '../../types/env';
 import { formatSessionStatus } from './ui-utils';
 
 type MatchRecord = {
@@ -94,8 +94,6 @@ export function SessionsScreen({ session }: Props) {
     () => sessions.find((item) => item.id === selectedSessionId),
     [sessions, selectedSessionId]
   );
-
-  const getToken = async () => (await supabase.auth.getSession()).data.session?.access_token;
 
   const refresh = async () => {
     const userId = session.user.id;
@@ -246,12 +244,6 @@ export function SessionsScreen({ session }: Props) {
       return;
     }
 
-    const token = await getToken();
-    if (!token) {
-      Alert.alert('Session missing', 'Please sign in again.');
-      return;
-    }
-
     const partnerUserId =
       selectedMatch.requester_user_id === session.user.id
         ? selectedMatch.candidate_user_id
@@ -259,31 +251,32 @@ export function SessionsScreen({ session }: Props) {
 
     setLoading(true);
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/sessions-propose`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        matchId: selectedMatch.id,
-        activityId: selectedMatch.activity_id,
-        partnerUserId,
-        proposedStartTime,
-        latitude: Number(latitude),
-        longitude: Number(longitude)
-      })
-    });
+    const partnerUserId =
+      selectedMatch.requester_user_id === session.user.id
+        ? selectedMatch.candidate_user_id
+        : selectedMatch.requester_user_id;
 
-    setLoading(false);
-
-    const payload = await response.json();
-    if (!response.ok) {
-      Alert.alert('Proposal failed', payload.error ?? 'Unknown error');
+    let createdSession: SessionRecord;
+    try {
+      createdSession = await invokeFunction<SessionRecord>('sessions-propose', {
+        method: 'POST',
+        body: {
+          matchId: selectedMatch.id,
+          activityId: selectedMatch.activity_id,
+          partnerUserId,
+          proposedStartTime,
+          latitude: Number(latitude),
+          longitude: Number(longitude)
+        }
+      });
+    } catch (err) {
+      setLoading(false);
+      Alert.alert('Proposal failed', err instanceof Error ? err.message : 'Unknown error');
       return;
     }
 
-    const createdSession = payload.data as SessionRecord;
+    setLoading(false);
+
     setSessions((prev) => upsertById(prev, createdSession));
     setSelectedSessionId(createdSession.id);
 
@@ -294,81 +287,60 @@ export function SessionsScreen({ session }: Props) {
 
   const confirmSession = async () => {
     if (!selectedSession) return;
-    const token = await getToken();
-    if (!token) return;
 
     const confirmAt = selectedSession.proposed_start_time || proposedStartTime;
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/sessions-confirm`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sessionId: selectedSession.id,
-        confirmedTime: confirmAt,
-        latitude: Number(latitude),
-        longitude: Number(longitude)
-      })
-    });
-
-    const payload = await response.json();
-    if (!response.ok) {
-      Alert.alert('Confirm failed', payload.error ?? 'Unknown error');
+    let confirmed: SessionRecord;
+    try {
+      confirmed = await invokeFunction<SessionRecord>('sessions-confirm', {
+        method: 'POST',
+        body: {
+          sessionId: selectedSession.id,
+          confirmedTime: confirmAt,
+          latitude: Number(latitude),
+          longitude: Number(longitude)
+        }
+      });
+    } catch (err) {
+      Alert.alert('Confirm failed', err instanceof Error ? err.message : 'Unknown error');
       return;
     }
 
-    setSessions((prev) => upsertById(prev, payload.data as SessionRecord));
-
+    setSessions((prev) => upsertById(prev, confirmed));
     await trackEvent('session_confirmed', session.user.id, { session_id: selectedSession.id });
   };
 
   const cancelSession = async () => {
     if (!selectedSession) return;
-    const token = await getToken();
-    if (!token) return;
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/sessions-cancel`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ sessionId: selectedSession.id })
-    });
-
-    const payload = await response.json();
-    if (!response.ok) {
-      Alert.alert('Cancel failed', payload.error ?? 'Unknown error');
+    let cancelled: SessionRecord;
+    try {
+      cancelled = await invokeFunction<SessionRecord>('sessions-cancel', {
+        method: 'POST',
+        body: { sessionId: selectedSession.id }
+      });
+    } catch (err) {
+      Alert.alert('Cancel failed', err instanceof Error ? err.message : 'Unknown error');
       return;
     }
 
-    setSessions((prev) => upsertById(prev, payload.data as SessionRecord));
-
+    setSessions((prev) => upsertById(prev, cancelled));
     await trackEvent('session_cancelled', session.user.id, { session_id: selectedSession.id });
   };
 
   const submitFeedback = async (thumbsUp: boolean) => {
     if (!selectedSession) return;
-    const token = await getToken();
-    if (!token) return;
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/sessions-feedback`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sessionId: selectedSession.id,
-        thumbsUp,
-        tag: feedbackTag.trim() || undefined
-      })
-    });
-
-    const payload = await response.json();
-    if (!response.ok) {
-      Alert.alert('Feedback failed', payload.error ?? 'Unknown error');
+    try {
+      await invokeFunction<{ success: boolean }>('sessions-feedback', {
+        method: 'POST',
+        body: {
+          sessionId: selectedSession.id,
+          thumbsUp,
+          tag: feedbackTag.trim() || undefined
+        }
+      });
+    } catch (err) {
+      Alert.alert('Feedback failed', err instanceof Error ? err.message : 'Unknown error');
       return;
     }
 
@@ -381,8 +353,6 @@ export function SessionsScreen({ session }: Props) {
 
   const sendMessage = async () => {
     if (!selectedSession || !messageText.trim()) return;
-    const token = await getToken();
-    if (!token) return;
 
     const currentMessage = messageText.trim();
     const clientMessageId = `${session.user.id}-${Date.now()}`;
@@ -398,28 +368,22 @@ export function SessionsScreen({ session }: Props) {
     setMessages((prev) => mergeMessage(prev, optimistic));
     setMessageText('');
 
-    const response = await fetch(`${env.apiBaseUrl}/functions/v1/chat-send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sessionId: selectedSession.id,
-        message: currentMessage,
-        clientMessageId
-      })
-    });
-
-    const payload = await response.json();
-
-    if (!response.ok) {
+    let saved: MessageRecord;
+    try {
+      saved = await invokeFunction<MessageRecord>('chat-send', {
+        method: 'POST',
+        body: {
+          sessionId: selectedSession.id,
+          message: currentMessage,
+          clientMessageId
+        }
+      });
+    } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      Alert.alert('Message failed', payload.error ?? 'Unknown error');
+      Alert.alert('Message failed', err instanceof Error ? err.message : 'Unknown error');
       return;
     }
 
-    const saved = payload.data as MessageRecord;
     setMessages((prev) => mergeMessage(prev, saved));
     await trackEvent('chat_message_sent', session.user.id, { session_id: selectedSession.id });
   };

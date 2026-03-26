@@ -227,7 +227,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Mobile Changes**:
 - Expo SDK 50 required
 - New navigation structure
-- State management migrated to Zustand
+- State management: React Context + custom hooks (no Zustand dependency)
 
 ## Migration Notes
 

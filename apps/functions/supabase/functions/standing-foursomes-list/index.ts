@@ -128,7 +128,6 @@ serve(async (req) => {
     const { data: memberships, error: membershipsError, count } = await query;
 
     if (membershipsError) {
-      console.error('Error fetching foursomes:', membershipsError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch standing foursomes', code: 'fetch_failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -222,7 +221,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Standing foursomes list error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error', code: 'internal_error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

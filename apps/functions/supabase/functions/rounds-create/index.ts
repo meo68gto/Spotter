@@ -277,7 +277,6 @@ serve(async (req) => {
       .single();
 
     if (roundError || !round) {
-      console.error('Error creating round:', roundError);
       return new Response(
         JSON.stringify({ error: 'Failed to create round', code: 'create_failed', details: roundError?.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -350,7 +349,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Rounds create error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error', code: 'internal_error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -13,10 +13,10 @@ import {
 } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { NetworkConnection, NetworkStats, RelationshipState, getRelationshipStateLabel } from '@spotter/types';
-import { ConnectionCard } from '../components/ConnectionCard';
-import { LoadingScreen } from '../components/LoadingScreen';
-import { palette, radius, spacing } from '../theme/design';
-import { supabase } from '../lib/supabase';
+import { ConnectionCard } from '../../components/ConnectionCard';
+import { LoadingScreen } from '../../components/LoadingScreen';
+import { palette, radius, spacing } from '../../theme/design';
+import { supabase } from '../../lib/supabase';
 
 interface NetworkScreenProps {
   session: Session;

@@ -69,7 +69,6 @@ serve(async (req) => {
       });
 
       if (error) {
-        console.error('Error getting aggregates:', error);
         return new Response(
           JSON.stringify({ error: 'Failed to get rating aggregates', code: 'query_failed' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -115,7 +114,6 @@ serve(async (req) => {
         .eq('ratee_id', user.id);
 
       if (ratingsError) {
-        console.error('Error fetching round ratings:', ratingsError);
         return new Response(
           JSON.stringify({ error: 'Failed to fetch ratings', code: 'fetch_failed' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -147,7 +145,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Rounds rate aggregate error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error', code: 'internal_error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

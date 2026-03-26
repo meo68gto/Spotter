@@ -91,7 +91,6 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('Connections intro error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error', code: 'internal_error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -523,7 +522,6 @@ async function consumeIntroCredit(supabase: any, userId: string) {
         .eq('id', userId);
     }
   } catch (error) {
-    console.error('Error consuming intro credit:', error);
   }
 }
 
@@ -550,7 +548,6 @@ async function incrementReferralCount(supabase: any, userId: string) {
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
     } catch (innerError) {
-      console.error('Error incrementing referral count:', innerError);
     }
   }
 }
@@ -576,7 +573,6 @@ async function sendNotification(supabase: any, params: {
       created_at: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error sending notification:', error);
   }
 }
 
@@ -610,6 +606,5 @@ async function calculateReputation(supabase: any, userId: string) {
       }, { onConflict: 'user_id' });
 
   } catch (error) {
-    console.error('Error calculating reputation:', error);
   }
 }

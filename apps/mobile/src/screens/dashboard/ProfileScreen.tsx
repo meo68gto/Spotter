@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { env } from '../../types/env';
+import { invokeFunction } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 
 type Props = {
@@ -27,25 +27,17 @@ export function ProfileScreen({ session, email, onSignOut }: Props) {
 
   useEffect(() => {
     const load = async () => {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      if (!token) {
+      try {
+        const payload = await invokeFunction<{ data: FeedbackSummary[] }>('profiles-feedback-summary', {
+          method: 'POST',
+          body: { userIds: [session.user.id] }
+        });
+        setFeedback(payload.data?.[0] ?? null);
+      } catch {
+        // Non-critical — leave loading=false and show "No ratings yet"
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/profiles-feedback-summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ userIds: [session.user.id] })
-      });
-      const payload = await response.json();
-      if (response.ok) {
-        setFeedback((payload.data?.[0] as FeedbackSummary | undefined) ?? null);
-      }
-      setLoading(false);
     };
     load();
   }, [session.user.id]);

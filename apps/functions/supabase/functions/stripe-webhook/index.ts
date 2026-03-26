@@ -51,14 +51,12 @@ serve(async (req) => {
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err) {
-      console.error('Webhook signature verification failed:', err);
       return new Response(
         JSON.stringify({ error: 'Invalid signature' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Processing webhook: ${event.type}`);
 
     // Handle the event
     switch (event.type) {
@@ -83,7 +81,6 @@ serve(async (req) => {
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
     }
 
     return new Response(
@@ -92,7 +89,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Webhook processing error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -125,7 +121,6 @@ async function handleCheckoutSessionCompleted(
       break;
 
     default:
-      console.log(`Unknown checkout type: ${type}`);
   }
 }
 
@@ -141,7 +136,6 @@ async function processTierUpgrade(
   const subscriptionId = session.subscription as string;
 
   if (!userId || !tierSlug) {
-    console.error('Missing metadata in checkout session', session);
     return;
   }
 
@@ -153,7 +147,6 @@ async function processTierUpgrade(
     .single();
 
   if (tierError || !tier) {
-    console.error('Tier not found:', tierSlug);
     return;
   }
 
@@ -191,7 +184,6 @@ async function processTierUpgrade(
     .eq('id', userId);
 
   if (updateError) {
-    console.error('Failed to update user tier:', updateError);
     return;
   }
 
@@ -209,7 +201,6 @@ async function processTierUpgrade(
     created_at: new Date().toISOString(),
   });
 
-  console.log(`Tier upgraded for user ${userId} to ${tierSlug}`);
 }
 
 /**
@@ -223,7 +214,6 @@ async function processEventRegistration(
   const eventId = session.metadata?.eventId;
 
   if (!userId || !eventId) {
-    console.error('Missing metadata for event registration', session);
     return;
   }
 
@@ -238,7 +228,6 @@ async function processEventRegistration(
     .eq('stripe_checkout_session_id', session.id);
 
   if (updateError) {
-    console.error('Failed to update event registration:', updateError);
     return;
   }
 
@@ -247,7 +236,6 @@ async function processEventRegistration(
     event_id: eventId,
   });
 
-  console.log(`Event registration confirmed for user ${userId}, event ${eventId}`);
 }
 
 /**
@@ -262,7 +250,6 @@ async function processOrganizerTierUpgrade(
   const subscriptionId = session.subscription as string;
 
   if (!userId || !organizerTier) {
-    console.error('Missing metadata for organizer tier', session);
     return;
   }
 
@@ -278,11 +265,9 @@ async function processOrganizerTierUpgrade(
     .eq('id', userId);
 
   if (updateError) {
-    console.error('Failed to update organizer tier:', updateError);
     return;
   }
 
-  console.log(`Organizer tier upgraded for user ${userId} to ${organizerTier}`);
 }
 
 /**
@@ -336,7 +321,6 @@ async function handleInvoicePaymentSucceeded(
     })
     .eq('id', subscription.id);
 
-  console.log(`Subscription renewed for user ${subscription.id}`);
 }
 
 /**
@@ -380,7 +364,6 @@ async function handleInvoicePaymentFailed(
     created_at: new Date().toISOString(),
   });
 
-  console.log(`Payment failed for user ${user.id}`);
 }
 
 /**
@@ -434,7 +417,6 @@ async function handleSubscriptionUpdated(
       break;
   }
 
-  console.log(`Subscription ${subscriptionId} updated with status ${status}`);
 }
 
 /**
@@ -464,7 +446,6 @@ async function handleSubscriptionDeleted(
     .single();
 
   if (!freeTier) {
-    console.error('Free tier not found');
     return;
   }
 
@@ -491,5 +472,4 @@ async function handleSubscriptionDeleted(
     created_at: new Date().toISOString(),
   });
 
-  console.log(`Subscription cancelled for user ${user.id}, reverted to free`);
 }

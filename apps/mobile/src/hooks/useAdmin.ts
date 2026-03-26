@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { env } from '../types/env';
+import { invokeFunction } from '../lib/api';
 
 // ============================================================================
 // Types
@@ -155,38 +155,18 @@ export function useAdminAuth(): UseAdminAuthReturn {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setIsAdmin(false);
-        setAdminUser(null);
-        return;
-      }
-
-      // Check admin status via edge function
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-auth`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setIsAdmin(false);
-        setAdminUser(null);
-        setError(result.error || 'Admin verification failed');
-        return;
-      }
+      const payload = await invokeFunction<{
+        data: AdminUser;
+        permissions: string[];
+      }>('admin-auth', { method: 'GET' });
 
       setIsAdmin(true);
-      setAdminUser(result.data);
-      setPermissions(result.permissions || []);
+      setAdminUser(payload.data);
+      setPermissions(payload.permissions ?? []);
     } catch (err) {
       setIsAdmin(false);
       setAdminUser(null);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Admin verification failed');
     } finally {
       setIsLoading(false);
     }
@@ -231,26 +211,8 @@ export function useAdminDashboard(): UseAdminDashboardReturn {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-dashboard`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch dashboard stats');
-      }
-
-      setStats(result.data);
+      const payload = await invokeFunction<{ data: DashboardStats }>('admin-dashboard', { method: 'GET' });
+      setStats(payload.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -308,36 +270,22 @@ export function useAdminUsers(): UseAdminUsersReturn {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      const params: Record<string, string> = {
+        limit: String(limit),
+        offset: String(offset),
+      };
+      if (filters.query) params.query = filters.query;
+      if (filters.status && filters.status !== 'all') params.status = filters.status;
+      if (filters.createdAfter) params.createdAfter = filters.createdAfter;
+      if (filters.createdBefore) params.createdBefore = filters.createdBefore;
 
-      const params = new URLSearchParams();
-      if (filters.query) params.append('query', filters.query);
-      if (filters.status && filters.status !== 'all') params.append('status', filters.status);
-      if (filters.createdAfter) params.append('createdAfter', filters.createdAfter);
-      if (filters.createdBefore) params.append('createdBefore', filters.createdBefore);
-      params.append('limit', limit.toString());
-      params.append('offset', offset.toString());
+      const payload = await invokeFunction<{
+        data: AdminUserDetails[];
+        pagination?: { total: number };
+      }>('admin-users/search', { method: 'GET', params });
 
-      const response = await fetch(
-        `${env.apiBaseUrl}/functions/v1/admin-users/search?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to search users');
-      }
-
-      setUsers(result.data);
-      setTotalCount(result.pagination?.total || 0);
+      setUsers(payload.data ?? []);
+      setTotalCount(payload.pagination?.total ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -347,27 +295,8 @@ export function useAdminUsers(): UseAdminUsersReturn {
 
   const getUserDetails = useCallback(async (userId: string): Promise<AdminUserDetails | null> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(
-        `${env.apiBaseUrl}/functions/v1/admin-users/${userId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to get user details');
-      }
-
-      return result.data;
+      const payload = await invokeFunction<{ data: AdminUserDetails }>(`admin-users/${userId}`, { method: 'GET' });
+      return payload.data ?? null;
     } catch (err) {
       console.error('Get user details error:', err);
       return null;
@@ -375,75 +304,27 @@ export function useAdminUsers(): UseAdminUsersReturn {
   }, []);
 
   const suspendUser = useCallback(async (userId: string, reason?: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ action: 'suspend', userId, reason }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to suspend user');
-      }
-    } catch (err) {
-      throw err instanceof Error ? err : new Error('Unknown error');
-    }
+    const payload = await invokeFunction<{ success: boolean }>('admin-users', {
+      method: 'POST',
+      body: { action: 'suspend', userId, reason }
+    });
+    if (!payload.success) throw new Error('Suspend failed');
   }, []);
 
   const activateUser = useCallback(async (userId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ action: 'activate', userId }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to activate user');
-      }
-    } catch (err) {
-      throw err instanceof Error ? err : new Error('Unknown error');
-    }
+    const payload = await invokeFunction<{ success: boolean }>('admin-users', {
+      method: 'POST',
+      body: { action: 'activate', userId }
+    });
+    if (!payload.success) throw new Error('Activate failed');
   }, []);
 
   const processDeletion = useCallback(async (userId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ action: 'process_deletion', userId }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to process deletion');
-      }
-    } catch (err) {
-      throw err instanceof Error ? err : new Error('Unknown error');
-    }
+    const payload = await invokeFunction<{ success: boolean }>('admin-users', {
+      method: 'POST',
+      body: { action: 'process_deletion', userId }
+    });
+    if (!payload.success) throw new Error('Process deletion failed');
   }, []);
 
   return {
@@ -484,24 +365,8 @@ export function useAdminJobs(): UseAdminJobsReturn {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-jobs/jobs`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch jobs');
-      }
-
-      setJobs(result.data);
+      const payload = await invokeFunction<{ data: JobDefinition[] }>('admin-jobs/jobs', { method: 'GET' });
+      setJobs(payload.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -511,61 +376,21 @@ export function useAdminJobs(): UseAdminJobsReturn {
 
   const refreshJobRuns = useCallback(async (jobId?: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const params = new URLSearchParams();
-      if (jobId) params.append('jobId', jobId);
-      params.append('limit', '50');
-
-      const response = await fetch(
-        `${env.apiBaseUrl}/functions/v1/admin-jobs/logs?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch job logs');
-      }
-
-      setJobRuns(result.data);
+      const params: Record<string, string> = { limit: '50' };
+      if (jobId) params.jobId = jobId;
+      const payload = await invokeFunction<{ data: JobRun[] }>('admin-jobs/logs', { method: 'GET', params });
+      setJobRuns(payload.data ?? []);
     } catch (err) {
       console.error('Fetch job runs error:', err);
     }
   }, []);
 
   const triggerJob = useCallback(async (jobId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-jobs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ action: 'trigger', jobId }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to trigger job');
-      }
-
-      // Refresh jobs after triggering
-      await refreshJobs();
-    } catch (err) {
-      throw err instanceof Error ? err : new Error('Unknown error');
-    }
+    await invokeFunction('admin-jobs', {
+      method: 'POST',
+      body: { action: 'trigger', jobId }
+    });
+    await refreshJobs();
   }, [refreshJobs]);
 
   return {
@@ -604,24 +429,8 @@ export function useAdminFeatureFlags(): UseAdminFeatureFlagsReturn {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-feature-flags`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch feature flags');
-      }
-
-      setFlags(result.data);
+      const payload = await invokeFunction<{ data: FeatureFlag[] }>('admin-feature-flags', { method: 'GET' });
+      setFlags(payload.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -635,83 +444,21 @@ export function useAdminFeatureFlags(): UseAdminFeatureFlagsReturn {
     value: boolean;
     payload?: Record<string, unknown>;
   }) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-feature-flags`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(input),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create flag');
-      }
-
-      await refresh();
-    } catch (err) {
-      throw err instanceof Error ? err : new Error('Unknown error');
-    }
+    await invokeFunction('admin-feature-flags', { method: 'POST', body: input });
+    await refresh();
   }, [refresh]);
 
   const updateFlag = useCallback(async (
     flagId: string,
     updates: { value?: boolean; payload?: Record<string, unknown> }
   ) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-feature-flags/${flagId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(updates),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update flag');
-      }
-
-      await refresh();
-    } catch (err) {
-      throw err instanceof Error ? err : new Error('Unknown error');
-    }
+    await invokeFunction(`admin-feature-flags/${flagId}`, { method: 'PATCH', body: updates });
+    await refresh();
   }, [refresh]);
 
   const deleteFlag = useCallback(async (flagId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${env.apiBaseUrl}/functions/v1/admin-feature-flags/${flagId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete flag');
-      }
-
-      await refresh();
-    } catch (err) {
-      throw err instanceof Error ? err : new Error('Unknown error');
-    }
+    await invokeFunction(`admin-feature-flags/${flagId}`, { method: 'DELETE' });
+    await refresh();
   }, [refresh]);
 
   const toggleFlag = useCallback(async (flagId: string, currentValue: boolean) => {

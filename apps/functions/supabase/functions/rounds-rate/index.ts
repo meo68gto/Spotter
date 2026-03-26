@@ -212,7 +212,6 @@ serve(async (req) => {
       .insert(ratingsToInsert);
 
     if (insertError) {
-      console.error('Error inserting ratings:', insertError);
       return new Response(
         JSON.stringify({ error: 'Failed to submit ratings', code: 'insert_failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -239,7 +238,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Rounds rate error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error', code: 'internal_error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
