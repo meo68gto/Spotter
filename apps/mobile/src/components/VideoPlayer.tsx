@@ -9,8 +9,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { invokeFunction } from '../../lib/api';
-import { palette, font, spacing, radius } from '../../theme/design';
+import { invokeFunction } from '../lib/api';
+import { palette, font, spacing, radius } from '../theme/design';
 
 interface VideoPlayerProps {
   videoUrl: string;
