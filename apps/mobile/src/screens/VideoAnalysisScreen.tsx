@@ -144,16 +144,15 @@ export function VideoAnalysisScreen({
       </View>
 
       {/* Video Player */}
-      <Card style={styles.videoCard}>
+      <View style={styles.videoCard}>
         {urlLoading ? (
           <View style={styles.videoLoading}>
             <ActivityIndicator size="large" color={palette.navy600} />
           </View>
         ) : videoUrl ? (
           <VideoPlayer
-            uri={videoUrl}
+            videoUrl={videoUrl}
             style={styles.videoPlayer}
-            onProgress={handleProgress}
             showControls={true}
           />
         ) : (
@@ -161,11 +160,11 @@ export function VideoAnalysisScreen({
             <Text style={styles.videoErrorText}>Failed to load video</Text>
           </View>
         )}
-      </Card>
+      </View>
 
       {/* Current Annotations */}
       {currentAnnotations.length > 0 && (
-        <Card style={styles.annotationsCard}>
+        <View style={styles.annotationsCard}>
           <Text style={styles.annotationsTitle}>💡 At {formatTimestamp(currentFrame)}:</Text>
           {currentAnnotations.map((annotation, index) => (
             <View key={index} style={styles.annotationItem}>
@@ -173,18 +172,18 @@ export function VideoAnalysisScreen({
               <Text style={styles.annotationText}>{annotation}</Text>
             </View>
           ))}
-        </Card>
+        </View>
       )}
 
       {/* AI Summary */}
       {analysis?.summary && (
-        <Card style={styles.summaryCard}>
+        <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>🤖 AI Analysis Summary</Text>
           <Text style={styles.summaryText}>{analysis.summary}</Text>
           <Text style={styles.summaryMeta}>
             Analyzed by {analysis.provider} • {new Date(analysis.ingestedAt).toLocaleDateString()}
           </Text>
-        </Card>
+        </View>
       )}
 
       {/* Metrics Grid */}
@@ -199,7 +198,7 @@ export function VideoAnalysisScreen({
 
       {/* All Annotations Timeline */}
       {analysis?.annotations && analysis.annotations.length > 0 && (
-        <Card style={styles.timelineCard}>
+        <View style={styles.timelineCard}>
           <Text style={styles.timelineTitle}>📍 Key Moments</Text>
           {analysis.annotations.map((annotation, index) => (
             <TouchableOpacity
@@ -216,7 +215,7 @@ export function VideoAnalysisScreen({
               <Text style={styles.timelineNote}>{annotation.note}</Text>
             </TouchableOpacity>
           ))}
-        </Card>
+        </View>
       )}
 
       {/* Actions */}
@@ -224,15 +223,13 @@ export function VideoAnalysisScreen({
         <Button
           title="Share Analysis"
           onPress={onShare}
-          variant="secondary"
-          style={styles.actionButton}
-        />
+          tone="secondary"
+          />
         <Button
           title="Back to Gallery"
           onPress={onBack}
-          variant="ghost"
-          style={styles.actionButton}
-        />
+          tone="ghost"
+          />
       </View>
     </ScrollView>
   );

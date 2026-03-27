@@ -157,13 +157,13 @@ export function VideoUploadScreen({
 
       {/* Video Preview */}
       {selectedVideoUri ? (
-        <Card style={styles.previewCard}>
+        <View style={styles.previewCard}>
           <View style={styles.videoContainer}>
             <VideoPlayer
-              uri={selectedVideoUri}
+              videoUrl={selectedVideoUri}
               style={styles.videoPlayer}
               showControls={!isUploading}
-              onError={(err) => Alert.alert('Video Error', err)}
+              onError={(err) => Alert.alert('Video Error', err.message)}
             />
           </View>
 
@@ -174,9 +174,9 @@ export function VideoUploadScreen({
               </Text>
             </View>
           )}
-        </Card>
+        </View>
       ) : (
-        <Card style={styles.emptyCard}>
+        <View style={styles.emptyCard}>
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🎥</Text>
             <Text style={styles.emptyTitle}>No video selected</Text>
@@ -184,7 +184,7 @@ export function VideoUploadScreen({
               Choose a video from your library or record a new one
             </Text>
           </View>
-        </Card>
+        </View>
       )}
 
       {/* Status Display */}
@@ -216,61 +216,67 @@ export function VideoUploadScreen({
       <View style={styles.actions}>
         {!selectedVideoUri ? (
           <>
-            <Button
-              title="Choose from Library"
-              onPress={handlePickVideo}
-              variant="primary"
-              style={styles.actionButton}
-            />
-            <Button
-              title="Record Video"
-              onPress={handleRecordVideo}
-              variant="secondary"
-              style={styles.actionButton}
-            />
+            <View style={styles.actionButtonWrap}>
+              <Button
+                title="Choose from Library"
+                onPress={handlePickVideo}
+                tone="primary"
+              />
+            </View>
+            <View style={styles.actionButtonWrap}>
+              <Button
+                title="Record Video"
+                onPress={handleRecordVideo}
+                tone="secondary"
+              />
+            </View>
           </>
         ) : (
           <>
             {!isComplete && !hasFailed && (
-              <Button
-                title={isUploading ? 'Uploading...' : 'Upload Video'}
-                onPress={handleUpload}
-                disabled={isUploading}
-                variant="primary"
-                style={styles.actionButton}
-              />
+              <View style={styles.actionButtonWrap}>
+                <Button
+                  title={isUploading ? 'Uploading...' : 'Upload Video'}
+                  onPress={handleUpload}
+                  disabled={isUploading}
+                  tone="primary"
+                />
+              </View>
             )}
             
             {hasFailed && (
-              <Button
-                title="Try Again"
-                onPress={handleRetry}
-                variant="primary"
-                style={styles.actionButton}
-              />
+              <View style={styles.actionButtonWrap}>
+                <Button
+                  title="Try Again"
+                  onPress={handleRetry}
+                  tone="primary"
+                />
+              </View>
             )}
             
-            <Button
-              title="Select Different Video"
-              onPress={handleRetry}
-              variant="secondary"
-              disabled={isUploading}
-              style={styles.actionButton}
-            />
+            <View style={styles.actionButtonWrap}>
+              <Button
+                title="Select Different Video"
+                onPress={handleRetry}
+                tone="secondary"
+                disabled={isUploading}
+              />
+            </View>
           </>
         )}
 
-        <Button
-          title="Cancel"
-          onPress={handleCancel}
-          variant="ghost"
-          disabled={isUploading && status !== 'failed'}
-          style={styles.cancelButton}
-        />
+        <View style={styles.cancelButtonWrap}>
+          <Button
+            title="Cancel"
+            onPress={handleCancel}
+            tone="ghost"
+            disabled={isUploading && status !== 'failed'}
+          />
+        </View>
       </View>
 
       {/* Tips */}
-      <Card style={styles.tipsCard}>
+      <View style={styles.tipsCard}>
         <Text style={styles.tipsTitle}>💡 Tips for best results:</Text>
         <View style={styles.tipItem}>
           <Text style={styles.tipBullet}>•</Text>
@@ -288,7 +294,7 @@ export function VideoUploadScreen({
           <Text style={styles.tipBullet}>•</Text>
           <Text style={styles.tipText}>Max file size: 500MB</Text>
         </View>
-      </Card>
+      </View>
     </ScrollView>
   );
 }
@@ -407,7 +413,13 @@ const styles = StyleSheet.create({
   actionButton: {
     marginBottom: spacing.md
   },
+  actionButtonWrap: {
+    marginBottom: spacing.md
+  },
   cancelButton: {
+    marginTop: spacing.sm
+  },
+  cancelButtonWrap: {
     marginTop: spacing.sm
   },
   tipsCard: {

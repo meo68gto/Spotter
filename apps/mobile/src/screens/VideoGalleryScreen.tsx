@@ -135,7 +135,7 @@ export function VideoGalleryScreen({
   };
 
   const renderEmptyState = () => (
-    <Card style={styles.emptyCard}>
+    <View style={styles.emptyCard}>
       <View style={styles.emptyState}>
         <Text style={styles.emptyIcon}>🎬</Text>
         <Text style={styles.emptyTitle}>No videos yet</Text>
@@ -145,11 +145,10 @@ export function VideoGalleryScreen({
         <Button
           title="Upload Video"
           onPress={onUploadPress}
-          variant="primary"
-          style={styles.emptyButton}
-        />
+          tone="primary"
+          />
       </View>
-    </Card>
+    </View>
   );
 
   const renderFooter = () => {
@@ -177,9 +176,8 @@ export function VideoGalleryScreen({
           <Button
             title="+ Upload"
             onPress={onUploadPress}
-            variant="primary"
-            style={styles.uploadButton}
-          />
+            tone="primary"
+            />
         </View>
 
         {/* Sort Options */}
@@ -211,15 +209,14 @@ export function VideoGalleryScreen({
 
       {/* Error State */}
       {error && (
-        <Card style={styles.errorCard}>
+        <View style={styles.errorCard}>
           <Text style={styles.errorText}>{error}</Text>
           <Button
             title="Try Again"
             onPress={refresh}
-            variant="secondary"
-            style={styles.retryButton}
-          />
-        </Card>
+            tone="secondary"
+            />
+        </View>
       )}
 
       {/* Video List */}
