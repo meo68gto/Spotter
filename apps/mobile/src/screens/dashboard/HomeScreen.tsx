@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { invokeFunction } from '../../lib/api';
+import { invokeFunction } from '../lib/api';
 import { stockPhotos } from '../../lib/stockPhotos';
 import { supabase } from '../../lib/supabase';
 

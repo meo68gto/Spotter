@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { invokeGuestFunction } from '../../lib/api';
-import { palette, radius, spacing } from '../../theme/design';
+import { invokeGuestFunction } from '../lib/api';
+import { palette, radius, spacing } from '../theme/design';
 import { useStripe } from '../../hooks/useStripe';
 
 type CheckoutStatus = 'idle' | 'loading' | 'creating_order' | 'processing_payment' | 'confirming' | 'success' | 'error';

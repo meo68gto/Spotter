@@ -18,8 +18,8 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { TierBadge } from '../../components/TierBadge';
 import { UpgradeModal } from '../../components/UpgradeModal';
-import { invokeFunction } from '../../lib/api';
-import { palette, radius, spacing } from '../../theme/design';
+import { invokeFunction } from '../lib/api';
+import { palette, radius, spacing } from '../theme/design';
 import {
   MatchSuggestion,
   TopMatchesResponse,

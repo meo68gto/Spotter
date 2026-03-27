@@ -3,7 +3,7 @@ import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } 
 import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { invokeFunction } from '../../lib/api';
+import { invokeFunction } from '../lib/api';
 import { trackEvent } from '../../lib/analytics';
 import { supabase } from '../../lib/supabase';
 import { formatSessionStatus } from './ui-utils';

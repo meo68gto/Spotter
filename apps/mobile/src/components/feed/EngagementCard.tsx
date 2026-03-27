@@ -3,8 +3,8 @@ import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } fr
 import { Audio } from 'expo-av';
 import { Card } from '../Card';
 import { VideoPlayer } from '../VideoPlayer';
-import { invokeFunction } from '../../lib/api';
-import { palette, font, spacing, radius } from '../../theme/design';
+import { invokeFunction } from '../lib/api';
+import { palette, font, spacing, radius } from '../theme/design';
 
 interface EngagementRequest {
   id: string;

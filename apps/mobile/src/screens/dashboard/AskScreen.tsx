@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { invokeFunction } from '../../lib/api';
+import { invokeFunction } from '../lib/api';
 import { supabase } from '../../lib/supabase';
 import { shortId } from './ui-utils';
 

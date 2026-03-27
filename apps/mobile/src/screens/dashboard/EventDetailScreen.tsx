@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { ActivityIndicator, Alert, ImageBackground, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
-import { invokeFunction } from '../../lib/api';
+import { invokeFunction } from '../lib/api';
 import { stockPhotos } from '../../lib/stockPhotos';
 import { supabase } from '../../lib/supabase';
-import { font, palette, radius, spacing } from '../../theme/design';
+import { font, palette, radius, spacing } from '../theme/design';
 
 type RegistrationStatus = 'pending_approval' | 'confirmed' | 'cancelled' | 'checked_in' | null;
 

@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { invokeFunction } from '../../lib/api';
-import { palette, radius, spacing } from '../../theme/design';
+import { invokeFunction } from '../lib/api';
+import { palette, radius, spacing } from '../theme/design';
 
 type RegistrationStatus = 'idle' | 'submitting' | 'success' | 'error';
 

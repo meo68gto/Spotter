@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
-import { invokeFunction } from '../../lib/api';
+import { invokeFunction } from '../lib/api';
 import { supabase } from '../../lib/supabase';
-import { font, palette, radius, spacing } from '../../theme/design';
+import { font, palette, radius, spacing } from '../theme/design';
 
 type RegistrationStatus = 'idle' | 'loading' | 'submitting' | 'processing_payment' | 'success' | 'error';
 

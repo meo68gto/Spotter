@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { invokeFunction } from '../../lib/api';
+import { invokeFunction } from '../lib/api';
 import { stockPhotos } from '../../lib/stockPhotos';
-import { font, palette, radius, spacing } from '../../theme/design';
+import { font, palette, radius, spacing } from '../theme/design';
 
 type EventStatus = 'draft' | 'published' | 'registration_open' | 'full' | 'in_progress' | 'completed' | 'cancelled';
 

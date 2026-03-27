@@ -17,8 +17,8 @@ import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { TierBadge } from '../../components/TierBadge';
-import { invokeFunction } from '../../lib/api';
-import { palette, radius, spacing } from '../../theme/design';
+import { invokeFunction } from '../lib/api';
+import { palette, radius, spacing } from '../theme/design';
 import {
   DiscoverableGolfer,
   HANDICAP_BANDS,
