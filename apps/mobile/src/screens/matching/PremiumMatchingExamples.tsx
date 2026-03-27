@@ -9,7 +9,7 @@ import React, { useState, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Alert } from 'react-native';
 import { PremiumMatchCard, PremiumMatchData } from '../../components/PremiumMatchCard';
 import { FilterPanel, FilterState } from '../../components/FilterPanel';
-import { spacing } from '../theme/design';
+import { spacing } from '../../theme/design';
 
 // ============================================================================
 // Example 1: Basic Premium Match Card (Compact)

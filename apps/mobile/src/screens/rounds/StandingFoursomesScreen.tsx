@@ -15,8 +15,8 @@ import {
 import { Session } from '@supabase/supabase-js';
 import { StandingFoursomeCard } from '../../components/StandingFoursomeCard';
 import { Button } from '../../components/Button';
-import { invokeFunction } from '../lib/api';
-import { palette, spacing } from '../theme/design';
+import { invokeFunction } from '../../lib/api';
+import { palette, spacing } from '../../theme/design';
 import { StandingFoursomeWithMembers } from '@spotter/types';
 
 interface StandingFoursomesScreenProps {

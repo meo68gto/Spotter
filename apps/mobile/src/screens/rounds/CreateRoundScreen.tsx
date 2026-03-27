@@ -17,8 +17,8 @@ import { Session } from '@supabase/supabase-js';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { UpgradeModal } from '../../components/UpgradeModal';
-import { invokeFunction } from '../lib/api';
-import { palette, radius, spacing } from '../theme/design';
+import { invokeFunction } from '../../lib/api';
+import { palette, radius, spacing } from '../../theme/design';
 import {
   CartPreference,
   CART_PREFERENCE_OPTIONS,

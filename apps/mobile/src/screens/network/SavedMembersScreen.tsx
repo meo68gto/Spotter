@@ -11,7 +11,7 @@ import {
 import { SavedMember, SavedMemberTier } from '@spotter/types';
 import { SavedMemberCard } from '../../components/SavedMemberCard';
 import { LoadingScreen } from '../../components/LoadingScreen';
-import { palette, radius, spacing } from '../theme/design';
+import { palette, radius, spacing } from '../../theme/design';
 import { supabase } from '../../lib/supabase';
 
 type SortOption = 'name' | 'dateSaved' | 'tier';

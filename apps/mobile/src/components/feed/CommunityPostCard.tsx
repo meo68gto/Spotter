@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card } from '../Card';
 import { VideoPlayer } from '../VideoPlayer';
-import { invokeFunction } from '../lib/api';
-import { palette, font, spacing, radius } from '../theme/design';
+import { invokeFunction } from '../../lib/api';
+import { palette, font, spacing, radius } from '../../theme/design';
 
 interface CommunityPost {
   id: string;

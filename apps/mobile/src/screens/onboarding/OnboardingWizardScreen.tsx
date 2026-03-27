@@ -5,7 +5,7 @@ import Animated, { FadeInRight } from 'react-native-reanimated';
 import { Button } from '../../components/Button';
 import { showToast } from '../../components/ToastHost';
 import { stockPhotos } from '../../lib/stockPhotos';
-import { invokeFunction } from '../lib/api';
+import { invokeFunction } from '../../lib/api';
 import { trackEvent } from '../../lib/analytics';
 import { supabase } from '../../lib/supabase';
 import { useTheme } from '../../theme/provider';
