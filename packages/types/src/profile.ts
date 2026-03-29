@@ -65,8 +65,12 @@ export type MobilityPreference = 'walking' | 'walking_preferred' | 'cart' | 'car
  * Epic 1: Golf-specific identity and preferences (expanded)
  */
 export interface GolfIdentity {
-  /** Golf handicap index (e.g., 12.4) */
+  /** Golf handicap index (e.g., 12.4) - prefer handicap_index (Fox Phase 0) */
   handicap?: number;
+  /** Fox Phase 0: Official USGA Handicap Index (-10.0 to 54.0) */
+  handicapIndex?: number;
+  /** Fox Phase 0: GHIN number for USGA/GHIN API integration */
+  ghinNumber?: string;
   /** Epic 1: Handicap band for tiered matching */
   handicapBand?: HandicapBand;
   /** ID of user's home course */
@@ -716,4 +720,20 @@ export function isValidHandicapBand(band: string): band is HandicapBand {
  */
 export function isValidMobilityPreference(pref: string): pref is MobilityPreference {
   return ['walking', 'walking_preferred', 'cart', 'cart_preferred', 'either'].includes(pref);
+}
+
+// Fox Phase 0: Handicap validation
+export function isValidHandicapIndex(value: number): boolean {
+  return Number.isFinite(value) && value >= -10 && value <= 54;
+}
+
+export function formatHandicapIndex(value: number): string {
+  return value.toFixed(1);
+}
+
+export function parseHandicapIndex(raw: string | number | undefined | null): number | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const parsed = typeof raw === 'string' ? parseFloat(raw) : Number(raw);
+  if (isNaN(parsed)) return null;
+  return isValidHandicapIndex(parsed) ? Math.round(parsed * 10) / 10 : null;
 }

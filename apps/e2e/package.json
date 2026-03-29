@@ -15,6 +15,7 @@
     "codegen": "playwright codegen"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.42.0",
     "@types/node": "^20.11.0"
   },

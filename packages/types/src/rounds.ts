@@ -26,6 +26,18 @@ export type InvitationStatus =
 export type CartPreference = 'walking' | 'cart' | 'either';
 
 // ----------------------------------------------------------------------------
+// NEW: Tournament Round Format (Fox Phase 0)
+// ----------------------------------------------------------------------------
+
+export type RoundFormat =
+  | 'individual'
+  | 'scramble'
+  | 'modified_scramble'
+  | 'best_ball'
+  | 'stableford'
+  | 'match_play';
+
+// ----------------------------------------------------------------------------
 // NEW: Round Lifecycle Status (Epic 5)
 // More granular states for social round flow
 // ----------------------------------------------------------------------------
@@ -164,7 +176,10 @@ export interface Round {
   lifecycleStatus?: RoundLifecycleStatus;  // NEW (Epic 5)
   sourceType?: RoundSourceType;           // NEW (Epic 5)
   standingFoursomeId?: UUID;              // NEW (Epic 5)
-  networkContext?: RoundNetworkContext;  // NEW (Epic 5)
+  format?: RoundFormat;                    // NEW (Fox Phase 0)
+  teamSize?: number;                      // NEW (Fox Phase 0) 1-4
+  isTournament?: boolean;                 // NEW (Fox Phase 0)
+  networkContext?: RoundNetworkContext;     // NEW (Epic 5)
   playedAt?: string;                    // NEW (Epic 5)
   reviewedAt?: string;                 // NEW (Epic 5)
   reviewWindowClosesAt?: string;         // NEW (Epic 5)
@@ -265,6 +280,10 @@ export interface CreateRoundInput {
   standingFoursomeId?: UUID;
   networkContext?: RoundNetworkContext;
   inviteeIds?: UUID[];
+  // NEW (Fox Phase 0)
+  format?: RoundFormat;
+  teamSize?: number;
+  isTournament?: boolean;
 }
 
 export interface UpdateRoundInput {
@@ -592,6 +611,42 @@ export function isValidInvitationStatus(status: string): status is InvitationSta
 export function isValidCartPreference(pref: string): pref is CartPreference {
   return ['walking', 'cart', 'either'].includes(pref);
 }
+
+// NEW (Fox Phase 0)
+export function isValidRoundFormat(format: string): format is RoundFormat {
+  return ['individual', 'scramble', 'modified_scramble', 'best_ball', 'stableford', 'match_play'].includes(format);
+}
+
+// NEW (Fox Phase 0)
+export const ROUND_FORMAT_OPTIONS: Record<RoundFormat, {
+  label: string;
+  description: string;
+}> = {
+  individual: {
+    label: 'Individual',
+    description: 'Each player plays their own ball, lowest score wins',
+  },
+  scramble: {
+    label: 'Scramble',
+    description: 'Team plays best shot, all hit from there',
+  },
+  modified_scramble: {
+    label: 'Modified Scramble',
+    description: 'Each player hits own ball on par 3s, scramble otherwise',
+  },
+  best_ball: {
+    label: 'Best Ball',
+    description: 'Team score is best of group on each hole',
+  },
+  stableford: {
+    label: 'Stableford',
+    description: 'Points awarded per hole vs par, most points wins',
+  },
+  match_play: {
+    label: 'Match Play',
+    description: 'Hole-by-hole competition, lowest score wins each hole',
+  },
+};
 
 export function isValidMaxPlayers(num: number): boolean {
   return VALID_MAX_PLAYERS.includes(num as any);

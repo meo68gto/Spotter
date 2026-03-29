@@ -24,6 +24,8 @@ import {
   CART_PREFERENCE_OPTIONS,
   VALID_MAX_PLAYERS,
   TIER_DEFINITIONS,
+  RoundFormat,
+  ROUND_FORMAT_OPTIONS,
 } from '@spotter/types';
 
 interface Course {
@@ -64,6 +66,11 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
   const [cartPreference, setCartPreference] = useState<CartPreference>('either');
   const [notes, setNotes] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Fox Phase 0: Tournament format
+  const [isTournament, setIsTournament] = useState(false);
+  const [format, setFormat] = useState<RoundFormat>('individual');
+  const [teamSize, setTeamSize] = useState(4);
 
   // Epic 5: Network invitation state
   const [enableNetworkInvites, setEnableNetworkInvites] = useState(false);
@@ -250,6 +257,10 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
         cartPreference,
         notes: notes || undefined,
         sourceType: enableNetworkInvites ? 'network_invite' : 'direct',
+        // Fox Phase 0: Tournament fields
+        isTournament,
+        format,
+        teamSize,
       };
 
       // Add network invitees if enabled
@@ -546,6 +557,88 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
               </TouchableOpacity>
             ))}
           </View>
+        </Card>
+
+        {/* Fox Phase 0: Tournament Toggle + Format */}
+        <Card>
+          <View style={styles.networkToggleHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Tournament Round</Text>
+              <Text style={styles.networkToggleDescription}>
+                Enable for tournaments, scrambles, best ball, and team formats
+              </Text>
+            </View>
+            <Switch
+              value={isTournament}
+              onValueChange={(val) => {
+                setIsTournament(val);
+                if (!val) {
+                  setFormat('individual');
+                  setTeamSize(4);
+                }
+              }}
+              trackColor={{ false: palette.sky300, true: palette.navy600 }}
+              thumbColor={palette.white}
+            />
+          </View>
+
+          {isTournament && (
+            <View style={styles.tournamentOptions}>
+              <Text style={styles.sectionTitle}>Format</Text>
+              <View style={styles.formatContainer}>
+                {(Object.keys(ROUND_FORMAT_OPTIONS) as RoundFormat[]).map((fmt) => (
+                  <TouchableOpacity
+                    key={fmt}
+                    style={[
+                      styles.cartButton,
+                      format === fmt && styles.cartButtonActive,
+                    ]}
+                    onPress={() => setFormat(fmt)}
+                  >
+                    <Text
+                      style={[
+                        styles.cartButtonTitle,
+                        format === fmt && styles.cartButtonTextActive,
+                      ]}
+                    >
+                      {ROUND_FORMAT_OPTIONS[fmt].label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.cartButtonDescription,
+                        format === fmt && styles.cartButtonTextActive,
+                      ]}
+                    >
+                      {ROUND_FORMAT_OPTIONS[fmt].description}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.sectionTitle, { marginTop: spacing.md }]}>Team Size</Text>
+              <View style={styles.groupSizeContainer}>
+                {[1, 2, 3, 4].map((size) => (
+                  <TouchableOpacity
+                    key={size}
+                    style={[
+                      styles.groupSizeButton,
+                      teamSize === size && styles.groupSizeButtonActive,
+                    ]}
+                    onPress={() => setTeamSize(size)}
+                  >
+                    <Text
+                      style={[
+                        styles.groupSizeText,
+                        teamSize === size && styles.groupSizeTextActive,
+                      ]}
+                    >
+                      {size}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
         </Card>
 
         {/* Epic 5: Network Invitation Toggle */}
@@ -942,6 +1035,16 @@ const styles = StyleSheet.create({
     color: palette.white,
     fontSize: 14,
     fontWeight: '700',
+  },
+  // Fox Phase 0: Tournament styles
+  tournamentOptions: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: palette.sky200,
+  },
+  formatContainer: {
+    gap: spacing.sm,
   },
   notesInput: {
     backgroundColor: palette.sky100,

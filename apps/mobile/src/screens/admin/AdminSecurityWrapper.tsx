@@ -3,9 +3,9 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, AppState } from 'react-native';
-import { Button } from '../components/Button';
-import { useAdminAuth } from '../hooks/useAdmin';
-import { useTheme } from '../theme/provider';
+import { Button } from '../../components/Button';
+import { useAdminAuth } from '../../hooks/useAdmin';
+import { useTheme } from '../../theme/provider';
 
 // Session timeout in milliseconds (30 minutes)
 const ADMIN_SESSION_TIMEOUT = 30 * 60 * 1000;

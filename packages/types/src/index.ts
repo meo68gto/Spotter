@@ -591,6 +591,8 @@ export type {
   RegisterForEventInput,
   SendInviteInput,
   CreateApiKeyInput,
+  OperatorSession,
+  UserRole,
 } from "./organizer";
 
 export {

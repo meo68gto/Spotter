@@ -1152,3 +1152,22 @@ export function isValidEventStatus(status: string): status is EventStatus {
 export function isValidOrganizerRole(role: string): role is OrganizerRole {
   return ['owner', 'admin', 'manager', 'viewer'].includes(role);
 }
+
+// ============================================================================
+// Operator Session (Web App Auth)
+// ============================================================================
+
+export type UserRole = 'golfer' | 'operator' | 'admin';
+
+/**
+ * Session object for authenticated operator web app users.
+ * Used in middleware and server components for auth checks.
+ */
+export interface OperatorSession {
+  userId: string;
+  displayName: string;
+  email: string;
+  role: UserRole;
+  organizerId?: string;
+  memberRole?: 'owner' | 'admin' | 'manager' | 'viewer';
+}

@@ -11,12 +11,12 @@ export {
   type TrustFilterLevel,
   type TrustSortOption,
   type RatingInput,
-} from './useTrust';
+} from '../../hooks/useTrust';
 
 // Components
-export { TrustSummary, type TrustSummaryData } from './TrustSummary';
-export { ProfileTrustSection } from './ProfileTrustSection';
-export { TrustFilterBar } from './TrustFilterBar';
+export { TrustSummary, type TrustSummaryData } from '../TrustSummary';
+export { ProfileTrustSection } from '../ProfileTrustSection';
+export { TrustFilterBar } from '../TrustFilterBar';
 
 // Note: Existing components maintained:
 // - VouchPrompt.tsx (vouch modal)
