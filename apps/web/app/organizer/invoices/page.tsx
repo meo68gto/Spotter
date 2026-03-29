@@ -205,7 +205,7 @@ export default function InvoicesPage() {
       <div className="flex items-center gap-4">
         <label className="text-sm font-medium text-gray-700">Filter:</label>
         <div className="flex gap-2">
-          {(["all", "draft", "sent", "paid", "overdue", "cancelled"] as const).map((s) => (
+          {(["all", "draft", "sent", "paid", "overdue", "cancelled", "refunded"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
