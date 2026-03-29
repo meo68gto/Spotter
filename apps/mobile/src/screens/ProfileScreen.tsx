@@ -184,7 +184,7 @@ const formatTeeTimePreference = (pref: string | null): string => {
   return prefs[pref || ''] || pref || 'Not set';
 };
 
-export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
+export function ProfileScreen({ session, onSignOut, onNavigate }: ProfileScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [userWithTier, setUserWithTier] = useState<UserWithTier | null>(null);
   const [connectionCount, setConnectionCount] = useState(0);

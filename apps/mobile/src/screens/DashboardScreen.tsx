@@ -451,7 +451,7 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
     if (tab === 'ask') return <AskScreen session={session} />;
     if (tab === 'requests') return <RequestsScreen session={session} />;
     if (tab === 'sessions') return <SessionsScreen session={session} />;
-    return <ProfileScreen session={session} onSignOut={onSignOut} />;
+    return <ProfileScreen session={session} onSignOut={onSignOut} onNavigate={jumpToQuickAction} />;
   };
 
   if (isWeb) {

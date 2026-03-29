@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabase';
 
 type QuickAction = {
   label: string;
-  target: 'discover' | 'requests' | 'sessions';
+  target: 'discover' | 'requests' | 'sessions' | 'coaching';
 };
 
 type FeedItem = {
@@ -26,10 +26,11 @@ type PendingItem = {
   status: string;
 };
 
+// EPIC 8: Coaching moved to More menu (was on Home dashboard)
 // BETA: Launch-critical quick actions only
 // Cut: coaches (duplicates discover), matches (not in beta nav), ask (merged into requests flow)
 const QUICK_ACTIONS: QuickAction[] = [
-  { label: 'Browse Coaches', target: 'discover' },
+  { label: 'Browse Coaches', target: 'coaching' },
   { label: 'My Requests', target: 'requests' },
   { label: 'My Sessions', target: 'sessions' }
 ];
