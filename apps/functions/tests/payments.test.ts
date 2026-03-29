@@ -18,7 +18,7 @@ const signPayload = async (secret: string, payload: string) => {
 describe('verifyStripeWebhookSignature', () => {
   it('accepts a valid Stripe-style signature header', async () => {
     const secret = 'whsec_test_secret';
-    const timestamp = '1700000000';
+    const timestamp = Math.floor(Date.now() / 1000).toString();
     const rawBody = JSON.stringify({ id: 'evt_123', type: 'payment_intent.succeeded' });
     const signedPayload = `${timestamp}.${rawBody}`;
     const signature = await signPayload(secret, signedPayload);
@@ -30,7 +30,7 @@ describe('verifyStripeWebhookSignature', () => {
 
   it('rejects tampered payload', async () => {
     const secret = 'whsec_test_secret';
-    const timestamp = '1700000000';
+    const timestamp = Math.floor(Date.now() / 1000).toString();
     const rawBody = JSON.stringify({ id: 'evt_123', type: 'payment_intent.succeeded' });
     const signedPayload = `${timestamp}.${rawBody}`;
     const signature = await signPayload(secret, signedPayload);
