@@ -168,8 +168,31 @@ serve(async (req) => {
     const tierFeatures = getTierFeatures(tierSlug);
     const tierId = tier?.id || '';
 
+    // GAP 3: FREE tier hard 3-round LIFETIME limit - flag for canCreateRounds bypass
+    let freeTierLifetimeCheckPassed = false;
+
     // Check if user can create rounds (tier check)
-    if (!tierFeatures.canCreateRounds) {
+    // Free tier CAN create rounds if under the 3-round lifetime limit (checked below)
+    if (tierSlug === TIER_SLUGS.FREE) {
+      // Free tier: check lifetime limit first, allow creation if under limit
+      const { count: lifetimeRounds } = await supabase
+        .from('round_participants_v2')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      
+      if ((lifetimeRounds || 0) >= 3) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Free tier is limited to 3 rounds. Upgrade to create more.', 
+            code: 'FREE_TIER_LIMIT_REACHED',
+            used: lifetimeRounds,
+            limit: 3
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      freeTierLifetimeCheckPassed = true;
+    } else if (!tierFeatures.canCreateRounds) {
       return new Response(
         JSON.stringify({ 
           error: 'Your tier does not allow creating rounds. Upgrade to Select or Summit.', 
@@ -194,7 +217,8 @@ serve(async (req) => {
     }
 
     // Epic 7: Check monthly round limits for tiers with limits (Select: 4/month)
-    if (tierFeatures.maxRoundsPerMonth !== null) {
+    // Skip for free tier - they have lifetime limit instead
+    if (tierSlug !== TIER_SLUGS.FREE && tierFeatures.maxRoundsPerMonth !== null) {
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       const resetMonth = userData.rounds_count_reset_at 

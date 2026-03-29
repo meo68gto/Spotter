@@ -23,6 +23,7 @@ interface RoundResponse {
   cartPreference: string;
   confirmedParticipants: number;
   status: string;
+  lifecycleStatus: string;
   notes?: string;
   myRole: 'creator' | 'participant' | 'invited' | null;
   myInvitationStatus?: string;
@@ -121,6 +122,7 @@ serve(async (req) => {
           max_players,
           cart_preference,
           status,
+          lifecycle_status,
           notes,
           created_at,
           creator:creator_id (display_name, avatar_url),
@@ -139,6 +141,7 @@ serve(async (req) => {
           max_players,
           cart_preference,
           status,
+          lifecycle_status,
           notes,
           created_at,
           creator:creator_id (display_name, avatar_url),
@@ -154,6 +157,12 @@ serve(async (req) => {
     // Apply status filter
     if (statusFilter) {
       query = query.eq('status', statusFilter);
+    }
+
+    // GAP 1: Apply lifecycle_status filter if provided
+    const lifecycleFilter = url.searchParams.get('lifecycle_status');
+    if (lifecycleFilter) {
+      query = query.eq('lifecycle_status', lifecycleFilter);
     }
 
     // Apply date filters
@@ -249,6 +258,7 @@ serve(async (req) => {
         cartPreference: round.cart_preference,
         confirmedParticipants: participantCounts[round.id] || 0,
         status: round.status,
+        lifecycleStatus: round.lifecycle_status || 'planning',
         notes: round.notes,
         myRole,
         myInvitationStatus: invitation?.status,

@@ -33,6 +33,8 @@ interface RoundDetailResponse {
   maxPlayers: number;
   cartPreference: string;
   status: string;
+  lifecycleStatus: string;
+  reviewWindowClosesAt?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -118,6 +120,8 @@ serve(async (req) => {
         max_players,
         cart_preference,
         status,
+        lifecycle_status,
+        review_window_closes_at,
         notes,
         tier_id,
         created_at,
@@ -213,6 +217,8 @@ serve(async (req) => {
       maxPlayers: round.max_players,
       cartPreference: round.cart_preference,
       status: round.status,
+      lifecycleStatus: round.lifecycle_status || 'planning',
+      reviewWindowClosesAt: round.review_window_closes_at || undefined,
       notes: round.notes,
       createdAt: round.created_at,
       updatedAt: round.updated_at,

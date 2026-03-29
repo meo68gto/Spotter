@@ -308,6 +308,9 @@ export function CreateRoundScreen({ session, onComplete, onCancel }: CreateRound
             { text: 'Upgrade', onPress: () => setShowUpgradeModal(true) },
           ]
         );
+      } else if (errorCode === 'FREE_TIER_LIMIT_REACHED') {
+        // GAP 3: Free tier lifetime limit reached
+        setShowUpgradeModal(true);
       } else {
         Alert.alert('Error', errorMessage);
       }

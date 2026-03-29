@@ -14,6 +14,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { TierBadge, TierSlug } from '../components/TierBadge';
 import { ProfileTrustSection } from '../components/ProfileTrustSection';
+import { RoundHistorySection } from '../components/RoundHistorySection';
 import { NotificationSettings } from '../components/NotificationSettings';
 import { supabase } from '../lib/supabase';
 import { palette, radius, shadows, spacing } from '../theme/design';
@@ -21,6 +22,7 @@ import { palette, radius, shadows, spacing } from '../theme/design';
 interface ProfileScreenProps {
   session: Session;
   onSignOut: () => void;
+  onNavigate?: (target: 'home' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile') => void;
 }
 
 interface UserWithTier {
@@ -299,6 +301,11 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
     Alert.alert('Upgrade', 'Tier upgrade flow would open here');
   };
 
+  // EPIC 8: Navigate to Coaching tab (More menu)
+  const handleCoaching = () => {
+    onNavigate?.('coaching');
+  };
+
   const tier = userWithTier?.tier?.slug || 'free';
   const showUpgradeCTA = tier === 'free' || tier === 'select';
   const nextTier: TierSlug | null = tier === 'free' ? 'select' : tier === 'select' ? 'summit' : null;
@@ -376,6 +383,18 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
           displayName={userWithTier?.displayName || 'You'}
           isOwnProfile={true}
           showReportButton={false}
+        />
+      </Card>
+
+      {/* GAP 2: Round History Section */}
+      <Card>
+        <View style={styles.identityHeader}>
+          <Text style={styles.identityIcon}>⛳</Text>
+          <Text style={styles.identityTitle}>Round History</Text>
+        </View>
+        <RoundHistorySection
+          profileId={session.user.id}
+          isOwnProfile={true}
         />
       </Card>
 
@@ -586,6 +605,15 @@ export function ProfileScreen({ session, onSignOut }: ProfileScreenProps) {
           <TouchableOpacity style={styles.settingsRow} onPress={handleEditProfile}>
             <Text style={styles.settingsIcon}>✏️</Text>
             <Text style={styles.settingsText}>Edit Profile</Text>
+            <Text style={styles.settingsArrow}>→</Text>
+          </TouchableOpacity>
+
+          {/* EPIC 8: Coaching — moved from Home dashboard to More menu */}
+          <View style={styles.settingsDivider} />
+
+          <TouchableOpacity style={styles.settingsRow} onPress={handleCoaching}>
+            <Text style={styles.settingsIcon}>🏌️</Text>
+            <Text style={styles.settingsText}>Coaching</Text>
             <Text style={styles.settingsArrow}>→</Text>
           </TouchableOpacity>
 

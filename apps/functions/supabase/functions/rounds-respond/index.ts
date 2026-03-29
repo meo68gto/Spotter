@@ -200,6 +200,27 @@ serve(async (req) => {
 
     // If accepted, participant is added automatically via trigger
     // If declined, send notification to creator
+    
+    // GAP 1: Check if all invited players have now accepted → transition lifecycle_status to 'confirmed'
+    if (body.action === 'accept') {
+      const { count: acceptedCount } = await supabase
+        .from('round_invitations')
+        .select('*', { count: 'exact', head: true })
+        .eq('round_id', round.id)
+        .eq('status', 'accepted');
+      
+      // Get max_players from round
+      const maxPlayers = round.max_players;
+      
+      if (acceptedCount !== null && acceptedCount === maxPlayers) {
+        // All players have accepted → transition to confirmed
+        await supabase
+          .from('rounds')
+          .update({ lifecycle_status: 'confirmed' })
+          .eq('id', round.id);
+      }
+    }
+    
     if (body.action === 'decline') {
       try {
         const { data: creator } = await supabase
