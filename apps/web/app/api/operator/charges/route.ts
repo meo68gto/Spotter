@@ -64,6 +64,9 @@ export async function POST(req: NextRequest) {
     try {
       const chargeDescription = description || `Registration for ${tournament.name}`;
 
+      // Idempotency key based on registration + charge amount to prevent duplicate charges
+      const chargeIdempotencyKey = `charge-${registration.id}-${amountCents}-${Date.now()}`;
+
       const paymentIntent = await createRegistrationCharge({
         amountCents,
         connectedAccountId: organizer.stripe_account_id,
@@ -72,8 +75,10 @@ export async function POST(req: NextRequest) {
         description: chargeDescription,
         tournamentId,
         golferId,
+        idempotencyKey: chargeIdempotencyKey,
         metadata: {
           registrationId: registration.id,
+          organizerId,
         },
       });
 

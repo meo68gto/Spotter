@@ -47,3 +47,55 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ data: data ?? [] })
 }
+
+// POST /api/operator/tournaments — Create a new tournament
+export async function POST(req: NextRequest) {
+  const session = await getSession()
+  if (!session || (session.role !== 'operator' && session.role !== 'admin') || !session.organizerId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body = await req.json()
+  const { name, title, type, course_name, start_time, end_time, max_participants, registration_deadline, description, location_address } = body
+
+  // Validate required fields
+  if (!title && !name) {
+    return NextResponse.json({ error: 'title or name is required' }, { status: 400 })
+  }
+  if (!start_time) {
+    return NextResponse.json({ error: 'start_time is required' }, { status: 400 })
+  }
+  if (max_participants !== undefined && (typeof max_participants !== 'number' || max_participants < 1)) {
+    return NextResponse.json({ error: 'max_participants must be a positive integer' }, { status: 400 })
+  }
+  if (registration_deadline && isNaN(Date.parse(registration_deadline))) {
+    return NextResponse.json({ error: 'registration_deadline must be a valid ISO date string' }, { status: 400 })
+  }
+
+  const supabase = createServerClient()
+
+  const { data, error } = await supabase
+    .from('organizer_events')
+    .insert({
+      organizer_id: session.organizerId,
+      title: title || name,
+      name: name || title,
+      type: type || null,
+      course_name: course_name || null,
+      start_time,
+      end_time: end_time || null,
+      max_participants: max_participants || null,
+      registration_deadline: registration_deadline || null,
+      description: description || null,
+      location_address: location_address || null,
+      status: 'draft',
+    })
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+
+  return NextResponse.json({ data }, { status: 201 })
+}

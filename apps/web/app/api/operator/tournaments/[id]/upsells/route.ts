@@ -60,6 +60,12 @@ export async function POST(
     }
 
     const body = await req.json()
+
+    // Validate price_cents if provided
+    if (body.price_cents !== undefined && (typeof body.price_cents !== 'number' || body.price_cents < 0)) {
+      return NextResponse.json({ error: 'price_cents must be a non-negative number' }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from('upsells')
       .insert({ ...body, tournament_id: tournamentId })

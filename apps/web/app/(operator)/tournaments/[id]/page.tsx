@@ -35,6 +35,10 @@ interface NavItem {
   accent?: 'default' | 'new';
 }
 
+// Cache for tournament data
+const tournamentCache = new Map<string, { data: Tournament; timestamp: number }>();
+const CACHE_TTL_MS = 30_000; // 30 seconds
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -140,18 +144,30 @@ export default function TournamentDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchTournament = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/operator/tournaments/${tournamentId}`);
-      if (!res.ok) throw new Error(`Failed to load: ${res.status}`);
-      const data = await res.json();
-      // Handle wrapped response: { data: [...] } or direct array
-      setTournament(Array.isArray(data) ? data[0] : (data.data?.[0] ?? data));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tournament');
-    } finally {
-      setLoading(false);
+    // Return cached data if fresh
+    const cached = tournamentCache.get(tournamentId)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      setTournament(cached.data)
+      setLoading(false)
+      return
     }
-  }, [tournamentId]);
+
+    try {
+      const res = await fetch(`/api/operator/tournaments/${tournamentId}`, {
+        cache: 'no-store', // bypass Next.js fetch cache; we manage our own TTL cache
+      })
+      if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
+      const data = await res.json()
+      // Handle wrapped response: { data: [...] } or direct object
+      const tournamentData = Array.isArray(data) ? data[0] : (data.data?.[0] ?? data)
+      setTournament(tournamentData)
+      tournamentCache.set(tournamentId, { data: tournamentData, timestamp: Date.now() })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tournament')
+    } finally {
+      setLoading(false)
+    }
+  }, [tournamentId])
 
   useEffect(() => { fetchTournament(); }, [fetchTournament]);
 

@@ -179,18 +179,41 @@ async function handlePaymentIntentSucceeded(
 ) {
   const tournamentId = paymentIntent.metadata?.tournamentId;
   const golferId = paymentIntent.metadata?.golferId;
+  const organizerId = paymentIntent.metadata?.organizerId;
 
-  if (tournamentId && golferId) {
-    const { error } = await supabase
-      .from('organizer_event_registrations')
-      .update({ payment_status: 'paid' })
-      .eq('event_id', tournamentId)
-      .eq('user_id', golferId);
+  if (!tournamentId || !golferId) {
+    console.warn('[webhook] payment_intent.succeeded missing tournamentId or golferId in metadata:', paymentIntent.id);
+    return;
+  }
 
-    if (error) {
-      console.error('Failed to update registration payment status:', error);
-      throw error;
+  // Security: verify the organizerId in metadata actually owns this tournament
+  if (organizerId) {
+    const { data: tournament } = await supabase
+      .from('organizer_events')
+      .select('id')
+      .eq('id', tournamentId)
+      .eq('organizer_id', organizerId)
+      .maybeSingle();
+
+    if (!tournament) {
+      console.error('[webhook] payment_intent.succeeded: tournament does not belong to organizer in metadata:', {
+        tournamentId,
+        organizerId,
+        paymentIntentId: paymentIntent.id,
+      });
+      throw new Error('Tournament ownership verification failed');
     }
+  }
+
+  const { error } = await supabase
+    .from('organizer_event_registrations')
+    .update({ payment_status: 'paid' })
+    .eq('event_id', tournamentId)
+    .eq('user_id', golferId);
+
+  if (error) {
+    console.error('Failed to update registration payment status:', error);
+    throw error;
   }
 }
 

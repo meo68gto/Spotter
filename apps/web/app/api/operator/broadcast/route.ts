@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withOperatorAuth } from '@/lib/operator/auth';
 import { sendBroadcastEmail } from '@/lib/email';
 
+// In-process rate limit: track last broadcast time per organizer+tournament
+// Resets on server cold start (acceptable for anti-spam, not hard security)
+const lastBroadcastAt = new Map<string, number>();
+const BROADCAST_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes between broadcasts
+
 export async function POST(
   request: NextRequest,
 ): Promise<Response> {
@@ -13,6 +18,18 @@ export async function POST(
       return NextResponse.json(
         { error: 'Missing required fields: tournamentId, subject, htmlContent' },
         { status: 400 },
+      );
+    }
+
+    // Rate limit: only allow one broadcast per tournament every 5 minutes
+    const rateLimitKey = `${organizerId}:${tournamentId}`;
+    const lastSent = lastBroadcastAt.get(rateLimitKey) ?? 0;
+    const timeSinceLastSend = Date.now() - lastSent;
+    if (timeSinceLastSend < BROADCAST_COOLDOWN_MS) {
+      const waitSeconds = Math.ceil((BROADCAST_COOLDOWN_MS - timeSinceLastSend) / 1000);
+      return NextResponse.json(
+        { error: `Broadcasts are rate-limited. Please wait ${waitSeconds}s before sending another.` },
+        { status: 429 },
       );
     }
 
@@ -93,6 +110,9 @@ export async function POST(
       htmlContent,
       recipientEmails: uniqueEmails,
     });
+
+    // Mark this broadcast timestamp (for rate limiting)
+    lastBroadcastAt.set(rateLimitKey, Date.now());
 
     return NextResponse.json(
       {

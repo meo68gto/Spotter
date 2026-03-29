@@ -9,8 +9,9 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   typescript: true,
 })
 
-// Platform fee percentage (10%)
-export const PLATFORM_FEE_PERCENT = 0.10
+// Platform fee percentage (10%) — controlled by env var
+export const PLATFORM_FEE_PERCENT = parseFloat(process.env.PLATFORM_FEE_PERCENT ?? '0.10')
+export const PLATFORM_FEE_BPS = Math.round(PLATFORM_FEE_PERCENT * 10000) // basis points for Stripe
 
 /**
  * Calculate platform fee in cents for a given amount.
@@ -147,12 +148,13 @@ export async function createRegistrationCharge(params: {
   tournamentId: string
   golferId: string
   metadata?: Record<string, string>
+  idempotencyKey?: string
 }): Promise<Stripe.PaymentIntent> {
-  const { amountCents, connectedAccountId, customerId, paymentMethodId, description, tournamentId, golferId, metadata } = params
+  const { amountCents, connectedAccountId, customerId, paymentMethodId, description, tournamentId, golferId, metadata, idempotencyKey } = params
 
   const platformFee = calculatePlatformFee(amountCents)
 
-  return stripe.paymentIntents.create({
+  const options: Stripe.PaymentIntentCreateParams & { idempotencyKey?: string } = {
     amount: amountCents,
     currency: 'usd',
     customer: customerId,
@@ -169,5 +171,7 @@ export async function createRegistrationCharge(params: {
       golferId,
       ...metadata,
     },
-  })
+  }
+
+  return stripe.paymentIntents.create(options, idempotencyKey ? { idempotencyKey } : undefined)
 }
