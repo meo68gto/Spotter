@@ -108,7 +108,7 @@ export default function ProfilePage() {
   const [roundHistory, setRoundHistory] = useState<RoundHistoryItem[]>(MOCK_ROUNDS)
   const [badges] = useState<TrustBadge[]>(MOCK_BADGES)
   const [huntModeEnabled, setHuntModeEnabled] = useState(MOCK_PROFILE.huntModeEnabled)
-  const [visibility, setVisibility] = useState<MOCK_PROFILE['profileVisibility']>(MOCK_PROFILE.profileVisibility)
+  const [visibility, setVisibility] = useState(MOCK_PROFILE.profileVisibility)
   const [loading, setLoading] = useState(false)
   const supabase = createBrowserClient()
 

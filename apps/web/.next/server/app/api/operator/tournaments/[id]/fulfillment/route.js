@@ -1,0 +1,29 @@
+(()=>{var e={};e.id=8408,e.ids=[8408],e.modules={10846:e=>{"use strict";e.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},44870:e=>{"use strict";e.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},3295:e=>{"use strict";e.exports=require("next/dist/server/app-render/after-task-async-storage.external.js")},29294:e=>{"use strict";e.exports=require("next/dist/server/app-render/work-async-storage.external.js")},63033:e=>{"use strict";e.exports=require("next/dist/server/app-render/work-unit-async-storage.external.js")},47394:(e,t,r)=>{"use strict";r.r(t),r.d(t,{patchFetch:()=>g,routeModule:()=>c,serverHooks:()=>_,workAsyncStorage:()=>m,workUnitAsyncStorage:()=>f});var n={};r.r(n),r.d(n,{GET:()=>d,PATCH:()=>p});var a=r(29724),s=r(61185),i=r(27800),o=r(4277),u=r(20680),l=r(53495);async function d(e,{params:t}){let{id:r}=await t;return(0,u.F)(e,async({organizerId:e})=>{let t=(0,l.R)(),{data:n,error:a}=await t.from("organizer_events").select("id").eq("id",r).eq("organizer_id",e).maybeSingle();if(a||!n)return o.NextResponse.json({error:"Tournament not found"},{status:404});let{data:s}=await t.from("organizer_events").select("id, title, name, start_time").eq("id",r).maybeSingle(),{data:i,error:u}=await t.from("sponsor_contracts").select(`
+        id,
+        name,
+        description,
+        status,
+        value_cents,
+        currency,
+        start_date,
+        end_date,
+        signed_at,
+        created_at,
+        sponsor:sponsor_id (
+          id,
+          name,
+          tier,
+          logo_url,
+          contact_name,
+          contact_email
+        ),
+        fulfillment_items: sponsor_fulfillment (
+          id,
+          description,
+          delivery_date,
+          status,
+          notes,
+          created_at,
+          updated_at
+        )
+      `).eq("tournament_id",r).order("created_at",{ascending:!0});return u?o.NextResponse.json({error:"Failed to fetch fulfillment data",details:u.message},{status:500}):o.NextResponse.json({contracts:i??[],tournament:s},{status:200})})}async function p(e,{params:t}){let{id:r}=await t;return(0,u.F)(e,async({organizerId:t})=>{let n=(0,l.R)(),{data:a,error:s}=await n.from("organizer_events").select("id").eq("id",r).eq("organizer_id",t).maybeSingle();if(s||!a)return o.NextResponse.json({error:"Tournament not found"},{status:404});let{fulfillmentId:i,status:u,notes:d}=await e.json();if(!i)return o.NextResponse.json({error:"Missing fulfillmentId"},{status:400});let p={updated_at:new Date().toISOString()};void 0!==u&&(p.status=u),void 0!==d&&(p.notes=d);let{data:c,error:m}=await n.from("sponsor_fulfillment").update(p).eq("id",i).select().single();return m?o.NextResponse.json({error:"Failed to update fulfillment",details:m.message},{status:500}):o.NextResponse.json(c,{status:200})})}let c=new a.AppRouteRouteModule({definition:{kind:s.RouteKind.APP_ROUTE,page:"/api/operator/tournaments/[id]/fulfillment/route",pathname:"/api/operator/tournaments/[id]/fulfillment",filename:"route",bundlePath:"app/api/operator/tournaments/[id]/fulfillment/route"},resolvedPagePath:"/Users/brucewayne/Documents/Spotter/apps/web/app/api/operator/tournaments/[id]/fulfillment/route.ts",nextConfigOutput:"standalone",userland:n}),{workAsyncStorage:m,workUnitAsyncStorage:f,serverHooks:_}=c;function g(){return(0,i.patchFetch)({workAsyncStorage:m,workUnitAsyncStorage:f})}},36735:()=>{},31159:()=>{},50417:(e,t,r)=>{"use strict";r.d(t,{Ht:()=>s,Nx:()=>a});var n=r(53495);async function a(){let e=(0,n.R)();if(!e)return null;let{data:{user:t},error:r}=await e.auth.getUser();if(r||!t)return null;let{data:a}=await e.from("users").select("id, display_name, email, user_role").eq("id",t.id).single();if(!a)return null;let{data:s}=await e.from("organizer_members").select("organizer_id, role").eq("user_id",t.id).eq("is_active",!0).single();return{userId:a.id,displayName:a.display_name??a.email?.split("@")[0]??"User",email:a.email,role:a.user_role??"golfer",organizerId:s?.organizer_id,memberRole:s?.role}}async function s(){return a()}},20680:(e,t,r)=>{"use strict";r.d(t,{F:()=>s});var n=r(50417),a=r(33041);async function s(e,t){let r=await (0,n.Nx)();if(!r)return new Response(JSON.stringify({error:"Unauthorized"}),{status:401,headers:{"Content-Type":"application/json"}});if("operator"!==r.role&&"admin"!==r.role)return new Response(JSON.stringify({error:"Forbidden — operator role required"}),{status:403,headers:{"Content-Type":"application/json"}});let s=(0,a.createServerClient)();if(!s)return t({session:r,organizerId:"mock-organizer-id"});let{data:i}=await s.from("organizer_members").select("organizer_id").eq("user_id",r.userId).eq("is_active",!0).maybeSingle();return i?t({session:r,organizerId:i.organizer_id}):new Response(JSON.stringify({error:"Forbidden — no organizer account"}),{status:403,headers:{"Content-Type":"application/json"}})}},33041:(e,t,r)=>{"use strict";r.r(t),r.d(t,{createServerClient:()=>o,supabase:()=>i});var n=r(10360);let a="https://jicmcotwcpldbaheerbc.supabase.co",s="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppY21jb3R3Y3BsZGJhaGVlcmJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzODU4NTQsImV4cCI6MjA4OTk2MTg1NH0.SLwJN8Ru3pzQyAafphmk0no4mubIP1VhnJDPJ5qHBdY",i=a&&s?(0,n.UU)(a,s):null;function o(){if(!a||!s)return null;let e=process.env.SUPABASE_SERVICE_ROLE_KEY??"";return e?(0,n.UU)(a,e):null}},53495:(e,t,r)=>{"use strict";r.d(t,{R:()=>s});var n=r(10360);let a=process.env.SUPABASE_SERVICE_ROLE_KEY;function s(){return(0,n.UU)("https://jicmcotwcpldbaheerbc.supabase.co",a)}}};var t=require("../../../../../../webpack-runtime.js");t.C(e);var r=e=>t(t.s=e),n=t.X(0,[8186,360,1328],()=>r(47394));module.exports=n})();

@@ -3,7 +3,7 @@
 import { createBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()

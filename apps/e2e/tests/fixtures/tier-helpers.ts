@@ -1,6 +1,8 @@
 import { Page, expect } from '@playwright/test';
-import { TierSlug, TIER_DEFINITIONS, TierFeatures } from '../../../packages/types/src/tier';
-import { OrganizerTier, ORGANIZER_TIERS } from '../../../packages/types/src/organizer';
+// @ts-ignore - types package not linked in e2e
+import { TierSlug, TIER_DEFINITIONS, TierFeatures } from '@spotter/types/src/tier';
+// @ts-ignore - types package not linked in e2e
+import { OrganizerTier, ORGANIZER_TIERS } from '@spotter/types/src/organizer';
 
 /**
  * Helper functions for tier-based testing

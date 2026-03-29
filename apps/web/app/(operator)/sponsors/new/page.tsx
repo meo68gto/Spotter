@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { createBrowserClient } from '@/lib/supabase/client'
 
 const TIERS = [
   { value: 'bronze', label: 'Bronze', description: 'Basic sponsorship' },
@@ -33,7 +33,7 @@ export default function NewSponsorPage() {
 
     startTransition(async () => {
       try {
-        const supabase = createClient()
+        const supabase = createBrowserClient()
 
         // First get the current user and their organizer_id
         const { data: { user } } = await supabase.auth.getUser()
