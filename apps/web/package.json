@@ -11,9 +11,14 @@
     "test": "echo 'No tests yet for web'"
   },
   "dependencies": {
+    "@react-email/components": "^1.0.10",
+    "@react-pdf/renderer": "^4.3.2",
+    "@supabase/supabase-js": "^2.100.1",
     "next": "15.1.2",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "resend": "^6.9.4",
+    "stripe": "^21.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
