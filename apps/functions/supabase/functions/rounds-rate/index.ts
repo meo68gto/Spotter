@@ -226,6 +226,15 @@ serve(async (req) => {
       .eq('id', body.roundId)
       .single();
 
+    // GAP 3 fix: trigger reputation recalculation for each rated user
+    // so their reliability score updates immediately after round review completes
+    const ratedUserIds = [...new Set(newRatings.map(r => r.ratee_id))];
+    for (const ratedUserId of ratedUserIds) {
+      await supabase.functions.invoke('reputation-calculate', {
+        body: { userId: ratedUserId }
+      });
+    }
+
     const response: RateRoundResponse = {
       submittedCount: ratingsToInsert.length,
       roundStatus: updatedRound?.lifecycle_status || round.lifecycle_status,
