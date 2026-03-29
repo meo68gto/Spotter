@@ -22,6 +22,11 @@ export default function CreateEventPage() {
   const [showCourseDropdown, setShowCourseDropdown] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<typeof mockCourses[0] | null>(null);
 
+  // EPIC 7 / EPIC 11: Check if user can create exclusive (SUMMIT-only) events
+  // In production, this would come from the user's session/tier context
+  const canCreateExclusiveEvents = true; // TODO: wire to hasAccess(userTier, 'createExclusiveEvents')
+  const [exclusiveEventEnabled, setExclusiveEventEnabled] = useState(false);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -79,6 +84,11 @@ export default function CreateEventPage() {
     const selectedTiers = Object.entries(formData.targetTiers).filter(([_, v]) => v);
     if (selectedTiers.length === 0) {
       newErrors.targetTiers = "At least one tier must be selected";
+    }
+
+    // EPIC 7 / EPIC 11: Validate exclusive event creation
+    if (exclusiveEventEnabled && !canCreateExclusiveEvents) {
+      newErrors.exclusiveEvent = "Only SUMMIT members can create exclusive events";
     }
 
     setErrors(newErrors);
@@ -405,6 +415,57 @@ export default function CreateEventPage() {
                 ))}
               </div>
               {errors.targetTiers && <p className="mt-1 text-sm text-red-600">{errors.targetTiers}</p>}
+            </div>
+
+            {/*
+              EPIC 7 / EPIC 11: Exclusive Event Toggle
+              Only available to SUMMIT members (createExclusiveEvents = true)
+              When enabled, event is visible only to other SUMMIT members
+            */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    💎 Exclusive SUMMIT Event
+                  </label>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Only visible to SUMMIT members. Requires SUMMIT membership.
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  {exclusiveEventEnabled && !canCreateExclusiveEvents && (
+                    <span className="text-sm text-red-600">🔒 Requires SUMMIT</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (exclusiveEventEnabled || canCreateExclusiveEvents) {
+                        setExclusiveEventEnabled(!exclusiveEventEnabled);
+                      }
+                    }}
+                    disabled={!canCreateExclusiveEvents && !exclusiveEventEnabled}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      exclusiveEventEnabled
+                        ? 'bg-amber-500'
+                        : 'bg-gray-200'
+                    } ${!canCreateExclusiveEvents && !exclusiveEventEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        exclusiveEventEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+              {exclusiveEventEnabled && (
+                <p className="text-sm text-amber-600 mt-2">
+                  👁️ This event will only be visible to SUMMIT members
+                </p>
+              )}
+              {errors.exclusiveEvent && (
+                <p className="text-sm text-red-600 mt-2">{errors.exclusiveEvent}</p>
+              )}
             </div>
           </div>
         </div>

@@ -798,9 +798,22 @@ export type {
   MembershipTier,
   UserTierState,
   UserWithTier,
+  // EPIC 7: TierLimits & Unified System
+  TierLimits,
+  FeatureKey,
+  VisibilityLevel,
+  HuntMode,
+  DiscoveryFilters,
 } from "./tier";
 
 export {
+  // EPIC 7: TierLimits values
+  TIER_LIMITS,
+  TIER_SLUGS,
+  hasAccess,
+  getVisibleTiers,
+  canSeeTier,
+  // Legacy
   TIER_DEFINITIONS,
   TIER_PRICES,
   isValidTier,

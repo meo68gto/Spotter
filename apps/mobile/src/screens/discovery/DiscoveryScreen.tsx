@@ -7,6 +7,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   ToastAndroid,
@@ -21,11 +22,13 @@ import { invokeFunction } from '../../lib/api';
 import { palette, radius, spacing } from '../../theme/design';
 import {
   DiscoverableGolfer,
+  getVisibleTiers,
   HANDICAP_BANDS,
   NETWORKING_INTENT_FILTERS,
   HandicapBand,
   NetworkingIntentFilter,
   SavedMemberData,
+  TierSlug,
 } from '@spotter/types';
 import { Platform } from 'react-native';
 
@@ -33,6 +36,10 @@ type FilterState = {
   handicap_band?: HandicapBand;
   location?: string;
   intent?: NetworkingIntentFilter;
+  /** EPIC 7: Filter by tier slug */
+  tier?: TierSlug;
+  /** EPIC 7: Hunt Mode for SELECT (view FREE members) */
+  huntMode?: boolean;
 };
 
 interface DiscoveryResponse {
@@ -46,6 +53,12 @@ interface DiscoveryResponse {
   caller_tier: {
     tier_id: string;
     slug: string;
+  };
+  /** EPIC 7: Visibility metadata from backend */
+  visibility?: {
+    visible_tiers: TierSlug[];
+    hunt_mode_active: boolean;
+    summit_privacy_respected: boolean;
   };
 }
 
@@ -66,9 +79,13 @@ export function DiscoveryScreen({ session }: { session: Session }) {
   const [filters, setFilters] = useState<FilterState>({});
   const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState({ offset: 0, hasMore: true });
-  const [callerTier, setCallerTier] = useState<string>('free');
+  const [callerTier, setCallerTier] = useState<TierSlug>('free');
   const [savedMemberIds, setSavedMemberIds] = useState<Set<string>>(new Set());
   const [savingMemberIds, setSavingMemberIds] = useState<Set<string>>(new Set());
+  // EPIC 7: Hunt Mode state for SELECT members
+  const [huntModeActive, setHuntModeActive] = useState(false);
+  // EPIC 7: Computed visible tiers based on caller tier + hunt mode
+  const visibleTiers = getVisibleTiers(callerTier as TierSlug, huntModeActive);
 
   const fetchGolfers = useCallback(
     async (isRefresh = false) => {
@@ -82,6 +99,8 @@ export function DiscoveryScreen({ session }: { session: Session }) {
             ...filters,
             limit: 20,
             offset,
+            // EPIC 7: Pass hunt mode to backend
+            huntMode: huntModeActive,
           },
         });
         setGolfers((prev) => (isRefresh ? response.golfers : [...prev, ...response.golfers]));
@@ -89,7 +108,7 @@ export function DiscoveryScreen({ session }: { session: Session }) {
           offset: offset + response.golfers.length,
           hasMore: response.pagination.has_more,
         });
-        setCallerTier(response.caller_tier.slug);
+        setCallerTier(response.caller_tier.slug as TierSlug);
       } catch (error) {
         Alert.alert('Discovery failed', error instanceof Error ? error.message : 'Unknown error');
       } finally {
@@ -103,7 +122,7 @@ export function DiscoveryScreen({ session }: { session: Session }) {
   useEffect(() => {
     fetchGolfers(true);
     fetchSavedMembers();
-  }, [filters]);
+  }, [filters, huntModeActive]);
 
   const fetchSavedMembers = async () => {
     try {
@@ -165,6 +184,23 @@ export function DiscoveryScreen({ session }: { session: Session }) {
     setShowFilters(false);
   };
 
+  // EPIC 7: Determine if Hunt Mode toggle should be shown (SELECT only)
+  const showHuntMode = callerTier === 'select';
+
+  // EPIC 7: Tier display labels
+  const tierLabels: Record<TierSlug, string> = {
+    free: 'Free',
+    select: 'Select',
+    summit: 'Summit',
+  };
+
+  // EPIC 7: Tier colors for filter chips
+  const tierColors: Record<TierSlug, string> = {
+    free: palette.ink500,
+    select: palette.navy600,
+    summit: palette.amber500,
+  };
+
   const renderFilterSection = () => (
     <Card>
       <View style={styles.filterHeader}>
@@ -173,6 +209,70 @@ export function DiscoveryScreen({ session }: { session: Session }) {
           <Text style={styles.clearText}>Clear all</Text>
         </TouchableOpacity>
       </View>
+
+      {/*
+        EPIC 7: Tier Filter Chips — only show if multiple tiers are visible
+        FREE: sees only free (no chip shown)
+        SELECT: sees select + summit (show both chips)
+        SUMMIT: sees summit only (no chip needed)
+      */}
+      {visibleTiers.length > 1 && (
+        <>
+          <Text style={styles.filterLabel}>Member Tier</Text>
+          <View style={styles.filterRow}>
+            {visibleTiers.map((tier) => (
+              <TouchableOpacity
+                key={tier}
+                style={[
+                  styles.tierChip,
+                  filters.tier === tier && { backgroundColor: tierColors[tier] },
+                ]}
+                onPress={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    tier: prev.tier === tier ? undefined : tier,
+                  }))
+                }
+              >
+                <Text
+                  style={[
+                    styles.tierChipText,
+                    filters.tier === tier && styles.tierChipTextActive,
+                  ]}
+                >
+                  {tierLabels[tier]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
+
+      {/*
+        EPIC 7: Hunt Mode Toggle — SELECT members only
+        Allows SELECT members to view FREE-tier members for coaching/lessons
+      */}
+      {showHuntMode && (
+        <>
+          <View style={styles.huntModeRow}>
+            <View style={styles.huntModeInfo}>
+              <Text style={styles.huntModeLabel}>Hunt Mode</Text>
+              <Text style={styles.huntModeDescription}>
+                Include FREE members to find students for lessons
+              </Text>
+            </View>
+            <Switch
+              value={huntModeActive}
+              onValueChange={setHuntModeActive}
+              trackColor={{ false: palette.sky300, true: palette.navy600 }}
+              thumbColor={palette.white}
+            />
+          </View>
+          {huntModeActive && (
+            <Text style={styles.huntModeActiveIndicator}>👁️ Including FREE members</Text>
+          )}
+        </>
+      )}
 
       <Text style={styles.filterLabel}>Handicap</Text>
       <View style={styles.filterRow}>
@@ -431,6 +531,56 @@ const styles = StyleSheet.create({
     color: palette.white,
     fontSize: 12,
     fontWeight: '700',
+  },
+  // EPIC 7: Tier filter chips
+  tierChip: {
+    backgroundColor: palette.sky100,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: palette.sky200,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  tierChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: palette.ink900,
+  },
+  tierChipTextActive: {
+    color: palette.white,
+  },
+  // EPIC 7: Hunt Mode styles
+  huntModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: palette.sky200,
+    marginTop: spacing.sm,
+  },
+  huntModeInfo: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  huntModeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.ink900,
+  },
+  huntModeDescription: {
+    fontSize: 12,
+    color: palette.ink500,
+    marginTop: 2,
+  },
+  huntModeActiveIndicator: {
+    fontSize: 12,
+    color: palette.navy600,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
   },
   listContent: {
     padding: spacing.md,

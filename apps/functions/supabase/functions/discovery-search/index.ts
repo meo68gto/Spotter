@@ -1,11 +1,18 @@
-// Discovery Search Edge Function
-// POST /discovery/search - Find discoverable golfers in same tier
-// Same-tier visibility enforced at database level via discover_golfers() function
+// ============================================================================
+// Discovery Search Edge Function - EPIC 7 Update
+// POST /discovery/search - Find discoverable golfers
+// EPIC 7: Tier visibility enforcement + Hunt Mode for SELECT members
+// ============================================================================
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders } from '../_shared/cors.ts';
-import { TIER_SLUGS, getTierFeatures } from '../_shared/tier-gate.ts';
+import { 
+  TIER_SLUGS, 
+  getTierFeatures, 
+  getVisibleTiers,
+  type TierSlug 
+} from '../_shared/tier-gate.ts';
 import { createTierViolationResponse, TIER_VIOLATION_STATUS } from '../_shared/enforcement.ts';
 
 // Initialize Supabase client
@@ -25,6 +32,10 @@ interface DiscoveryFilters {
   intent?: 'business' | 'social' | 'competitive' | 'business_social';
   limit?: number;
   offset?: number;
+  /** EPIC 7: Hunt Mode for SELECT members (view FREE tier) */
+  huntMode?: boolean;
+  /** EPIC 7: Override visible tiers (uses getVisibleTiers if not provided) */
+  visibleTiers?: TierSlug[];
 }
 
 interface DiscoverableGolfer {
@@ -74,6 +85,12 @@ interface DiscoveryResponse {
     tier_id: string;
     slug: string;
   };
+  /** EPIC 7: Visibility metadata */
+  visibility: {
+    visible_tiers: TierSlug[];
+    hunt_mode_active: boolean;
+    summit_privacy_respected: boolean;
+  };
 }
 
 serve(async (req) => {
@@ -115,10 +132,15 @@ serve(async (req) => {
       );
     }
 
-    // Get caller's tier info
+    // Get caller's tier info + visibility settings (EPIC 7)
     const { data: callerData, error: callerError } = await supabase
       .from('users')
-      .select('tier_id, tier_status, membership_tiers(slug)')
+      .select(`
+        tier_id, 
+        tier_status, 
+        hunt_mode_enabled,
+        membership_tiers(slug)
+      `)
       .eq('id', user.id)
       .single();
 
@@ -151,18 +173,26 @@ serve(async (req) => {
       );
     }
 
-    // Epic 7: Get tier features for discovery limit enforcement
+    // EPIC 7: Determine caller's tier slug
     const tierSlug = (callerData.membership_tiers as any)?.slug || TIER_SLUGS.FREE;
-    const tierFeatures = getTierFeatures(tierSlug);
+    const tierFeatures = getTierFeatures(tierSlug as TierSlug);
     
-    // Epic 7: Enforce discovery limits for free tier
+    // EPIC 7: Determine Hunt Mode status
+    // Hunt Mode can only be enabled by SELECT members who have it enabled in their profile
+    const huntModeEnabled = tierSlug === TIER_SLUGS.SELECT && (callerData.hunt_mode_enabled === true);
+    
+    // EPIC 7: Respect explicit huntMode param only if user is SELECT with hunt_mode_enabled
+    const useHuntMode = body.huntMode === true && huntModeEnabled;
+    
+    // EPIC 7: Calculate visible tiers based on caller's tier + hunt mode
+    const visibleTiers = body.visibleTiers ?? getVisibleTiers(tierSlug as TierSlug, useHuntMode);
+
+    // EPIC 7: Enforce discovery limits for free tier
     const maxSearchResults = tierFeatures.maxSearchResults;
     if (maxSearchResults !== null) {
-      // Free tier is limited to 20 results
       if (body.limit && body.limit > maxSearchResults) {
         body.limit = maxSearchResults;
       }
-      // If no limit provided, use the tier limit
       if (!body.limit) {
         body.limit = maxSearchResults;
       }
@@ -225,8 +255,7 @@ serve(async (req) => {
     filters.limit = limit;
     filters.offset = offset;
 
-    // Call the discover_golfers PostgreSQL function
-    // Same-tier visibility is enforced by the function itself
+    // EPIC 7: Call discover_golfers with visibility parameters
     const { data: golfers, error: discoveryError } = await supabase
       .rpc('discover_golfers', {
         p_user_id: user.id,
@@ -234,7 +263,11 @@ serve(async (req) => {
         p_location: filters.location ?? null,
         p_intent: filters.intent ?? null,
         p_limit: limit,
-        p_offset: offset
+        p_offset: offset,
+        // EPIC 7: New parameters for tier visibility
+        p_hunt_mode: useHuntMode,
+        p_visible_tiers: visibleTiers,
+        p_summit_privacy_check: true,
       });
 
     if (discoveryError) {
@@ -248,9 +281,11 @@ serve(async (req) => {
       );
     }
 
-    // Get total count for pagination (separate query for performance)
-    // We estimate based on returned results
+    // Get total count for pagination
     const hasMore = golfers && golfers.length === limit;
+
+    // EPIC 7: Check if hunt mode is available for this user
+    const huntModeAvailable = tierSlug === TIER_SLUGS.SELECT;
 
     // Build response
     const response: DiscoveryResponse = {
@@ -284,7 +319,7 @@ serve(async (req) => {
       pagination: {
         limit,
         offset,
-        total: offset + (golfers?.length || 0) + (hasMore ? 1 : 0), // Estimated
+        total: offset + (golfers?.length || 0) + (hasMore ? 1 : 0),
         has_more: hasMore
       },
       filters: {
@@ -294,7 +329,12 @@ serve(async (req) => {
       },
       caller_tier: {
         tier_id: callerData.tier_id,
-        slug: (callerData.membership_tiers as any)?.slug || 'unknown'
+        slug: tierSlug as string
+      },
+      visibility: {
+        visible_tiers: visibleTiers,
+        hunt_mode_active: useHuntMode,
+        summit_privacy_respected: true
       }
     };
 

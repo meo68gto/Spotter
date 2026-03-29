@@ -1,60 +1,300 @@
 // ============================================================================
-// Tier System Type Definitions
+// Tier System Type Definitions - Public API
+// ============================================================================
+// This file re-exports tier definitions from the canonical source in
+// _shared/tier-gate.ts for use by public API consumers.
+//
+// Canonical source: apps/functions/supabase/functions/_shared/tier-gate.ts
 // ============================================================================
 
 import type { UUID } from "./index.js";
 
 // ----------------------------------------------------------------------------
-// Tier Enums and String Literals
+// Tier Slugs & Basic Types
 // ----------------------------------------------------------------------------
 
-/**
- * Valid tier slugs for membership levels
- */
-export type TierSlug = 'free' | 'select' | 'summit';
+export const TIER_SLUGS = {
+  FREE: 'free',
+  SELECT: 'select',
+  SUMMIT: 'summit'
+} as const;
 
-/**
- * Tier visibility settings for content/feature access
- */
+export type TierSlug = typeof TIER_SLUGS[keyof typeof TIER_SLUGS];
+
 export type TierVisibility = 'same_tier_only';
 
-/**
- * Possible states for a user's membership tier
- */
 export type TierStatus = 'active' | 'suspended' | 'expired' | 'pending_upgrade';
 
 // ----------------------------------------------------------------------------
-// Tier Features Interface
+// Discovery Visibility Types (EPIC 7)
+// ----------------------------------------------------------------------------
+
+export type VisibilityLevel = 
+  | 'public'           // Visible to all tiers
+  | 'select_only'      // Visible to SELECT and SUMMIT only
+  | 'summit_only';     // Visible to SUMMIT only
+
+export type HuntMode = 'off' | 'view_free';
+
+export interface DiscoveryFilters {
+  visibleTiers: TierSlug[];
+  huntMode: HuntMode;
+  searchBoost: boolean;
+  appearInLowerTierSearch: boolean;
+}
+
+// ----------------------------------------------------------------------------
+// TierLimits Interface (EPIC 7 Unified — mirrors _shared/tier-gate.ts)
+// Mirrors: apps/functions/supabase/functions/_shared/tier-gate.ts::TierLimits
+// ----------------------------------------------------------------------------
+
+export interface TierLimits {
+  maxSearchResults: number | null;
+  maxConnections: number | null;
+  maxRoundsPerMonth: number | null;
+  introCreditsMonthly: number | null;
+  canCreateRounds: boolean;
+  canSendIntros: boolean;
+  canReceiveIntros: boolean;
+  discoveryFilters: DiscoveryFilters;
+  visibilityLevel: VisibilityLevel;
+  searchBoost: boolean;
+  exclusiveAccess: boolean;
+  profileBadge: 'none' | 'verified' | 'gold' | 'summit';
+  analyticsAccess: 'none' | 'basic' | 'advanced';
+  eventAccess: 'none' | 'select_events' | 'all_events';
+  customProfileUrl: boolean;
+  flags: {
+    canUseHuntMode: boolean;
+    canHideFromLowerTiers: boolean;
+    canSeeAllSummits: boolean;
+    canSeeAllSelects: boolean;
+    canCreateExclusiveEvents: boolean;
+    canAccessVerifiedDirectory: boolean;
+  };
+}
+
+// ----------------------------------------------------------------------------
+// TierLimits Definitions (EPIC 7 — mirrors _shared/tier-gate.ts::TIER_LIMITS)
+// ----------------------------------------------------------------------------
+
+export const TIER_LIMITS: Record<TierSlug, TierLimits> = {
+  free: {
+    maxSearchResults: 20,
+    maxConnections: 50,
+    maxRoundsPerMonth: 0,
+    introCreditsMonthly: 0,
+    canCreateRounds: false,
+    canSendIntros: false,
+    canReceiveIntros: true,
+    discoveryFilters: {
+      visibleTiers: ['free'],
+      huntMode: 'off',
+      searchBoost: false,
+      appearInLowerTierSearch: true,
+    },
+    visibilityLevel: 'public',
+    searchBoost: false,
+    exclusiveAccess: false,
+    profileBadge: 'none',
+    analyticsAccess: 'none',
+    eventAccess: 'none',
+    customProfileUrl: false,
+    flags: {
+      canUseHuntMode: false,
+      canHideFromLowerTiers: false,
+      canSeeAllSummits: false,
+      canSeeAllSelects: true,
+      canCreateExclusiveEvents: false,
+      canAccessVerifiedDirectory: false,
+    },
+  },
+  select: {
+    maxSearchResults: null,
+    maxConnections: 500,
+    maxRoundsPerMonth: 4,
+    introCreditsMonthly: 3,
+    canCreateRounds: true,
+    canSendIntros: true,
+    canReceiveIntros: true,
+    discoveryFilters: {
+      visibleTiers: ['select', 'summit'],
+      huntMode: 'off',
+      searchBoost: false,
+      appearInLowerTierSearch: true,
+    },
+    visibilityLevel: 'public',
+    searchBoost: false,
+    exclusiveAccess: false,
+    profileBadge: 'verified',
+    analyticsAccess: 'basic',
+    eventAccess: 'select_events',
+    customProfileUrl: false,
+    flags: {
+      canUseHuntMode: true,
+      canHideFromLowerTiers: false,
+      canSeeAllSummits: true,
+      canSeeAllSelects: true,
+      canCreateExclusiveEvents: false,
+      canAccessVerifiedDirectory: true,
+    },
+  },
+  summit: {
+    maxSearchResults: null,
+    maxConnections: null,
+    maxRoundsPerMonth: null,
+    introCreditsMonthly: null,
+    canCreateRounds: true,
+    canSendIntros: true,
+    canReceiveIntros: true,
+    discoveryFilters: {
+      visibleTiers: ['summit'],
+      huntMode: 'off',
+      searchBoost: true,
+      appearInLowerTierSearch: false,
+    },
+    visibilityLevel: 'summit_only',
+    searchBoost: true,
+    exclusiveAccess: true,
+    profileBadge: 'summit',
+    analyticsAccess: 'advanced',
+    eventAccess: 'all_events',
+    customProfileUrl: true,
+    flags: {
+      canUseHuntMode: true,
+      canHideFromLowerTiers: true,
+      canSeeAllSummits: true,
+      canSeeAllSelects: true,
+      canCreateExclusiveEvents: true,
+      canAccessVerifiedDirectory: true,
+    },
+  },
+};
+
+// ----------------------------------------------------------------------------
+// Feature Keys (EPIC 7)
+// ----------------------------------------------------------------------------
+
+export type FeatureKey = 
+  | keyof TierLimits['flags']
+  | 'unlimitedSearch'
+  | 'unlimitedConnections'
+  | 'unlimitedRounds'
+  | 'createRounds'
+  | 'sendIntros'
+  | 'receiveIntros'
+  | 'huntMode'
+  | 'hideFromLowerTiers'
+  | 'seeAllSummits'
+  | 'seeAllSelects'
+  | 'createExclusiveEvents'
+  | 'verifiedDirectory'
+  | 'advancedAnalytics'
+  | 'eventAccess'
+  | 'customProfileUrl'
+  | 'searchBoost';
+
+// ----------------------------------------------------------------------------
+// hasAccess() — mirrors _shared/tier-gate.ts::hasAccess()
+// Use this for ALL feature gating in the public API.
+// ----------------------------------------------------------------------------
+
+export function hasAccess(userTier: TierSlug, feature: FeatureKey): boolean {
+  const limits = TIER_LIMITS[userTier];
+  
+  switch (feature) {
+    case 'huntMode':
+      return limits.flags.canUseHuntMode;
+    case 'hideFromLowerTiers':
+      return limits.flags.canHideFromLowerTiers;
+    case 'seeAllSummits':
+      return limits.flags.canSeeAllSummits;
+    case 'seeAllSelects':
+      return limits.flags.canSeeAllSelects;
+    case 'createExclusiveEvents':
+      return limits.flags.canCreateExclusiveEvents;
+    case 'verifiedDirectory':
+      return limits.flags.canAccessVerifiedDirectory;
+    case 'unlimitedSearch':
+      return limits.maxSearchResults === null;
+    case 'unlimitedConnections':
+      return limits.maxConnections === null;
+    case 'unlimitedRounds':
+      return limits.maxRoundsPerMonth === null;
+    case 'createRounds':
+      return limits.canCreateRounds;
+    case 'sendIntros':
+      return limits.canSendIntros;
+    case 'receiveIntros':
+      return limits.canReceiveIntros;
+    case 'searchBoost':
+      return limits.searchBoost;
+    case 'advancedAnalytics':
+      return limits.analyticsAccess === 'advanced';
+    case 'eventAccess':
+      return limits.eventAccess !== 'none';
+    case 'customProfileUrl':
+      return limits.customProfileUrl;
+    default:
+      return false;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Discovery visibility functions (EPIC 7)
+// Mirrors: apps/functions/supabase/functions/_shared/tier-gate.ts
 // ----------------------------------------------------------------------------
 
 /**
- * Feature gates available in the tier system.
- * Each feature is a boolean indicating access.
+ * Check if a viewer can see members of a target tier.
  */
+export function canSeeTier(
+  viewerTier: TierSlug,
+  targetTier: TierSlug,
+  viewerIsConnected: boolean = false
+): boolean {
+  if (viewerIsConnected) return true;
+  if (viewerTier === 'free') return true;
+  if (viewerTier === 'select') return targetTier !== 'free';
+  if (viewerTier === 'summit') return targetTier === 'summit';
+  return false;
+}
+
+/**
+ * Get the discovery-visible tiers for a given viewer tier.
+ */
+export function getVisibleTiers(viewerTier: TierSlug, huntModeEnabled: boolean = false): TierSlug[] {
+  switch (viewerTier) {
+    case 'free':
+      return ['free'];
+    case 'select':
+      const tiers: TierSlug[] = ['select', 'summit'];
+      if (huntModeEnabled) tiers.push('free');
+      return tiers;
+    case 'summit':
+      return ['summit'];
+    default:
+      return ['free'];
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Legacy TierFeatures (boolean capability flags)
+// Preserved for existing API consumers — prefer TierLimits for new code.
+// ----------------------------------------------------------------------------
+
 export interface TierFeatures {
-  /** Access to AI-powered matchmaking */
   matchmaking: boolean;
-  /** Unlimited session scheduling */
   unlimitedSessions: boolean;
-  /** Video analysis and coaching feedback */
   videoAnalysis: boolean;
-  /** Priority matching with premium users */
   priorityMatching: boolean;
-  /** Advanced skill analytics and progress tracking */
   advancedAnalytics: boolean;
-  /** Direct messaging with coaches */
   coachMessaging: boolean;
-  /** Access to sponsor events and tournaments */
   eventAccess: boolean;
-  /** Custom profile badges and flair */
   profileBadges: boolean;
-  /** Early access to new features */
   earlyAccess: boolean;
-  /** Ad-free experience */
   adFree: boolean;
-  /** Higher visibility in match results */
   boostedVisibility: boolean;
-  /** Group session hosting capabilities */
   groupSessions: boolean;
 }
 
@@ -62,43 +302,23 @@ export interface TierFeatures {
 // Membership Tier Interface
 // ----------------------------------------------------------------------------
 
-/**
- * Complete membership tier definition.
- * Represents a tier level in the system with its configuration.
- */
 export interface MembershipTier {
-  /** Unique identifier for the tier */
   id: UUID;
-  /** Human-readable name of the tier */
   name: string;
-  /** URL-friendly slug identifier */
   slug: TierSlug;
-  /** Detailed description of tier benefits */
   description: string;
-  /** Feature flags enabled for this tier */
   features: TierFeatures;
-  /** Monthly price in cents (0 for free tier) */
   priceCentsMonthly: number;
-  /** Annual price in cents (discounted) */
   priceCentsYearly: number;
-  /** Currency code (ISO 4217) */
   currency: string;
-  /** Maximum number of matches per month (null for unlimited) */
   matchLimitMonthly: number | null;
-  /** Maximum number of sessions per month (null for unlimited) */
   sessionLimitMonthly: number | null;
-  /** Maximum number of video submissions per month (null for unlimited) */
   videoSubmissionLimitMonthly: number | null;
-  /** Whether this tier is active and available for purchase */
   active: boolean;
-  /** Display order (lower numbers shown first) */
   displayOrder: number;
-  /** Stripe product/price IDs for subscription management */
   stripePriceIdMonthly?: string;
   stripePriceIdYearly?: string;
-  /** When this tier configuration was created */
   createdAt: string;
-  /** When this tier configuration was last updated */
   updatedAt: string;
 }
 
@@ -106,36 +326,19 @@ export interface MembershipTier {
 // User Tier State Interface
 // ----------------------------------------------------------------------------
 
-/**
- * Represents a user's current tier membership state.
- * Links a user to their active tier and subscription details.
- */
 export interface UserTierState {
-  /** Unique identifier for this membership record */
   id: UUID;
-  /** Reference to the user */
   userId: UUID;
-  /** Reference to the tier definition */
   tierId: UUID;
-  /** Current status of the membership */
   status: TierStatus;
-  /** When the current tier period started */
   currentPeriodStart: string;
-  /** When the current tier period ends (null for free tier) */
   currentPeriodEnd: string | null;
-  /** Whether the subscription auto-renews */
   autoRenew: boolean;
-  /** Stripe subscription ID (if applicable) */
   stripeSubscriptionId?: string;
-  /** Payment method on file */
   paymentMethodId?: string;
-  /** When the membership was created */
   createdAt: string;
-  /** When the membership was last updated */
   updatedAt: string;
-  /** When the membership was cancelled (if applicable) */
   cancelledAt?: string;
-  /** Reason for cancellation (if applicable) */
   cancellationReason?: string;
 }
 
@@ -143,34 +346,18 @@ export interface UserTierState {
 // User With Tier Interface
 // ----------------------------------------------------------------------------
 
-/**
- * Combined user and tier information.
- * Used when fetching user data with tier context.
- */
 export interface UserWithTier {
-  /** User ID */
   id: UUID;
-  /** User email */
   email: string;
-  /** User display name */
   displayName: string;
-  /** User avatar URL */
   avatarUrl?: string;
-  /** Current tier information */
   tier: {
-    /** Tier slug identifier */
     slug: TierSlug;
-    /** Tier name for display */
     name: string;
-    /** Current tier status */
     status: TierStatus;
-    /** Features available to this user */
     features: TierFeatures;
-    /** Whether the user has an active paid subscription */
     isPaid: boolean;
-    /** When the current period ends (null for free/indefinite) */
     expiresAt: string | null;
-    /** Whether auto-renew is enabled */
     autoRenew: boolean;
   };
 }
@@ -179,23 +366,14 @@ export interface UserWithTier {
 // Tier Change/Upgrade Types
 // ----------------------------------------------------------------------------
 
-/**
- * Represents a tier change request
- */
 export interface TierChangeRequest {
   id: UUID;
   userId: UUID;
-  /** Target tier slug */
   targetTier: TierSlug;
-  /** Change type */
   changeType: 'upgrade' | 'downgrade' | 'cancel';
-  /** Current status of the request */
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  /** When the change should take effect */
   effectiveDate: string;
-  /** Stripe payment intent ID for proration (if applicable) */
   stripePaymentIntentId?: string;
-  /** Error message if the change failed */
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
@@ -205,15 +383,6 @@ export interface TierChangeRequest {
 // Constants
 // ----------------------------------------------------------------------------
 
-/**
- * Complete tier definitions with all configuration.
- * This is the source of truth for tier capabilities.
- * 
- * PHASE 1 BUSINESS REQUIREMENTS:
- * - Free: $0
- * - Select: $1,000/year
- * - Summit: $10,000 lifetime
- */
 export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'createdAt' | 'updatedAt'>> = {
   free: {
     name: 'Free',
@@ -260,8 +429,8 @@ export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'cre
       boostedVisibility: false,
       groupSessions: false,
     },
-    priceCentsMonthly: 0, // Annual only
-    priceCentsYearly: 100000, // $1,000/year
+    priceCentsMonthly: 0,
+    priceCentsYearly: 100000,
     currency: 'usd',
     matchLimitMonthly: null,
     sessionLimitMonthly: null,
@@ -288,7 +457,7 @@ export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'cre
       groupSessions: true,
     },
     priceCentsMonthly: 0,
-    priceCentsYearly: 1000000, // $10,000 lifetime (stored as yearly for schema compatibility)
+    priceCentsYearly: 1000000,
     currency: 'usd',
     matchLimitMonthly: null,
     sessionLimitMonthly: null,
@@ -298,10 +467,6 @@ export const TIER_DEFINITIONS: Record<TierSlug, Omit<MembershipTier, 'id' | 'cre
   },
 };
 
-/**
- * All feature keys available in the tier system.
- * Use this for type-safe feature checking.
- */
 export const FEATURE_NAMES: Array<keyof TierFeatures> = [
   'matchmaking',
   'unlimitedSessions',
@@ -317,15 +482,6 @@ export const FEATURE_NAMES: Array<keyof TierFeatures> = [
   'groupSessions',
 ];
 
-/**
- * Price mapping by tier and billing interval.
- * Prices are in cents.
- * 
- * PHASE 1: Updated for premium tier pricing
- * - Free: $0
- * - Select: $1,000/year (no monthly option)
- * - Summit: $10,000 lifetime
- */
 export const TIER_PRICES: Record<TierSlug, { monthly: number | null; yearly: number; currency: string; billingInterval: 'monthly' | 'annual' | 'lifetime' }> = {
   free: { monthly: 0, yearly: 0, currency: 'usd', billingInterval: 'annual' },
   select: { monthly: null, yearly: 100000, currency: 'usd', billingInterval: 'annual' },
@@ -336,95 +492,40 @@ export const TIER_PRICES: Record<TierSlug, { monthly: number | null; yearly: num
 // Type Guards
 // ----------------------------------------------------------------------------
 
-/**
- * Check if a string is a valid TierSlug.
- * @param slug - The string to check
- * @returns Type predicate indicating if the string is a valid TierSlug
- */
 export function isValidTier(slug: string): slug is TierSlug {
   return ['free', 'select', 'summit'].includes(slug);
 }
 
-/**
- * Check if a user has access to a specific feature.
- * @param user - The user with tier information
- * @param feature - The feature key to check
- * @returns Boolean indicating if the user has access to the feature
- */
 export function hasFeatureAccess(
   user: UserWithTier,
   feature: keyof TierFeatures
 ): boolean {
-  // Check if user has an active tier status
   if (user.tier.status !== 'active' && user.tier.status !== 'pending_upgrade') {
     return false;
   }
-  
-  // Return the feature flag from the user's tier features
   return user.tier.features[feature] === true;
 }
 
-/**
- * Check if a tier is paid (not free).
- * @param slug - The tier slug to check
- * @returns Boolean indicating if the tier requires payment
- */
 export function isPaidTier(slug: TierSlug): boolean {
   return slug !== 'free';
 }
 
-/**
- * Check if a tier change is an upgrade.
- * @param fromTier - The current tier
- * @param toTier - The target tier
- * @returns Boolean indicating if this is an upgrade
- */
 export function isTierUpgrade(fromTier: TierSlug, toTier: TierSlug): boolean {
-  const tierOrder: Record<TierSlug, number> = {
-    free: 1,
-    select: 2,
-    summit: 3,
-  };
+  const tierOrder: Record<TierSlug, number> = { free: 1, select: 2, summit: 3 };
   return tierOrder[toTier] > tierOrder[fromTier];
 }
 
-/**
- * Check if a tier change is a downgrade.
- * @param fromTier - The current tier
- * @param toTier - The target tier
- * @returns Boolean indicating if this is a downgrade
- */
 export function isTierDowngrade(fromTier: TierSlug, toTier: TierSlug): boolean {
-  const tierOrder: Record<TierSlug, number> = {
-    free: 1,
-    select: 2,
-    summit: 3,
-  };
+  const tierOrder: Record<TierSlug, number> = { free: 1, select: 2, summit: 3 };
   return tierOrder[toTier] < tierOrder[fromTier];
 }
 
-/**
- * Get the effective date for a tier change.
- * Upgrades take effect immediately, downgrades at period end.
- * @param changeType - The type of tier change
- * @param currentPeriodEnd - When the current period ends
- * @returns ISO date string for when the change takes effect
- */
 export function getTierChangeEffectiveDate(
   changeType: 'upgrade' | 'downgrade' | 'cancel',
   currentPeriodEnd: string | null
 ): string {
   const now = new Date().toISOString();
-  
-  // Upgrades are immediate
-  if (changeType === 'upgrade') {
-    return now;
-  }
-  
-  // Downgrades and cancels take effect at period end (or immediately if no period)
-  if (currentPeriodEnd) {
-    return currentPeriodEnd;
-  }
-  
+  if (changeType === 'upgrade') return now;
+  if (currentPeriodEnd) return currentPeriodEnd;
   return now;
 }
