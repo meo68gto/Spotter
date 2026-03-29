@@ -61,7 +61,7 @@ export async function GET(
     if (contractIds.length) {
       const { data } = await supabase
         .from('sponsor_fulfillment')
-        .select('*, contracts:sponsor_contracts(description)')
+        .select('*')
         .in('contract_id', contractIds);
       fulfillment = (data as SponsorFulfillmentRow[] | null) ?? [];
     }

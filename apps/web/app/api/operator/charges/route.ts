@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
     try {
       const chargeDescription = description || `Registration for ${tournament.name}`;
 
-      // Idempotency key based on registration + charge amount to prevent duplicate charges
-      const chargeIdempotencyKey = `charge-${registration.id}-${amountCents}-${Date.now()}`;
+      // Idempotency key based on registration + charge amount — deterministic so retries are safe
+      const chargeIdempotencyKey = `charge-${registration.id}-${amountCents}`;
 
       const paymentIntent = await createRegistrationCharge({
         amountCents,

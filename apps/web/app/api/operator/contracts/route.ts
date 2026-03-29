@@ -7,14 +7,27 @@ export async function GET(req: NextRequest) {
   return withOperatorAuth(req, async ({ organizerId, session }) => {
     const supabase = createServerClient();
 
+    // First fetch sponsor IDs belonging to this organizer, then fetch their contracts.
+    // Supabase join filters can't reference columns across joined relations (e.g. sponsors.organizer_id).
+    const { data: sponsorRows } = await supabase
+      .from('sponsors')
+      .select('id')
+      .eq('organizer_id', organizerId);
+
+    const sponsorIds = (sponsorRows ?? []).map((s) => s.id);
+
+    if (sponsorIds.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
+
     const { data, error } = await supabase
       .from('sponsor_contracts')
       .select(`
         *,
-        sponsor:sponsors!inner(id, name, tier),
+        sponsor:sponsors(id, name, tier),
         tournament:organizer_events(id, name, start_time)
       `)
-      .eq('sponsors.organizer_id', organizerId)
+      .in('sponsor_id', sponsorIds)
       .order('created_at', { ascending: false });
 
     if (error) {
