@@ -23,7 +23,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
       - name: Validate env templates
         run: pnpm env:validate
@@ -85,7 +85,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
         run: pnpm --filter=e2e exec playwright install --with-deps

@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAdminSessionCookieName, verifyAdminSessionToken } from '../../admin-session';
 
 /**
  * Validates the admin session from cookies.
  * Returns 401 if not authenticated.
  */
 export async function validateAdmin(request: NextRequest): Promise<NextResponse | null> {
-  const adminToken = request.cookies.get('admin_token')?.value;
-  const expectedToken = process.env.ADMIN_DELETION_TOKEN;
-
-  if (!adminToken || !expectedToken || adminToken !== expectedToken) {
+  const adminSession = request.cookies.get(getAdminSessionCookieName())?.value;
+  if (!(await verifyAdminSessionToken(adminSession))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

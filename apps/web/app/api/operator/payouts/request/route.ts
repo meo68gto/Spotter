@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withOperatorAuth } from '@/lib/operator/auth';
 import { createServerClient } from '@/lib/supabase/server';
 import { createTransferToConnectedAccount } from '@/lib/stripe';
+import { getAvailablePayoutBalanceCents } from '@/lib/operator/financials';
 
 // POST /api/operator/payouts/request — Request a payout to Stripe connected account
 export async function POST(req: NextRequest) {
@@ -17,6 +18,17 @@ export async function POST(req: NextRequest) {
 
     if (!amountCents || amountCents <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    const availableBalanceCents = await getAvailablePayoutBalanceCents(organizerId, tournamentId ?? null);
+    if (amountCents > availableBalanceCents) {
+      return NextResponse.json(
+        {
+          error: 'Requested payout exceeds your currently available balance.',
+          availableBalanceCents,
+        },
+        { status: 400 },
+      );
     }
 
     // Get organizer with Stripe account

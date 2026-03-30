@@ -26,7 +26,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
       - name: Run reliability calculation
         run: npx ts-node --esm scripts/jobs/calculate-reliability.ts
@@ -55,7 +55,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
       - name: Run badge award
         run: npx ts-node --esm scripts/jobs/award-trust-badges.ts
@@ -84,7 +84,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
       - name: Run vouch expiration
         run: npx ts-node --esm scripts/jobs/expire-vouches.ts

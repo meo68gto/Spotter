@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { getAdminSessionCookieName, verifyAdminSessionToken } from './admin-session';
 
 export const metadata = {
   title: 'Spotter Admin',
@@ -12,9 +13,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const cookieStore = await cookies();
-  const adminToken = cookieStore.get('admin_token')?.value;
-  const expectedToken = process.env.ADMIN_DELETION_TOKEN;
-  const isAuthenticated = adminToken === expectedToken;
+  const adminSession = cookieStore.get(getAdminSessionCookieName())?.value;
+  const isAuthenticated = await verifyAdminSessionToken(adminSession);
 
   return (
     <html lang="en">

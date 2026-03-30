@@ -16,13 +16,25 @@ export async function POST(req: NextRequest) {
     // Verify tournament belongs to this organizer
     const { data: tournament, error: tourError } = await supabase
       .from('organizer_events')
-      .select('id, name, organizer_id')
+      .select('id, name, organizer_id, price_cents')
       .eq('id', tournamentId)
       .eq('organizer_id', organizerId)
       .single();
 
     if (tourError || !tournament) {
       return NextResponse.json({ error: 'Tournament not found or unauthorized' }, { status: 404 });
+    }
+
+    const expectedAmountCents = tournament.price_cents ?? amountCents;
+    if (!Number.isInteger(expectedAmountCents) || expectedAmountCents <= 0) {
+      return NextResponse.json({ error: 'Tournament does not have a valid payable registration amount' }, { status: 400 });
+    }
+
+    if (tournament.price_cents !== null && amountCents !== tournament.price_cents) {
+      return NextResponse.json(
+        { error: 'Charge amount must match the server-side registration price for this tournament' },
+        { status: 400 },
+      );
     }
 
     // Get organizer's Stripe connected account
@@ -65,10 +77,10 @@ export async function POST(req: NextRequest) {
       const chargeDescription = description || `Registration for ${tournament.name}`;
 
       // Idempotency key based on registration + charge amount — deterministic so retries are safe
-      const chargeIdempotencyKey = `charge-${registration.id}-${amountCents}`;
+      const chargeIdempotencyKey = `charge-${registration.id}-${expectedAmountCents}`;
 
       const paymentIntent = await createRegistrationCharge({
-        amountCents,
+        amountCents: expectedAmountCents,
         connectedAccountId: organizer.stripe_account_id,
         customerId,
         paymentMethodId,
@@ -87,7 +99,7 @@ export async function POST(req: NextRequest) {
         .from('organizer_event_registrations')
         .update({
           payment_status: 'paid',
-          amount_paid_cents: amountCents,
+          amount_paid_cents: expectedAmountCents,
           stripe_payment_intent_id: paymentIntent.id,
         })
         .eq('id', registration.id);

@@ -9,7 +9,7 @@
 import { NextRequest } from 'next/server';
 import { getSessionFromCookie } from '@spotter/auth/web';
 import { createServerClient } from '../supabase';
-import type { OperatorSession } from '@spotter/auth';
+import type { OperatorSession } from '@spotter/auth/web';
 
 export interface OperatorAuthContext {
   session: OperatorSession;

@@ -108,6 +108,10 @@ export async function POST(req: NextRequest) {
       `Stripe webhook handler failed for event ${event.type} (${event.id}): ${errMsg}`,
       { eventType: event.type, eventId: event.id, error: errMsg },
     );
+    await supabase
+      .from('processed_stripe_events')
+      .delete()
+      .eq('event_id', event.id);
     // Return non-200 so Stripe will retry — do NOT acknowledge this event
     return NextResponse.json({ error: 'Handler failed' }, { status: 500 });
   }

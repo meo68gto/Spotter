@@ -24,7 +24,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
       - name: Run Lighthouse
         run: pnpm mobile:web:lighthouse
@@ -60,7 +60,7 @@ jobs:
           brew install applesimutils
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
       - name: Build Detox iOS
         run: pnpm mobile:e2e:build:ios

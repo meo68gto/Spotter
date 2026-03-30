@@ -43,12 +43,13 @@ export default function PayoutsPage() {
       ])
 
       if (payoutsRes.ok) {
-        const { data } = await payoutsRes.json()
+        const { data, availableBalanceCents } = await payoutsRes.json()
         setPayouts(data || [])
+        setAvailableBalance(availableBalanceCents || 0)
       }
 
       if (stripeRes.ok) {
-        const { data } = await stripeRes.json()
+        const data = await stripeRes.json()
         setStripeStatus(data)
       }
     } catch (err) {
@@ -210,9 +211,13 @@ export default function PayoutsPage() {
                   required
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  max={availableBalance > 0 ? (availableBalance / 100).toFixed(2) : undefined}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="0.00"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Available to withdraw: {formatCents(availableBalance)}
+                </p>
               </div>
               <button
                 type="submit"

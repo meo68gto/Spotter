@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAdminSessionCookieName, verifyAdminSessionToken } from './app/admin-session';
 
 // These are constant per server worker — read once, use everywhere.
-const ADMIN_DELETION_TOKEN = process.env.ADMIN_DELETION_TOKEN;
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET ?? process.env.ADMIN_DELETION_TOKEN;
 
 const PROTECTED_PATHS = ['/moderation', '/disputes', '/payments', '/api/admin', '/api/db'];
 const PUBLIC_PATHS = ['/', '/api/health'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.includes(pathname)) {
@@ -22,27 +22,20 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Guard: ADMIN_DELETION_TOKEN must be configured. If missing, all admin paths are 503.
+  // Guard: ADMIN_SESSION_SECRET must be configured. If missing, all admin paths are 503.
   // This is intentional — a misconfigured server should not silently degrade to open access.
-  if (!ADMIN_DELETION_TOKEN) {
-    console.error('[Spotter Admin] ADMIN_DELETION_TOKEN is not set — admin routes blocked');
+  if (!ADMIN_SESSION_SECRET) {
+    console.error('[Spotter Admin] ADMIN_SESSION_SECRET is not set — admin routes blocked');
     return NextResponse.json(
-      { error: 'Admin not configured. Set ADMIN_DELETION_TOKEN env var.' },
+      { error: 'Admin not configured. Set ADMIN_SESSION_SECRET env var.' },
       { status: 503 }
     );
   }
 
-  // Validate admin session cookies
-  const adminSession = request.cookies.get('admin_session');
-  const adminToken = request.cookies.get('admin_token');
-
-  if (!adminSession || !adminToken) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  if (adminToken.value !== ADMIN_DELETION_TOKEN) {
+  const adminSession = request.cookies.get(getAdminSessionCookieName())?.value;
+  if (!(await verifyAdminSessionToken(adminSession))) {
     const response = NextResponse.redirect(new URL('/', request.url));
-    response.cookies.delete('admin_session');
+    response.cookies.delete(getAdminSessionCookieName());
     response.cookies.delete('admin_token');
     return response;
   }

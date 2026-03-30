@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getAdminSessionCookieName, verifyAdminSessionToken } from '../../../admin-session';
 
 const pool = new Pool({
   host: process.env.PGHOST ?? '127.0.0.1',
@@ -9,22 +10,16 @@ const pool = new Pool({
   password: process.env.PGPASSWORD ?? 'postgres',
 });
 
-const ADMIN_DELETION_TOKEN = process.env.ADMIN_DELETION_TOKEN;
-
-/** Auth guard: rejects if the admin token cookie doesn't match env */
-function adminGuard(request: NextRequest): NextResponse | null {
-  if (!ADMIN_DELETION_TOKEN) {
-    return NextResponse.json({ error: 'Admin not configured' }, { status: 503 });
-  }
-  const adminToken = request.cookies.get('admin_token')?.value;
-  if (!adminToken || adminToken !== ADMIN_DELETION_TOKEN) {
+async function adminGuard(request: NextRequest): Promise<NextResponse | null> {
+  const adminSession = request.cookies.get(getAdminSessionCookieName())?.value;
+  if (!(await verifyAdminSessionToken(adminSession))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;
 }
 
 export async function POST(request: NextRequest) {
-  const denied = adminGuard(request);
+  const denied = await adminGuard(request);
   if (denied) return denied;
 
   try {
