@@ -3,6 +3,7 @@ import { getRuntimeEnv } from '../_shared/env.ts';
 import { requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
 import { ensureLiveKeyForProd, stripeRequest } from '../_shared/payments.ts';
+import { rateLimitUser } from '../_shared/rate-limit.ts';
 
 interface StripeAccount {
   id: string;
@@ -15,6 +16,15 @@ interface StripeAccountLink {
 Deno.serve(async (req) => {
   const auth = await requireUser(req);
   if (auth instanceof Response) return auth;
+
+  // Rate limiting: 10 onboard requests per minute per user
+  const { allowed, retryAfterSeconds } = await rateLimitUser(auth.user.id, 'payment_connect', 10, 60);
+  if (!allowed) {
+    return new Response(JSON.stringify({ error: 'Too many connect requests', code: 'connect_rate_limited', retryAfterSeconds }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfterSeconds ?? 60) },
+    });
+  }
 
   const service = createServiceClient();
   const env = getRuntimeEnv();
