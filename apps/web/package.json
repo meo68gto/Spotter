@@ -8,11 +8,15 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "echo 'No tests yet for web'"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@react-email/components": "^1.0.10",
     "@react-pdf/renderer": "^4.3.2",
+    "@sentry/nextjs": "^8.55.1",
+    "@spotter/auth": "workspace:*",
+    "@spotter/types": "workspace:*",
     "@supabase/supabase-js": "^2.100.1",
     "next": "15.1.2",
     "react": "19.0.0",
@@ -25,6 +29,8 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
-    "typescript": "^5.7.3"
+    "@vitest/coverage-v8": "^2.1.9",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.9"
   }
 }

@@ -39,6 +39,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Unit tests with coverage
+        run: pnpm --filter=web vitest run --coverage --reporter=junit | tee coverage.xml
+
       - name: Unit tests
         run: pnpm test
 
