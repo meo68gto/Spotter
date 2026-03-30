@@ -1,4 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// Mock the _shared/client.ts module which uses Deno-only npm: imports
+vi.mock('../supabase/functions/_shared/client.ts', () => ({
+  createServiceClient: () => ({
+    from: () => ({ select: () => Promise.resolve({ data: [], error: null }) }),
+  }),
+}));
+
 import { clampMatchLimit } from '../supabase/functions/_shared/matching';
 import { exceededMessageLimit } from '../supabase/functions/_shared/rate-limit';
 import {
