@@ -60,8 +60,11 @@ jobs:
         run: pnpm --filter=e2e test
         env:
           TEST_BASE_URL: http://localhost:3000
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: ${{ github.ref_name }}
+          CI: 'true'
 
   mobile-e2e:
     runs-on: ubuntu-latest
@@ -91,4 +94,7 @@ jobs:
         run: pnpm --filter=e2e test --project='Mobile Chrome' --project='Mobile Safari'
         env:
           TEST_BASE_URL: http://localhost:3000
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
           BRANCH_NAME: ${{ github.ref_name }}
+          CI: 'true'
