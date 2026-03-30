@@ -3,7 +3,21 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**"]
+      "env": [
+        "NEXT_PUBLIC_*",
+        "SUPABASE_*",
+        "STRIPE_*",
+        "SENTRY_*",
+        "POSTHOG_*"
+      ],
+      "outputs": [
+        ".next/**",
+        "dist/**",
+        "build/**",
+        ".expo/**",
+        "!.expo/README.md"
+      ],
+      "cache": true
     },
     "dev": {
       "cache": false,
@@ -11,15 +25,34 @@
     },
     "typecheck": {
       "dependsOn": ["^typecheck"],
+      "env": [
+        "NEXT_PUBLIC_*",
+        "SUPABASE_*",
+        "EXPO_PUBLIC_*"
+      ],
       "outputs": []
     },
     "lint": {
       "dependsOn": ["^lint"],
+      "env": [
+        "NEXT_PUBLIC_*",
+        "SUPABASE_*",
+        "EXPO_PUBLIC_*"
+      ],
       "outputs": []
     },
     "test": {
       "dependsOn": ["^test"],
-      "outputs": []
+      "env": [
+        "NEXT_PUBLIC_*",
+        "SUPABASE_*",
+        "EXPO_PUBLIC_*",
+        "NODE_ENV"
+      ],
+      "outputs": [
+        "coverage/**",
+        "dist/**"
+      ]
     }
   }
 }

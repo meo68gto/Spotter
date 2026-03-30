@@ -1,12 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-// Browser client (public anon key)
-export function createBrowserClient() {
-  return createClient(supabaseUrl, supabaseAnonKey)
-}
-
-// Alias for backward compatibility
-export const createSupabaseBrowserClient = createBrowserClient
+/**
+ * @spotter/supabase — Canonical Supabase client factory.
+ * Re-exports from packages/supabase for use by web and web-admin.
+ */
+export { createBrowserClient, createServerClient, createServerBrowserClient } from '@spotter/supabase';

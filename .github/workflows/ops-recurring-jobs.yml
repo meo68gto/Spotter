@@ -6,42 +6,79 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-jobs:
+  ops-jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
       - name: Trigger engagement expiry
         run: |
-          curl -fssS --max-time 30 -X POST "$SUPABASE_FUNCTIONS_URL/jobs-engagement-expire-pending" \
+          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" --max-time 30 -X POST \
+            "$SUPABASE_FUNCTIONS_URL/jobs-engagement-expire-pending" \
             -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
-            -H "content-type: application/json"
+            -H "content-type: application/json")
+          echo "Status: $HTTP_CODE"
+          cat /tmp/resp.json
+          if [ "$HTTP_CODE" -ge 400 ]; then exit 1; fi
         env:
           SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
           ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
 
       - name: Trigger payment auth release
         run: |
-          curl -fssS --max-time 30 -X POST "$SUPABASE_FUNCTIONS_URL/jobs-payment-auth-release-expired" \
+          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" --max-time 30 -X POST \
+            "$SUPABASE_FUNCTIONS_URL/jobs-payment-auth-release-expired" \
             -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
-            -H "content-type: application/json"
+            -H "content-type: application/json")
+          echo "Status: $HTTP_CODE"
+          cat /tmp/resp.json
+          if [ "$HTTP_CODE" -ge 400 ]; then exit 1; fi
         env:
           SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
           ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
 
       - name: Trigger call billing finalize
         run: |
-          curl -fssS --max-time 30 -X POST "$SUPABASE_FUNCTIONS_URL/jobs-call-billing-finalize" \
+          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" --max-time 30 -X POST \
+            "$SUPABASE_FUNCTIONS_URL/jobs-call-billing-finalize" \
             -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
-            -H "content-type: application/json"
+            -H "content-type: application/json")
+          echo "Status: $HTTP_CODE"
+          cat /tmp/resp.json
+          if [ "$HTTP_CODE" -ge 400 ]; then exit 1; fi
         env:
           SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
           ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
 
       - name: Trigger call duration reconcile
         run: |
-          curl -fssS --max-time 30 -X POST "$SUPABASE_FUNCTIONS_URL/jobs-call-duration-reconcile" \
+          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" --max-time 30 -X POST \
+            "$SUPABASE_FUNCTIONS_URL/jobs-call-duration-reconcile" \
             -H "x-admin-token: $ADMIN_DELETION_TOKEN" \
-            -H "content-type: application/json"
+            -H "content-type: application/json")
+          echo "Status: $HTTP_CODE"
+          cat /tmp/resp.json
+          if [ "$HTTP_CODE" -ge 400 ]; then exit 1; fi
         env:
           SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
           ADMIN_DELETION_TOKEN: ${{ secrets.ADMIN_DELETION_TOKEN }}
+
+      - name: Notify on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          channel-id: ${{ secrets.SLACK_ALERT_CHANNEL_ID }}
+          payload: |
+            {
+              "text": "*Ops Cron Job Failed*",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Ops Recurring Jobs failed* :warning:\nJob: ${{ github.workflow }}\nRun: ${{ github.run_id }}\nURL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
