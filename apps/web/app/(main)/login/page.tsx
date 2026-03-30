@@ -125,6 +125,7 @@ function LoginForm() {
               <input
                 id="email"
                 type="email"
+                data-testid="signup-email-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
@@ -140,6 +141,7 @@ function LoginForm() {
               <input
                 id="password"
                 type="password"
+                data-testid="signup-password-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -150,6 +152,7 @@ function LoginForm() {
 
             <button
               type="submit"
+              data-testid="signup-submit-button"
               disabled={loading}
               className="w-full py-3 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >

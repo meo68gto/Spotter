@@ -52,7 +52,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard' },
-    { href: '/discovery', label: 'Discovery' },
+    { href: '/discovery', label: 'Discovery', testId: 'nav-discovery' },
     { href: '/rounds', label: 'Rounds' },
     { href: '/connections', label: 'Connections' },
     { href: '/coaching', label: 'Coaching' },
@@ -82,6 +82,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 <Link
                   key={link.href}
                   href={link.href}
+                  data-testid={link.testId}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     pathname === link.href || pathname.startsWith(link.href + '/')
                       ? 'text-green-400 bg-green-500/10'

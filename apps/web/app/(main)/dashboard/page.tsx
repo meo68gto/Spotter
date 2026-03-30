@@ -120,7 +120,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-white" data-testid="dashboard-welcome">
             Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''} 👋
           </h1>
           <p className="text-slate-400 mt-1">Here&apos;s what&apos;s happening with your golf game</p>

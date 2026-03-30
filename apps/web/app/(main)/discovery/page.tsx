@@ -1,6 +1,7 @@
 'use client'
 
 import { createBrowserClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
 type TierSlug = 'free' | 'select' | 'summit'
@@ -44,6 +45,7 @@ const SKILL_COLORS: Record<SkillLevel, string> = {
 }
 
 export default function DiscoveryPage() {
+  const router = useRouter()
   const [golfers, setGolfers] = useState<GolferCard[]>(MOCK_GOLFERS)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
@@ -52,6 +54,7 @@ export default function DiscoveryPage() {
   const [huntMode, setHuntMode] = useState(false)
   const [connecting, setConnecting] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [connectionToast, setConnectionToast] = useState<string | null>(null)
   const supabase = createBrowserClient()
 
   const filteredGolfers = golfers.filter((g) => {
@@ -70,6 +73,12 @@ export default function DiscoveryPage() {
     await new Promise(r => setTimeout(r, 1000))
     setConnecting(null)
     // In production: call POST /connections-request
+    setConnectionToast(golferId)
+    setTimeout(() => setConnectionToast(null), 3000)
+  }
+
+  const handleCardClick = (golferId: string) => {
+    router.push(`/profile?id=${golferId}`)
   }
 
   return (
@@ -184,6 +193,19 @@ export default function DiscoveryPage() {
         </p>
       </div>
 
+      {/* Connection Sent Toast */}
+      {connectionToast && (
+        <div
+          data-testid="connection-sent-toast"
+          className="fixed bottom-6 right-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500 text-white font-medium shadow-lg shadow-green-500/25 animate-pulse z-50"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Connection request sent!
+        </div>
+      )}
+
       {/* Golfer Grid */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -214,9 +236,11 @@ export default function DiscoveryPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredGolfers.map((golfer) => (
-            <div
+            <button
               key={golfer.id}
-              className="bg-slate-800 border border-slate-700 rounded-2xl p-5 hover:border-slate-600 transition-all"
+              data-testid={`golfer-card-${golfer.id}`}
+              onClick={() => handleCardClick(golfer.id)}
+              className="w-full text-left bg-slate-800 border border-slate-700 rounded-2xl p-5 hover:border-slate-600 transition-all cursor-pointer"
             >
               {/* Header */}
               <div className="flex items-start gap-3 mb-4">
@@ -271,7 +295,11 @@ export default function DiscoveryPage() {
 
               {/* Connect Button */}
               <button
-                onClick={() => handleConnect(golfer.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleConnect(golfer.id)
+                }}
+                data-testid="profile-connect-button"
                 disabled={connecting === golfer.id}
                 className="w-full py-2.5 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
@@ -292,7 +320,7 @@ export default function DiscoveryPage() {
                   </>
                 )}
               </button>
-            </div>
+            </button>
           ))}
         </div>
       )}

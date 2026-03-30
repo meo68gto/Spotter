@@ -112,13 +112,14 @@ export default function CreateRoundPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} data-testid="create-round-form" className="space-y-6">
         {/* Course */}
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">
             Golf Course <span className="text-red-400">*</span>
           </label>
           <select
+            data-testid="round-course-select"
             value={courseName}
             onChange={(e) => setCourseName(e.target.value)}
             required
@@ -139,6 +140,7 @@ export default function CreateRoundPage() {
             </label>
             <input
               type="date"
+              data-testid="round-date-input"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
@@ -152,6 +154,7 @@ export default function CreateRoundPage() {
             </label>
             <input
               type="time"
+              data-testid="round-time-input"
               value={time}
               onChange={(e) => setTime(e.target.value)}
               required
@@ -230,6 +233,7 @@ export default function CreateRoundPage() {
           <div className="relative">
             <input
               type="text"
+              data-testid="invite-member-search"
               value={inviteSearch}
               onChange={(e) => {
                 setInviteSearch(e.target.value)
@@ -276,6 +280,7 @@ export default function CreateRoundPage() {
           </Link>
           <button
             type="submit"
+            data-testid="create-round-button"
             disabled={loading}
             className="flex-1 py-3 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
