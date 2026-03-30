@@ -3,11 +3,13 @@
  * and that they have an active organizer_account.
  *
  * Pattern: call withOperatorAuth(req, async (session) => { ... })
+ *
+ * The canonical session lookup lives in @spotter/auth/web.
  */
 import { NextRequest } from 'next/server';
-import { getSessionFromCookie } from '../auth';
+import { getSessionFromCookie } from '@spotter/auth/web';
 import { createServerClient } from '../supabase';
-import type { OperatorSession } from '@spotter/types';
+import type { OperatorSession } from '@spotter/auth';
 
 export interface OperatorAuthContext {
   session: OperatorSession;
@@ -18,7 +20,7 @@ export async function withOperatorAuth(
   request: NextRequest,
   handler: (ctx: OperatorAuthContext) => Promise<Response>,
 ): Promise<Response> {
-  // 1. Get session from cookie (reuses lib/auth.ts logic — same query pattern)
+  // 1. Get session from cookie (uses @spotter/auth/web)
   const session = await getSessionFromCookie();
   if (!session) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
