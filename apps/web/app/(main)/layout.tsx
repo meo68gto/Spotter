@@ -14,7 +14,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      // Skip auth check on public pages
+      const isPublicPage = pathname === '/login' || pathname === '/signup' || pathname.startsWith('/login?') || pathname.startsWith('/signup?')
+      if (isPublicPage) {
+        setLoading(false)
+        return
+      }
+      
+      // Timeout-based auth check to prevent infinite hang
+      const { data: { user } } = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise<any>(r => setTimeout(() => r({ data: { user: null } }), 8000))
+      ]).catch(() => ({ data: { user: null } }))
+      
       if (!user) {
         router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
       } else {
