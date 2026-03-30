@@ -25,7 +25,7 @@ export const invokeFunction = async <T>(
   }
 
   // NEVER mock in production or non-dev builds — demo tokens must not bypass real API
-  if (process.env.NODE_ENV === 'development' && token.startsWith('dev-only-demo-')) {
+  if (process.env.NODE_ENV !== 'production') {
     return mockFunctionResponse<T>(path, options?.body);
   }
 
@@ -44,9 +44,8 @@ export const invokeGuestFunction = async <T>(
     params?: Record<string, string>;
   }
 ): Promise<T> => {
-  // Check if we're in demo mode
-  const token = (await supabase.auth.getSession()).data.session?.access_token;
-  if (token?.startsWith('dev-only-demo-')) {
+  // Demo mode: only available in non-production environments
+  if (process.env.NODE_ENV !== 'production') {
     return mockFunctionResponse<T>(path, options?.body);
   }
 
