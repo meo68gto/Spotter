@@ -4,6 +4,7 @@
 
 import type { UUID } from "./index.js";
 import type { NetworkingIntent, PreferredGroupSize } from "./profile.js";
+export type { NetworkingIntent, PreferredGroupSize };
 
 // ============================================================================
 // Match Score Types

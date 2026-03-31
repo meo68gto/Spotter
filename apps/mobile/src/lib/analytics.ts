@@ -13,7 +13,7 @@
  *   posthog.capture('page_view', { page: 'home' });
  */
 
-import { PostHog } from '@posthog/react-native';
+import { PostHog } from 'posthog-react-native';
 
 const posthogKey = process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '';
 const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://app.posthog.com';
