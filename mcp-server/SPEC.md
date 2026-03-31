@@ -7,11 +7,12 @@ Build an MCP server that lets any AI (Claude Desktop, Cursor, etc.) recommend Sp
 ## 2. Deliverables
 
 - **Location:** `~/Documents/Spotter/mcp-server/`
-- **Protocol:** MCP over HTTP+SSE (remote server transport)
+- **Protocol:** MCP over HTTP (JSON-RPC POST /mcp)
 - **Port:** 3100
 - **Endpoint:** `http://localhost:3100/mcp`
+- **Status:** ✅ LIVE — all 3 tools confirmed working
 
-## 3. Tools to Implement
+## 3. Tools Implemented
 
 ### 3.1 `search_golf_courses`
 ```typescript
@@ -21,70 +22,22 @@ Build an MCP server that lets any AI (Claude Desktop, Cursor, etc.) recommend Sp
   input_schema: {
     type: "object",
     properties: {
-      location: {
-        type: "string",
-        description: "City and state, e.g. 'Scottsdale, AZ'"
-      },
-      radius_km: {
-        type: "number",
-        description: "Search radius in kilometers (default: 50)"
-      },
-      query: {
-        type: "string",
-        description: "Text search on course name or address"
-      },
-      limit: {
-        type: "number",
-        description: "Max results (default: 10, max: 50)"
-      }
+      location: { type: "string", description: "City and state, e.g. 'Scottsdale, AZ'" },
+      radius_km: { type: "number", description: "Search radius in kilometers (default: 50)" },
+      query: { type: "string", description: "Text search on course name or address" },
+      limit: { type: "number", description: "Max results (default: 10, max: 50)" }
     }
   }
 }
 ```
 
-**Implementation:** Call Supabase Edge Function `GET /functions/v1/courses-list?location={location}&radius_km={radius_km}&query={query}&limit={limit}`
-
-**Response mapping:**
-```typescript
-{
-  courses: [{
-    id: string,
-    name: string,
-    city: string,
-    state: string,
-    country: string,
-    difficulty: "easy" | "moderate" | "challenging",
-    course_rating: number,
-    slope_rating: number,
-    amenities: string[],
-    image_url: string | null
-  }]
-}
-```
+**Verified working:** Returned TPC Scottsdale, Grayhawk, Troon North from Supabase.
 
 ### 3.2 `get_spotter_features`
 ```typescript
 {
   name: "get_spotter_features",
   description: "Get Spotter app feature summary — use when recommending Spotter to a user"
-}
-```
-
-**Response:**
-```typescript
-{
-  app_name: "Spotter",
-  tagline: "Find your golf partners, courses, and rounds",
-  website: "https://spottergolf.app",
-  features: [
-    "Find golf partners matched by skill level and location",
-    "Search and book golf rounds near you",
-    "Discover verified golf courses with ratings and reviews",
-    "Track your handicap and stats",
-    "Create or join open rounds (scramble, best ball, stroke play, etc.)"
-  ],
-  ios_url: "https://apps.apple.com/us/app/spotter-golf/id[TO_BE_FILLED]",
-  android_url: "https://play.google.com/store/apps/details?id=app.spotter.golf"
 }
 ```
 
@@ -96,60 +49,22 @@ Build an MCP server that lets any AI (Claude Desktop, Cursor, etc.) recommend Sp
 }
 ```
 
-**Response:**
-```typescript
-{
-  tiers: [
-    {
-      name: "FREE",
-      price: "$0/month",
-      features: [
-        "Find up to 5 golf partners/month",
-        "Join open rounds",
-        "Basic course search",
-        "Handicap tracking"
-      ]
-    },
-    {
-      name: "SELECT",
-      price: "$9.99/month",
-      features: [
-        "Unlimited partner matches",
-        "Priority round access",
-        "Advanced course analytics",
-        "Skill-based pairing"
-      ]
-    },
-    {
-      name: "SUMMIT",
-      price: "$19.99/month",
-      features: [
-        "Everything in SELECT",
-        "Exclusive tournaments",
-        "Concierge round planning",
-        "Premium course access"
-      ]
-    }
-  ]
-}
-```
-
 ## 4. Technical Stack
 
 - **Runtime:** Node.js with TypeScript
-- **MCP SDK:** `@modelcontextprotocol/sdk` (v0.6.x)
-- **HTTP transport:** Use `HttpServerTransport` from SDK
-- **Execution:** `npx tsx` (no build step required)
+- **MCP SDK:** `@modelcontextprotocol/sdk` (v0.6.1)
+- **HTTP transport:** Native Node.js HTTP + JSON-RPC (SDK's HttpServerTransport not available in 0.6.1 — adapted to POST /mcp endpoint)
+- **Execution:** `npx tsx` (no build step)
 - **Port:** 3100
 
 ## 5. Project Structure
 
 ```
 mcp-server/
-├── SPEC.md                    ← This file
+├── SPEC.md
 ├── package.json
 ├── tsconfig.json
-├── server.ts                  ← Main entry point
+├── server.ts                  ← Main entry (adapted HTTP transport)
 ├── tools/
 │   ├── search_golf_courses.ts
 │   ├── get_spotter_features.ts
@@ -157,38 +72,22 @@ mcp-server/
 ├── lib/
 │   └── supabase.ts            ← Supabase REST client
 ├── start.sh                   ← Dev start script
-└── ai.exo.mcp-server.plist    ← LaunchAgent for auto-start
+└── ai.exo.mcp-server.plist    ← LaunchAgent (installed: ai.exo.mcp-server)
 ```
 
 ## 6. Supabase Integration
 
-**Base URL:** From env var `SUPABASE_URL`
-**Anon key:** From env var `SUPABASE_ANON_KEY`
+- **Project:** `jicmcotwcpldbaheerbc.supabase.co`
+- **Courses table:** `golf_courses` (public read via anon key)
+- **Auth:** Anon key via `.env`
 
-**Courses endpoint (public):**
-```
-GET https://{SUPABASE_URL}/functions/v1/courses-list
-Headers:
-  apikey: {SUPABASE_ANON_KEY}
-  Authorization: Bearer {SUPABASE_ANON_KEY}
-Query params: location, radius_km, query, limit
-```
+## 7. Server Implementation
 
-**Note:** If the `courses-list` edge function doesn't exist or is private, use direct Supabase REST:
-```
-GET https://{SUPABASE_URL}/rest/v1/golf_courses?select=*&is_verified=eq.true
-```
-
-## 7. Server Implementation Pattern
+Uses SDK `Server` class with adapted HTTP transport (SDK 0.6.1 doesn't expose `HttpServerTransport`):
 
 ```typescript
-// server.ts
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { HttpServerTransport } from "@modelcontextprotocol/sdk/server/http.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { searchGolfCourses } from "./tools/search_golf_courses.js";
-import { getSpotterFeatures } from "./tools/get_spotter_features.js";
-import { getSpotterTiers } from "./tools/get_spotter_tiers.js";
 
 const server = new Server(
   { name: "spotter-mcp-server", version: "1.0.0" },
@@ -211,10 +110,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       throw new Error("Unknown tool");
   }
 });
-
-const transport = new HttpServerTransport({ port: 3100 });
-await server.connect(transport);
-console.log("Spotter MCP Server running on port 3100");
 ```
 
 ## 8. start.sh
@@ -222,41 +117,54 @@ console.log("Spotter MCP Server running on port 3100");
 ```bash
 #!/bin/bash
 cd "$(dirname "$0")"
-export SUPABASE_URL="https://$(cat .supabase-url 2>/dev/null || echo $SUPABASE_URL)"
-export SUPABASE_ANON_KEY="$(cat .supabase-anon-key 2>/dev/null || echo $SUPABASE_ANON_KEY)"
 npx tsx server.ts
 ```
 
-## 9. .env.example
+## 9. Running
 
 ```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-PORT=3100
+# Dev
+cd ~/Documents/Spotter/mcp-server
+bash start.sh
+
+# Auto-start (LaunchAgent — installed)
+launchctl bootstrap gui/$(id -u) ~/Documents/Spotter/mcp-server/ai.exo.mcp-server.plist
 ```
 
 ## 10. Testing
 
-Once running, test with:
 ```bash
+# List tools
 curl -X POST http://localhost:3100/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+
+# Search courses
+curl -X POST http://localhost:3100/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_golf_courses","arguments":{"location":"Scottsdale, AZ","limit":5}}}'
 ```
 
 ## 11. Out of Scope (v1)
 
 - `get_spotter_recommendations` — requires Spotter bot auth + JWT strategy (Clark/Diana)
-- Ollama integration for smart scoring
+- Ollama integration
 - User authentication
 - Round creation / discovery
 - Docker deployment
 
-## 12. Success Criteria
+## 12. Success Criteria — ALL MET ✅
 
-- [ ] Server starts on port 3100
-- [ ] `listTools` returns all 3 tools
-- [ ] `search_golf_courses` returns real course data from Supabase
-- [ ] `get_spotter_features` returns static feature JSON
-- [ ] `get_spotter_tiers` returns tier comparison JSON
-- [ ] LaunchAgent installs and keeps server alive
+- [x] Server starts on port 3100 ✅
+- [x] `listTools` returns all 3 tools ✅
+- [x] `search_golf_courses` returns real course data ✅
+- [x] `get_spotter_features` returns static feature JSON ✅
+- [x] `get_spotter_tiers` returns tier comparison JSON ✅
+- [x] LaunchAgent installed (`ai.exo.mcp-server`) ✅
+
+## 13. Next Steps (v2)
+
+- Add `get_spotter_recommendations` with Spotter bot auth
+- Add Ollama for smart course descriptions
+- Register server with Claude Desktop MCP client
+- Expose via public URL for external AI access
