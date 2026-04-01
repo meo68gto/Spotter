@@ -17,11 +17,12 @@ import { WelcomeScreen } from './src/screens/auth/WelcomeScreen';
 import { DashboardScreen, DeepLinkTarget } from './src/screens/DashboardScreen';
 import { LegalConsentScreen } from './src/screens/LegalConsentScreen';
 import { OnboardingWizardScreenPhase1 } from './src/screens/onboarding/OnboardingWizardScreenPhase1';
+import { BIPAConsentScreen } from './src/screens/onboarding/BIPAConsentScreen';
 import { GuestFlow } from './src/screens/guest';
 import { ThemeProvider } from './src/theme/provider';
 import { env, validateMobileEnv } from './src/types/env';
 
-type Stage = 'splash' | 'welcome' | 'login' | 'signup' | 'legal' | 'onboarding' | 'dashboard' | 'guest';
+type Stage = 'splash' | 'welcome' | 'login' | 'signup' | 'legal' | 'bipa' | 'onboarding' | 'dashboard' | 'guest';
 
 type ParseTargetResult = {
   authStage?: Extract<Stage, 'welcome' | 'login' | 'signup' | 'guest'>;
@@ -71,6 +72,12 @@ function RootApp() {
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [envErrors] = useState<string[]>(validateMobileEnv());
 
+  /** Persists across BIPA stage so we can pass dynamic isIllinois/locationDenied to BIPAConsentScreen */
+  const [bipaState, setBipaState] = useState<{ isIllinois: boolean; locationDenied: boolean }>({
+    isIllinois: false,
+    locationDenied: true, // worst-case default: show BIPA to all until we know better
+  });
+
   useEffect(() => {
     if (!sentryEnabled) return;
     Sentry.setTag('stage', stage);
@@ -118,6 +125,25 @@ function RootApp() {
       if (!legal.accepted) return 'legal';
     } catch {
       return 'legal';
+    }
+
+    // BIPA check: after legal accepted, check if BIPA consent is required
+    // (Illinois user OR location was denied — worst-case: treat all denied-location users as Illinois)
+    try {
+      const bipa = await invokeFunction<{
+        bipa_required: boolean;
+        bipa_accepted: boolean;
+        is_illinois: boolean;
+        location_denied: boolean;
+      }>('bipa-status', { method: 'GET' });
+      if (bipa.bipa_required && !bipa.bipa_accepted) {
+        // Capture state for use when rendering the BIPAConsentScreen
+        setBipaState({ isIllinois: bipa.is_illinois, locationDenied: bipa.location_denied });
+        return 'bipa';
+      }
+    } catch {
+      // If bipa-status fails, proceed to dashboard — don't block on a BIPA check error
+      // BIPA blocking is best-effort; the app will still be functional
     }
 
     const { data: me } = await supabase.from('users').select('onboarding_complete').eq('id', activeSession.user.id).maybeSingle();
@@ -254,7 +280,21 @@ function RootApp() {
             setStage('welcome');
             return;
           }
-          const { data: me } = await supabase.from('users').select('onboarding_complete').eq('id', activeUser.id).maybeSingle();
+          // After accepting legal, immediately check BIPA status
+          // to determine whether to show the bipa screen next
+          setStage('onboarding');
+        }}
+      />
+    );
+  }
+
+  if (stage === 'bipa') {
+    return (
+      <BIPAConsentScreen
+        isIllinois={bipaState.isIllinois}
+        locationDenied={bipaState.locationDenied}
+        onComplete={async () => {
+          const { data: me } = await supabase.from('users').select('onboarding_complete').eq('id', session.user.id).maybeSingle();
           setStage(me?.onboarding_complete ? 'dashboard' : 'onboarding');
         }}
       />
