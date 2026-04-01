@@ -4,6 +4,7 @@ import { Session } from '@supabase/supabase-js';
 import { HomeScreen } from './HomeScreen';
 import { FeedScreen } from './FeedScreen';
 import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
+import { EagleAIHubScreen } from './eagle-ai/EagleAIHubScreen';
 import { AskScreen } from './AskScreen';
 import { RequestsScreen } from './RequestsScreen';
 import { SessionsScreen } from './SessionsScreen';
@@ -37,7 +38,7 @@ import { stockPhotos } from '../lib/stockPhotos';
 import { loadFeatureFlags } from '../lib/flags';
 import { font, isWeb, palette, radius, spacing } from '../theme/design';
 
-export type DeepLinkTarget = 'home' | 'feed' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network' | 'events' | 'organizer' | 'videos' | 'admin';
+export type DeepLinkTarget = 'home' | 'feed' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network' | 'events' | 'organizer' | 'videos' | 'admin' | 'eagle';
 
 // BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events for Phase 2
 // Previously cut: feed, matches, videos, progress, expert console, call room, inbox
@@ -57,7 +58,8 @@ type TabKey =
   | 'events'
   | 'organizer'
   | 'videos'
-  | 'admin';
+  | 'admin'
+  | 'eagle'; // Eagle AI coaching hub — Phase 3 integration
 
 type Props = {
   session: Session;
@@ -95,6 +97,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
   { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true },
   { key: 'coaching', label: 'Coaching', group: 'account', mobilePrimary: false }, // Secondary nav
+  { key: 'eagle', label: 'AI Coach', group: 'account', mobilePrimary: true }, // Eagle AI — Phase 3
   { key: 'organizer', label: 'Organizer', group: 'account', mobilePrimary: false }, // Secondary nav
   { key: 'admin', label: 'Admin', group: 'account', mobilePrimary: false } // Secondary nav - EPIC 15
 ];
@@ -123,6 +126,7 @@ const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
   if (target === 'organizer') return 'organizer';
   if (target === 'videos') return 'videos';
   if (target === 'admin') return 'admin';
+  if (target === 'eagle') return 'eagle';
   return 'home';
 };
 
@@ -366,6 +370,7 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
       );
     }
     if (tab === 'coaching') return <CoachingTabScreen session={session} />;
+    if (tab === 'eagle') return <EagleAIHubScreen session={session} />;
     if (tab === 'videos') return <VideoScreen session={session} />;
     if (tab === 'organizer') {
       if (organizerView === 'create') {
