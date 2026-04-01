@@ -1,3 +1,4 @@
+import { SupabaseClient } from '@supabase/supabase-js';
 import { 
   createAuthenticatedClient,
   createOrganizerClient,
@@ -552,7 +553,7 @@ describe('Payment Connect Onboard Edge Function', () => {
 });
 
 describe('Payment RLS Policies', () => {
-  let freeUserClient: ReturnType<typeof createAuthenticatedClient>;
+  let freeUserClient: SupabaseClient;
 
   beforeAll(async () => {
     freeUserClient = await createAuthenticatedClient('free');

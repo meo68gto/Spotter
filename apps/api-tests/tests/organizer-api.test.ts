@@ -1,3 +1,4 @@
+import { SupabaseClient } from '@supabase/supabase-js';
 import { 
   createOrganizerClient,
   createServiceClient,
@@ -618,8 +619,8 @@ describe('Organizer Tier Definitions', () => {
 });
 
 describe('Organizer RLS Policies', () => {
-  let bronzeOrgClient: ReturnType<typeof createOrganizerClient>;
-  let serviceClient: ReturnType<typeof createServiceClient>;
+  let bronzeOrgClient: SupabaseClient;
+  let serviceClient: SupabaseClient;
 
   beforeAll(async () => {
     bronzeOrgClient = await createOrganizerClient('bronze');

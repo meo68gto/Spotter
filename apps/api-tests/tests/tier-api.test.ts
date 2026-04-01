@@ -1,3 +1,4 @@
+import { SupabaseClient } from '@supabase/supabase-js';
 import { 
   createAnonymousClient, 
   createServiceClient, 
@@ -180,9 +181,9 @@ describe('User with Tier Edge Function', () => {
 });
 
 describe('Tier RLS Policies', () => {
-  let serviceClient: ReturnType<typeof createServiceClient>;
-  let freeUserClient: ReturnType<typeof createAuthenticatedClient>;
-  let selectUserClient: ReturnType<typeof createAuthenticatedClient>;
+  let serviceClient: SupabaseClient;
+  let freeUserClient: SupabaseClient;
+  let selectUserClient: SupabaseClient;
 
   beforeAll(async () => {
     serviceClient = createServiceClient();

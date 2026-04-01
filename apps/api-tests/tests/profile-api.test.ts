@@ -1,3 +1,4 @@
+import { SupabaseClient } from '@supabase/supabase-js';
 import { 
   createAuthenticatedClient,
   createServiceClient,
@@ -383,8 +384,8 @@ describe('Reputation Calculate Edge Function', () => {
 });
 
 describe('Profile RLS Policies', () => {
-  let serviceClient: ReturnType<typeof createServiceClient>;
-  let freeUserClient: ReturnType<typeof createAuthenticatedClient>;
+  let serviceClient: SupabaseClient;
+  let freeUserClient: SupabaseClient;
 
   beforeAll(async () => {
     serviceClient = createServiceClient();
@@ -443,7 +444,7 @@ describe('Profile RLS Policies', () => {
 });
 
 describe('Connection RLS Policies', () => {
-  let freeUserClient: ReturnType<typeof createAuthenticatedClient>;
+  let freeUserClient: SupabaseClient;
 
   beforeAll(async () => {
     freeUserClient = await createAuthenticatedClient('free');
