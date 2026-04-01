@@ -1,4 +1,4 @@
-import { test as setup } from '@playwright/test';
+import { test as setup, expect } from '@playwright/test';
 
 /**
  * Authentication setup for E2E tests — NO UI login, direct Supabase REST API
@@ -9,7 +9,8 @@ import { test as setup } from '@playwright/test';
  * Approach:
  * 1. Sign in via Supabase REST API (signInWithPassword) — no UI involved
  * 2. Inject the session tokens into the browser context via addInitScript
- * 3. Save storageState for dependent test projects
+ * 3. Navigate to app to trigger Supabase session restore
+ * 4. Save storageState for dependent test projects
  *
  * Supabase browser client reads from localStorage:
  *   - `sb-access-token`
@@ -72,6 +73,58 @@ const testUsers: TestUser[] = [
 ];
 
 /**
+ * Validate required environment variables before running auth tests.
+ * Fails fast with a clear message rather than cryptic fetch errors.
+ */
+function validateEnv(): void {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const baseUrl = process.env.TEST_BASE_URL;
+
+  const missing: string[] = [];
+  if (!supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!anonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  if (!baseUrl) missing.push('TEST_BASE_URL');
+
+  if (missing.length > 0) {
+    throw new Error(
+      `[auth.setup] Missing required env vars: ${missing.join(', ')}. ` +
+        `Check apps/e2e/.env.test — all Supabase test credentials must be configured.`
+    );
+  }
+
+  // Warn if using localhost (likely Docker not running)
+  if (supabaseUrl?.includes('localhost')) {
+    console.warn(
+      `[auth.setup] WARNING: NEXT_PUBLIC_SUPABASE_URL uses localhost (${supabaseUrl}). ` +
+        `Ensure Supabase Docker is running (\`pnpm supabase:start\`). ` +
+        `Otherwise set NEXT_PUBLIC_SUPABASE_URL to your cloud Supabase instance in .env.test.`
+    );
+  }
+}
+
+/**
+ * Wait for the app base URL to be reachable before running tests.
+ * Uses a short timeout — if the dev server isn't up, fail fast.
+ */
+async function waitForApp(baseUrl: string, timeoutMs = 30_000): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(baseUrl, { method: 'HEAD' });
+      if (res.ok || res.status === 404) return; // server is up
+    } catch {
+      // not ready yet
+    }
+    await new Promise((r) => setTimeout(r, 1_000));
+  }
+  throw new Error(
+    `[auth.setup] App not reachable at ${baseUrl} after ${timeoutMs}ms. ` +
+      `Start the dev server with \`pnpm --filter=web dev\` before running e2e tests.`
+  );
+}
+
+/**
  * Sign in via Supabase REST API — same auth as UI login, but no browser needed.
  * Uses Node's built-in fetch to call the Supabase Auth endpoint.
  */
@@ -94,8 +147,14 @@ async function getSession(
 
   if (!res.ok) {
     const body = await res.text();
+    let hint = '';
+    if (res.status === 400) {
+      hint = ' — Check TEST_USER_* credentials in .env.test match your Supabase project.';
+    } else if (res.status === 0 || res.status > 500) {
+      hint = ' — Supabase unreachable. Check NEXT_PUBLIC_SUPABASE_URL in .env.test.';
+    }
     throw new Error(
-      `[auth.setup] Supabase signIn failed for ${email}: ${res.status} — ${body}`
+      `[auth.setup] Supabase signIn failed for ${email}: HTTP ${res.status}${hint} Response: ${body.slice(0, 200)}`
     );
   }
 
@@ -110,6 +169,17 @@ async function getSession(
 }
 
 setup.describe('Authentication Setup', () => {
+  // Validate env once before all auth tests
+  setup.beforeAll(async () => {
+    validateEnv();
+  });
+
+  // Ensure app is reachable before trying to authenticate
+  setup.beforeEach(async () => {
+    const baseUrl = process.env.TEST_BASE_URL!;
+    await waitForApp(baseUrl);
+  });
+
   for (const user of testUsers) {
     setup(`authenticate ${user.type} - ${user.tier}`, async ({ page, context }) => {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -130,8 +200,9 @@ setup.describe('Authentication Setup', () => {
       `;
       await context.addInitScript(injectScript);
 
-      // 3. Navigate to app — Supabase client finds tokens and restores session
-      await page.goto('/');
+      // 3. Navigate to app — Supabase client finds tokens and restores session.
+      //    waitUntil: 'networkidle' ensures session fetch completes before saving state.
+      await page.goto('/', { waitUntil: 'networkidle' });
 
       // 4. Save authenticated storage state for dependent test projects
       await context.storageState({ path: user.storageState });
@@ -157,7 +228,7 @@ setup('authenticate default user', async ({ page, context }) => {
   `;
   await context.addInitScript(injectScript);
 
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'networkidle' });
 
   await context.storageState({ path: 'playwright/.auth/user.json' });
 });
