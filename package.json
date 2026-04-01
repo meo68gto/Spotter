@@ -38,7 +38,8 @@
     "mobile:e2e:build:ios": "pnpm --filter @spotter/mobile e2e:build:ios",
     "mobile:e2e:test:ios": "pnpm --filter @spotter/mobile e2e:test:ios",
     "mobile:e2e:build:android": "pnpm --filter @spotter/mobile e2e:build:android",
-    "mobile:e2e:test:android": "pnpm --filter @spotter/mobile e2e:test:android"
+    "mobile:e2e:test:android": "pnpm --filter @spotter/mobile e2e:test:android",
+    "perf:run": "node scripts/perf/run-stepped-load.mjs"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
@@ -49,5 +50,9 @@
     "tsx": "^4.21.0",
     "turbo": "^2.4.2",
     "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@types/three": "^0.183.1",
+    "three": "^0.183.2"
   }
 }
