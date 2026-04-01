@@ -4,7 +4,7 @@ import {
   createAuthenticatedClient,
   callEdgeFunction,
   TEST_USERS 
-} from '../utils/supabase-client';
+} from './utils/supabase-client';
 import { TierSlug, TIER_DEFINITIONS } from '../../../packages/types/src/tier';
 
 /**

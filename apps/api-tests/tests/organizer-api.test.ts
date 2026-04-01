@@ -3,7 +3,7 @@ import {
   createServiceClient,
   callEdgeFunction,
   TEST_ORGANIZERS 
-} from '../utils/supabase-client';
+} from './utils/supabase-client';
 import { ORGANIZER_TIERS } from '../../../packages/types/src/organizer';
 
 /**

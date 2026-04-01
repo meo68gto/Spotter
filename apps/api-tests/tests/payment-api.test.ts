@@ -4,7 +4,7 @@ import {
   callEdgeFunction,
   TEST_USERS,
   TEST_ORGANIZERS 
-} from '../utils/supabase-client';
+} from './utils/supabase-client';
 
 /**
  * Payment API Integration Tests

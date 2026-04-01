@@ -3,7 +3,7 @@ import {
   createServiceClient,
   callEdgeFunction,
   TEST_USERS 
-} from '../utils/supabase-client';
+} from './utils/supabase-client';
 
 /**
  * Profile API Integration Tests
