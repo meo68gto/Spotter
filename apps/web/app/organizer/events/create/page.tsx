@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { EventType, OrganizerTier } from "@spotter/types";
@@ -51,6 +51,14 @@ export default function CreateEventPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const summaryRef = useRef<HTMLDivElement | null>(null);
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const courseRef = useRef<HTMLInputElement | null>(null);
+  const startDateRef = useRef<HTMLInputElement | null>(null);
+  const endDateRef = useRef<HTMLInputElement | null>(null);
+  const maxParticipantsRef = useRef<HTMLInputElement | null>(null);
+  const targetTiersRef = useRef<HTMLDivElement | null>(null);
 
   const filteredCourses = mockCourses.filter(
     (course) =>
@@ -58,45 +66,79 @@ export default function CreateEventPage() {
       course.city.toLowerCase().includes(courseSearch.toLowerCase())
   );
 
+  const clearFieldError = (field: string) => {
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const focusField = (field: string) => {
+    const target =
+      {
+        title: titleRef.current,
+        course: courseRef.current,
+        startTime: startDateRef.current,
+        endTime: endDateRef.current,
+        maxParticipants: maxParticipantsRef.current,
+        targetTiers: targetTiersRef.current,
+      }[field] ?? summaryRef.current;
+
+    target?.focus();
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    let firstErrorField: string | null = null;
+
+    const addError = (field: string, message: string) => {
+      newErrors[field] = message;
+      if (!firstErrorField) firstErrorField = field;
+    };
 
     if (!formData.title.trim()) {
-      newErrors.title = "Event name is required";
+      addError("title", "Event name is required");
     }
 
     if (!selectedCourse) {
-      newErrors.course = "Please select a golf course";
+      addError("course", "Please select a golf course");
     }
 
     if (!formData.startDate || !formData.startTime) {
-      newErrors.startTime = "Start date and time are required";
+      addError("startTime", "Start date and time are required");
     }
 
     if (!formData.endDate || !formData.endTime) {
-      newErrors.endTime = "End date and time are required";
+      addError("endTime", "End date and time are required");
     }
 
     if (!formData.maxParticipants || parseInt(formData.maxParticipants) < 1) {
-      newErrors.maxParticipants = "Maximum participants must be at least 1";
+      addError("maxParticipants", "Maximum participants must be at least 1");
     }
 
     const selectedTiers = Object.entries(formData.targetTiers).filter(([_, v]) => v);
     if (selectedTiers.length === 0) {
-      newErrors.targetTiers = "At least one tier must be selected";
+      addError("targetTiers", "At least one tier must be selected");
     }
 
     // EPIC 7 / EPIC 11: Validate exclusive event creation
     if (exclusiveEventEnabled && !canCreateExclusiveEvents) {
-      newErrors.exclusiveEvent = "Only SUMMIT members can create exclusive events";
+      addError("exclusiveEvent", "Only SUMMIT members can create exclusive events");
     }
 
     setErrors(newErrors);
+    if (firstErrorField) {
+      window.requestAnimationFrame(() => focusField(firstErrorField as string));
+    }
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent, publish: boolean) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setSubmitAttempted(true);
 
     if (!validateForm()) return;
 
@@ -120,6 +162,7 @@ export default function CreateEventPage() {
     setSelectedCourse(course);
     setCourseSearch(course.name);
     setShowCourseDropdown(false);
+    clearFieldError("course");
     setFormData((prev) => ({ ...prev, courseId: course.id }));
   };
 
@@ -139,7 +182,19 @@ export default function CreateEventPage() {
         <p className="text-gray-600">Set up your tournament, scramble, or social event.</p>
       </div>
 
-      <form className="space-y-8">
+      <form className="space-y-8" noValidate>
+        {submitAttempted && Object.keys(errors).length > 0 && (
+          <div
+            ref={summaryRef}
+            tabIndex={-1}
+            role="alert"
+            aria-live="assertive"
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            Please fix the highlighted fields before continuing.
+          </div>
+        )}
+
         {/* Basic Information */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
@@ -150,16 +205,22 @@ export default function CreateEventPage() {
                 Event Name *
               </label>
               <input
+                ref={titleRef}
                 type="text"
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, title: e.target.value }));
+                  clearFieldError("title");
+                }}
+                aria-invalid={errors.title ? "true" : "false"}
+                aria-describedby={errors.title ? "title-error" : undefined}
                 className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm border p-2 ${
                   errors.title ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                 }`}
                 placeholder="e.g., Spring Championship Tournament"
               />
-              {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
+              {errors.title && <p id="title-error" className="mt-1 text-sm text-red-600">{errors.title}</p>}
             </div>
 
             <div>
@@ -202,14 +263,21 @@ export default function CreateEventPage() {
 
           <div className="relative">
             <input
+              ref={courseRef}
               type="text"
               value={courseSearch}
               onChange={(e) => {
                 setCourseSearch(e.target.value);
                 setShowCourseDropdown(true);
-                if (!e.target.value) setSelectedCourse(null);
+                clearFieldError("course");
+                if (!e.target.value) {
+                  setSelectedCourse(null);
+                  setFormData((prev) => ({ ...prev, courseId: "" }));
+                }
               }}
               onFocus={() => setShowCourseDropdown(true)}
+              aria-invalid={errors.course ? "true" : "false"}
+              aria-describedby={errors.course ? "course-error" : undefined}
               placeholder="Search for a golf course..."
               className={`block w-full rounded-md shadow-sm sm:text-sm border p-2 ${
                 errors.course ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
@@ -234,7 +302,7 @@ export default function CreateEventPage() {
               </ul>
             )}
           </div>
-          {errors.course && <p className="mt-1 text-sm text-red-600">{errors.course}</p>}
+          {errors.course && <p id="course-error" className="mt-1 text-sm text-red-600">{errors.course}</p>}
         </div>
 
         {/* Date and Time */}
@@ -246,38 +314,68 @@ export default function CreateEventPage() {
               <label className="block text-sm font-medium text-gray-700">Start Date & Time *</label>
               <div className="mt-1 flex space-x-2">
                 <input
+                  ref={startDateRef}
                   type="date"
                   value={formData.startDate}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, startDate: e.target.value }));
+                    clearFieldError("startTime");
+                  }}
+                  aria-invalid={errors.startTime ? "true" : "false"}
+                  aria-describedby={errors.startTime ? "startTime-error" : undefined}
+                  className={`block w-full rounded-md border shadow-sm sm:text-sm p-2 ${
+                    errors.startTime ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                  }`}
                 />
                 <input
                   type="time"
                   value={formData.startTime}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, startTime: e.target.value }))}
-                  className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, startTime: e.target.value }));
+                    clearFieldError("startTime");
+                  }}
+                  aria-invalid={errors.startTime ? "true" : "false"}
+                  aria-describedby={errors.startTime ? "startTime-error" : undefined}
+                  className={`block w-32 rounded-md border shadow-sm sm:text-sm p-2 ${
+                    errors.startTime ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                  }`}
                 />
               </div>
-              {errors.startTime && <p className="mt-1 text-sm text-red-600">{errors.startTime}</p>}
+              {errors.startTime && <p id="startTime-error" className="mt-1 text-sm text-red-600">{errors.startTime}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">End Date & Time *</label>
               <div className="mt-1 flex space-x-2">
                 <input
+                  ref={endDateRef}
                   type="date"
                   value={formData.endDate}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, endDate: e.target.value }));
+                    clearFieldError("endTime");
+                  }}
+                  aria-invalid={errors.endTime ? "true" : "false"}
+                  aria-describedby={errors.endTime ? "endTime-error" : undefined}
+                  className={`block w-full rounded-md border shadow-sm sm:text-sm p-2 ${
+                    errors.endTime ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                  }`}
                 />
                 <input
                   type="time"
                   value={formData.endTime}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, endTime: e.target.value }))}
-                  className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, endTime: e.target.value }));
+                    clearFieldError("endTime");
+                  }}
+                  aria-invalid={errors.endTime ? "true" : "false"}
+                  aria-describedby={errors.endTime ? "endTime-error" : undefined}
+                  className={`block w-32 rounded-md border shadow-sm sm:text-sm p-2 ${
+                    errors.endTime ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                  }`}
                 />
               </div>
-              {errors.endTime && <p className="mt-1 text-sm text-red-600">{errors.endTime}</p>}
+              {errors.endTime && <p id="endTime-error" className="mt-1 text-sm text-red-600">{errors.endTime}</p>}
             </div>
           </div>
         </div>
@@ -331,16 +429,22 @@ export default function CreateEventPage() {
                   Maximum Participants *
                 </label>
                 <input
+                  ref={maxParticipantsRef}
                   type="number"
                   id="maxParticipants"
                   min="1"
                   value={formData.maxParticipants}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, maxParticipants: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, maxParticipants: e.target.value }));
+                    clearFieldError("maxParticipants");
+                  }}
+                  aria-invalid={errors.maxParticipants ? "true" : "false"}
+                  aria-describedby={errors.maxParticipants ? "maxParticipants-error" : undefined}
                   className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm border p-2 ${
                     errors.maxParticipants ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
                   }`}
                 />
-                {errors.maxParticipants && <p className="mt-1 text-sm text-red-600">{errors.maxParticipants}</p>}
+                {errors.maxParticipants && <p id="maxParticipants-error" className="mt-1 text-sm text-red-600">{errors.maxParticipants}</p>}
               </div>
 
               <div>
@@ -396,25 +500,32 @@ export default function CreateEventPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Target Tiers *</label>
               <p className="text-sm text-gray-500 mb-2">Which member tiers can see this event?</p>
-              <div className="flex space-x-4">
+              <div
+                ref={targetTiersRef}
+                tabIndex={-1}
+                role="group"
+                aria-describedby={errors.targetTiers ? "targetTiers-error" : undefined}
+                className="flex flex-wrap gap-4"
+              >
                 {ORGANIZER_TIERS.map((tier) => (
                   <label key={tier.value} className="flex items-center">
                     <input
                       type="checkbox"
                       checked={formData.targetTiers[tier.value]}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        clearFieldError("targetTiers");
                         setFormData((prev) => ({
                           ...prev,
                           targetTiers: { ...prev.targetTiers, [tier.value]: e.target.checked },
-                        }))
-                      }
+                        }));
+                      }}
                       className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                     />
                     <span className="ml-2 text-sm text-gray-700">{tier.label}</span>
                   </label>
                 ))}
               </div>
-              {errors.targetTiers && <p className="mt-1 text-sm text-red-600">{errors.targetTiers}</p>}
+              {errors.targetTiers && <p id="targetTiers-error" className="mt-1 text-sm text-red-600">{errors.targetTiers}</p>}
             </div>
 
             {/*
@@ -471,7 +582,7 @@ export default function CreateEventPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-4">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Link
             href="/organizer/events"
             className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
