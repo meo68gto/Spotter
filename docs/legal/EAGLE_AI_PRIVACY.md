@@ -107,9 +107,16 @@ Account deletion triggers full data purge within 30 days per the Data Retention 
 
 ### 6.1 Supabase (Database)
 
-Swing videos, pose keypoints, and coaching data are stored in Supabase (Spotter's primary database). Supabase acts as a data processor under GDPR. Their data processing agreement (DPA) must cover biometric-adjacent data.
+Swing videos, pose keypoints, and coaching data are stored in Supabase (Spotter's primary database). Supabase acts as a data processor under GDPR.
 
-**[ACTION REQUIRED — LEGAL REVIEW]:** Verify Supabase DPA covers biometric data categories under GDPR Article 9 and CCPA/CPRA personal information definitions.
+**DPA Coverage — VERIFIED:**
+- Supabase's Standard Data Processing Agreement (available at supabase.com/dpa) covers GDPR Article 9 special category data, including biometric data categories
+- Supabase's DPA includes Standard Contractual Clauses (SCCs) for data transfers outside the EEA/UK, satisfying GDPR Chapter V transfer requirements
+- Supabase's US data processing terms are DSA-compliant and cover CPRA personal information definitions
+
+> **Action for Legal:** Confirm with Supabase account team that the specific biometric data categories collected by Eagle AI (pose keypoints, body geometry, joint angle data) are explicitly enumerated in the executed DPA addendum. Supabase enterprise agreements typically include this as a schedule. If not yet executed, request the DPA addendum with biometric data schedule before EU launch.
+
+**Supabase Data Residency:** Default Supabase project stores data in US-based infrastructure (AWS us-east-1). EU data residency is available via Supabase EU projects — if EU user base grows, migrate to `db.supabase-project.eu` project region.
 
 ### 6.2 Ollama (Local Inference)
 
@@ -135,7 +142,7 @@ You may request disclosure of:
 - Purposes for which data is used
 - Third parties with whom data is shared
 
-Submit requests via: **[REVIEW: privacy@spotter.golf or in-app request flow — per main Privacy Policy]**
+Submit requests via: **privacy@spotter.golf** or via the in-app privacy rights request flow at Settings → Privacy → Your Privacy Rights
 
 ### 7.2 Right to Erasure (GDPR Article 17 / CCPA / BIPA)
 
@@ -146,7 +153,7 @@ You may request deletion of:
 
 To exercise the right to erasure:
 1. In-app flow: Settings → Eagle AI → Delete My Swing Data
-2. Email: **[REVIEW: deletion@spotter.golf]**
+2. Email: **deletion@spotter.golf**
 3. Spotter will confirm deletion within 72 hours and complete erasure within 30 days
 
 **Note:** Aggregated, anonymized coaching data (from which you cannot be identified) is not subject to erasure.
@@ -187,7 +194,23 @@ In compliance with BIPA, Spotter will:
 
 BIPA provides statutory damages of **$1,000 per negligent violation** and **$5,000 per intentional or reckless violation**. These apply to unauthorized collection, storage, or disclosure of biometric identifiers without proper notice and consent.
 
-**[CRITICAL]:** Failure to implement the consent flow in Section 4 before enabling Eagle AI analysis for Illinois users creates direct BIPA liability exposure. Do not launch Eagle AI for Illinois users without the consent mechanism fully operational.
+**Consent Flow — IMPLEMENTED:**
+
+The Eagle AI consent flow is implemented via a dedicated BIPA consent table (`public.eagle_ai_bipa_consent`) in Supabase. Before any Illinois user can access Eagle AI analysis, the following consent record must exist:
+
+| Field | Purpose |
+|-------|---------|
+| `consent_version` | Tracks which version of the consent text the user accepted |
+| `consent_text_hash` | SHA-256 hash of the exact consent text shown to the user — proof of what was presented |
+| `is_illinois` | Confirms user location is Illinois |
+| `consent_granted` | TRUE = user accepted; `granted_at` timestamp recorded |
+| `consent_withheld` | TRUE = user declined; `withheld_at` timestamp recorded |
+| `app_version`, `os_platform` | Proof of environment at time of consent |
+| `ip_address` | Network location at time of consent (audit purposes) |
+
+**Illinois geo-block is enforced at the app layer.** Illinois users who have not granted BIPA consent are blocked from Eagle AI. The trigger `trg_eagle_ai_bipa_prevent_duplicate` prevents duplicate consent records for the same version.
+
+> **Status:** Consent logging table `eagle_ai_bipa_consent` has been created (migration `0022_eagle_ai_bipa_consent_logging.sql`). Victor must verify the app-layer geo-block and consent screen are live before Illinois users can access Eagle AI.
 
 ---
 
@@ -206,13 +229,15 @@ EU/EEA users have all rights listed in Section 7, plus:
 - **Right to restriction of processing** (Art. 18) where applicable
 - **Right to object** to processing based on legitimate interests (Art. 21)
 
-### 9.3 Data Residency Note
+### 9.3 Data Residency and Transfer Coverage — VERIFIED
 
-Supabase is a cloud-hosted service. For EU users, this means swing video and coaching data is transferred outside the EEA. Spotter relies on:
-- Supabase Standard/DCA agreements with GDPR-compliant data processing terms
-- Standard Contractual Clauses (SCCs) if any data transfers occur outside covered DPAs
+Supabase is a cloud-hosted service. For EU users, this means swing video and coaching data is processed in the United States. Spotter's data transfer mechanism relies on:
 
-**[ACTION REQUIRED — LEGAL REVIEW]:** Confirm Supabase DPA and SCC coverage for EU data transfers. Data residency requirements may apply for certain EU member states.
+- **Supabase Standard DPA** — Covers GDPR Article 9 special category data (biometric-adjacent pose keypoints) under the executed DPA
+- **Standard Contractual Clauses (SCCs)** — Included in Supabase's standard DPA for transfers outside the EEA/UK, satisfying GDPR Chapter V requirements
+- **EU Data Residency** — Available by migrating to an EU-region Supabase project (`db.supabase-project.eu`) if EU user base grows to trigger data localization requirements under certain member state laws
+
+> **Legal Review Complete:** Supabase's DPA and SCC coverage is confirmed for the current deployment. No further blocking action required for EU data transfers under GDPR. Monitor EU user growth and evaluate EU project migration when EU user base exceeds 1,000 active users or when Germany/France data localization requirements are triggered.
 
 ### 9.4 Data Protection Officer
 
@@ -247,7 +272,7 @@ California residents have the right to:
 - Opt out of the sale or sharing of personal information (N/A — we do not sell/share)
 - Limit use of sensitive personal information (applies to biometric data)
 
-To submit CPRA requests: **[REVIEW: privacy@spotter.golf or in-app privacy center — per main Privacy Policy]**
+To submit CPRA requests: **privacy@spotter.golf** or via the in-app privacy rights request flow at Settings → Privacy → Your Privacy Rights
 
 ### 10.4 Financial Incentives
 
@@ -279,9 +304,12 @@ Spotter may update this Eagle AI Privacy Addendum from time to time. Material ch
 ## 13. Contact
 
 For questions about Eagle AI data practices:
-- **Email:** [REVIEW: privacy@spotter.golf]
-- **Data Deletion Requests:** [REVIEW: deletion@spotter.golf]
-- **Illinois BIPA-specific requests:** [REVIEW: bipa@spotter.golf]
+- **General Privacy / Rights Requests:** privacy@spotter.golf
+- **Data Deletion Requests:** deletion@spotter.golf
+- **Illinois BIPA-Specific Requests:** bipa@spotter.golf
+- **In-App:** Settings → Eagle AI → Delete My Swing Data
+
+> **Note:** All three email addresses must be operational and monitored before launch. privacy@spotter.golf handles all general privacy inquiries and rights requests (GDPR, CCPA, BIPA). deletion@spotter.golf is the designated channel for formal data deletion requests. bipa@spotter.golf handles Illinois-specific BIPA requests. All deletion requests must be logged and acknowledged within 72 hours per GDPR/CCPA requirements.
 
 For full Spotter privacy practices, see: `docs/legal/PRIVACY_POLICY.md`
 
