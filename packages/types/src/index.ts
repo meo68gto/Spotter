@@ -259,6 +259,8 @@ export interface GuestCheckoutStartDTO {
   email: string;
 }
 
+export * from './coaching';
+
 export interface GuestVerifyDTO {
   token: string;
 }

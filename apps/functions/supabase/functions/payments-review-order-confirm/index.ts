@@ -24,25 +24,25 @@ Deno.serve(async (req) => {
   const body = await parseJson<Payload>(req);
   if (body instanceof Response) return body;
 
-  if (!body.reviewOrderId || !body.status) {
-    return badRequest('Missing required fields', 'missing_required_fields');
+  if (!body.reviewOrderId) {
+    return badRequest('Missing reviewOrderId', 'missing_review_order_id');
   }
 
   const service = createServiceClient();
   const { data, error } = await service
     .from('review_orders')
-    .update({
-      status: body.status,
-      paid_at: body.status === 'paid' ? new Date().toISOString() : null
-    })
+    .select('id, status, paid_at, refunded_at')
     .eq('id', body.reviewOrderId)
     .eq('buyer_user_id', auth.user.id)
-    .select('id, status, paid_at, refunded_at')
     .single();
 
-  if (error) {
-    return json(500, { error: error.message, code: 'review_order_confirm_failed' });
+  if (error || !data) {
+    return json(404, { error: error?.message ?? 'Review order not found', code: 'review_order_not_found' });
   }
 
-  return json(200, { data });
+  return json(409, {
+    error: 'Client-side order confirmation has been retired. Use webhook-driven status checks via payments-review-order-get.',
+    code: 'payment_confirm_retired',
+    details: { reviewOrderId: data.id, currentStatus: data.status }
+  });
 });

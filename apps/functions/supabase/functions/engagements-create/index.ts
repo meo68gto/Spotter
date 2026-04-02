@@ -1,17 +1,26 @@
 import { createServiceClient } from '../_shared/client.ts';
+import { addEngagementStatusEvent, createServiceBackedOrder } from '../_shared/coach-commerce.ts';
 import { createPaymentAuthorization, hashToken, mapStripeIntentToOrderStatus, randomToken } from '../_shared/engagements.ts';
+import { getRuntimeEnv } from '../_shared/env.ts';
 import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
 import { stripeRequest } from '../_shared/payments.ts';
 
 type Payload = {
   coachId?: string;
+  coachServiceId?: string;
   engagementMode?: 'text_answer' | 'video_answer' | 'video_call';
   questionText?: string;
   attachmentUrls?: string[];
   scheduledTime?: string;
   guestEmail?: string;
   publishAfterPayment?: boolean;
+  buyerNote?: string;
+  requestDetails?: Record<string, unknown>;
+  sourceSurface?: string;
+  sourceMatchId?: string;
+  sourceIntroRequestId?: string;
+  sourceConnectionUserId?: string;
   /**
    * Optional idempotency key. If provided, will return existing engagement if already created.
    * Should be unique per booking attempt (e.g., coachId-timestamp).
@@ -28,6 +37,7 @@ Deno.serve(async (req) => {
   }
 
   const service = createServiceClient();
+  const env = getRuntimeEnv();
 
   // Idempotency check: if idempotencyKey provided, check for existing engagement
   if (body.idempotencyKey) {
@@ -83,15 +93,50 @@ Deno.serve(async (req) => {
 
   if (coachError || !coach) return badRequest('Coach not found', 'coach_not_found');
 
-  const { data: pricing } = await service
-    .from('expert_pricing')
-    .select('price_cents, currency, per_minute_rate_cents')
-    .eq('coach_id', coach.id)
-    .eq('engagement_mode', body.engagementMode)
-    .eq('active', true)
-    .maybeSingle();
+  const modeToServiceType: Record<NonNullable<Payload['engagementMode']>, string> = {
+    text_answer: 'text_qna',
+    video_answer: 'video_review',
+    video_call: 'live_video_call'
+  };
+
+  const { data: selectedService } = body.coachServiceId
+    ? await service
+        .from('coach_services')
+        .select('id, service_type, title, description, price_cents, currency, requires_video, requires_schedule, turnaround_hours')
+        .eq('id', body.coachServiceId)
+        .eq('coach_id', coach.id)
+        .eq('active', true)
+        .maybeSingle()
+    : await service
+        .from('coach_services')
+        .select('id, service_type, title, description, price_cents, currency, requires_video, requires_schedule, turnaround_hours')
+        .eq('coach_id', coach.id)
+        .eq('service_type', modeToServiceType[body.engagementMode])
+        .eq('active', true)
+        .order('sort_order', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+  const pricing = selectedService
+    ? {
+        price_cents: selectedService.price_cents,
+        currency: selectedService.currency,
+        requires_schedule: selectedService.requires_schedule,
+        turnaround_hours: selectedService.turnaround_hours
+      }
+    : await service
+        .from('expert_pricing')
+        .select('price_cents, currency, per_minute_rate_cents')
+        .eq('coach_id', coach.id)
+        .eq('engagement_mode', body.engagementMode)
+        .eq('active', true)
+        .maybeSingle()
+        .then((result) => result.data);
 
   if (!pricing) return badRequest('Pricing unavailable', 'pricing_unavailable');
+  if ('requires_schedule' in pricing && pricing.requires_schedule && !body.scheduledTime) {
+    return badRequest('Scheduled time is required for this service', 'scheduled_time_required');
+  }
 
   const auth = await requireUser(req);
 
@@ -151,38 +196,38 @@ Deno.serve(async (req) => {
     if (legal) return legal;
   }
 
-  const { data: order, error: orderError } = await service
-    .from('review_orders')
-    .insert({
-      buyer_user_id: requesterUserId,
-      coach_id: coach.id,
-      video_submission_id: null,
-      amount_cents: pricing.price_cents,
-      currency: pricing.currency,
-      platform_fee_bps: 2000,
-      platform_fee_cents: Math.floor(pricing.price_cents * 0.2),
-      coach_payout_cents: Math.ceil(pricing.price_cents * 0.8),
-      status: 'created',
-      authorization_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    })
-    .select('*')
-    .single();
-
-  if (orderError || !order) return json(500, { error: orderError?.message ?? 'Order create failed', code: 'order_create_failed' });
+  const order = await createServiceBackedOrder({
+    buyerUserId: requesterUserId,
+    coachId: coach.id,
+    coachServiceId: selectedService?.id ?? null,
+    amountCents: pricing.price_cents,
+    currency: pricing.currency,
+    sourceSurface: body.sourceSurface,
+    feeBps: env.stripePlatformFeeBps
+  }).catch((error) => {
+    throw new Error(error instanceof Error ? error.message : 'Order create failed');
+  });
 
   const { data: request, error: requestError } = await service
     .from('engagement_requests')
     .insert({
       requester_user_id: requesterUserId,
       coach_id: coach.id,
+      coach_service_id: selectedService?.id ?? null,
       engagement_mode: body.engagementMode,
       question_text: body.questionText.trim(),
       attachment_urls: body.attachmentUrls ?? [],
       scheduled_time: body.scheduledTime ?? null,
-      status: body.publishAfterPayment ? 'created' : 'awaiting_expert',
+      status: body.publishAfterPayment ? 'payment_pending' : 'draft',
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       moderation_status: 'pending',
-      review_order_id: order.id
+      review_order_id: order.id,
+      buyer_note: body.buyerNote ?? null,
+      request_details: body.requestDetails ?? {},
+      source_surface: body.sourceSurface ?? null,
+      source_match_id: body.sourceMatchId ?? null,
+      source_intro_request_id: body.sourceIntroRequestId ?? null,
+      source_connection_user_id: body.sourceConnectionUserId ?? null
     })
     .select('*')
     .single();
@@ -191,10 +236,21 @@ Deno.serve(async (req) => {
 
   const { data: updatedOrder } = await service
     .from('review_orders')
-    .update({ engagement_request_id: request.id })
+    .update({ engagement_request_id: request.id, coach_service_id: selectedService?.id ?? null })
     .eq('id', order.id)
     .select('id')
     .single();
+
+  await addEngagementStatusEvent({
+    engagementRequestId: request.id,
+    eventType: body.publishAfterPayment ? 'payment_pending_created' : 'draft_created',
+    toStatus: request.status,
+    actorUserId: requesterUserId,
+    payload: {
+      sourceSurface: body.sourceSurface ?? null,
+      coachServiceId: selectedService?.id ?? null
+    }
+  });
 
   let clientSecret: string | null = null;
   try {
@@ -204,7 +260,8 @@ Deno.serve(async (req) => {
       customerEmail: buyerEmail,
       orderId: order.id,
       coachStripeAccountId: coach.stripe_account_id ?? undefined,
-      applicationFeeCents: order.platform_fee_cents
+      applicationFeeCents: order.platform_fee_cents,
+      onBehalfOf: coach.stripe_account_id ?? undefined
     });
     clientSecret = intent.client_secret;
     await service
@@ -216,5 +273,17 @@ Deno.serve(async (req) => {
     return json(500, { error: error instanceof Error ? error.message : 'Authorization failed', code: 'payment_auth_failed' });
   }
 
-  return json(200, { data: { request, order: updatedOrder, clientSecret } });
+  return json(200, {
+    data: {
+      request,
+      order: {
+        id: updatedOrder?.id ?? order.id,
+        status: order.status,
+        amountCents: order.amount_cents,
+        currency: order.currency
+      },
+      service: selectedService ?? null,
+      clientSecret
+    }
+  });
 });

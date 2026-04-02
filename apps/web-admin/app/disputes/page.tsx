@@ -6,6 +6,9 @@ type RefundRow = {
   requester_user_id: string;
   reason: string | null;
   status: string;
+  source_surface?: string | null;
+  coach_service_id?: string | null;
+  payout_status?: string | null;
   created_at: string;
 };
 
@@ -25,6 +28,9 @@ const MOCK_REFUNDS: RefundRow[] = [
     requester_user_id: '33333333-3333-3333-3333-333333333333',
     reason: 'Service not delivered',
     status: 'pending',
+    source_surface: 'profile',
+    coach_service_id: 'svc_1',
+    payout_status: 'held',
     created_at: new Date().toISOString()
   },
   {
@@ -33,6 +39,9 @@ const MOCK_REFUNDS: RefundRow[] = [
     requester_user_id: '33333333-3333-3333-3333-333333333334',
     reason: 'Coach did not show up',
     status: 'approved',
+    source_surface: 'post_round',
+    coach_service_id: 'svc_2',
+    payout_status: 'reversed',
     created_at: new Date(Date.now() - 86400000).toISOString()
   }
 ];
@@ -62,7 +71,7 @@ export default async function DisputesPage() {
   try {
     [refunds, reschedules] = await Promise.all([
       restFetch<RefundRow[]>(
-        'refund_requests?select=id,review_order_id,requester_user_id,reason,status,created_at&order=created_at.desc&limit=100'
+        'refund_requests?select=id,review_order_id,requester_user_id,reason,status,created_at,review_order:review_orders(source_surface,coach_service_id,payout_status)&order=created_at.desc&limit=100'
       ),
       restFetch<RescheduleRow[]>(
         'reschedule_requests?select=id,engagement_request_id,status,declined_reason,created_at&status=eq.declined&order=created_at.desc&limit=100'
@@ -93,12 +102,20 @@ export default async function DisputesPage() {
       )}
 
       <h2>Refund Requests ({refunds.length})</h2>
+      <p>Coach commerce refunds: {refunds.filter((row) => Boolean(row.coach_service_id || (row as any).review_order?.coach_service_id)).length}</p>
       {refunds.length === 0 ? <p>No refund requests.</p> : null}
-      {refunds.map((row) => (
-        <p key={row.id}>
-          {row.id.slice(0, 8)} • order {row.review_order_id.slice(0, 8)} • {row.status} • {row.reason ?? 'no reason'}
-        </p>
-      ))}
+      {refunds.map((row) => {
+        const reviewOrder = (row as any).review_order ?? {};
+        const sourceSurface = row.source_surface ?? reviewOrder.source_surface ?? 'n/a';
+        const coachServiceId = row.coach_service_id ?? reviewOrder.coach_service_id ?? null;
+        const payoutStatus = row.payout_status ?? reviewOrder.payout_status ?? null;
+        return (
+          <p key={row.id}>
+            {row.id.slice(0, 8)} • order {row.review_order_id.slice(0, 8)} • {row.status} • {row.reason ?? 'no reason'} •
+            source {sourceSurface} • service {coachServiceId ? coachServiceId.slice(0, 8) : 'n/a'} • payout {payoutStatus ?? 'n/a'}
+          </p>
+        );
+      })}
 
       <h2 style={{ marginTop: 24 }}>Declined Reschedules ({reschedules.length})</h2>
       {reschedules.length === 0 ? <p>No declined reschedules.</p> : null}

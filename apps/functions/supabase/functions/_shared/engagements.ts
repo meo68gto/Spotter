@@ -28,6 +28,7 @@ export const createPaymentAuthorization = async (params: {
   orderId: string;
   coachStripeAccountId?: string;
   applicationFeeCents: number;
+  onBehalfOf?: string;
 }) => {
   const env = getRuntimeEnv();
   if (!env.stripeSecretKey) {
@@ -44,12 +45,12 @@ export const createPaymentAuthorization = async (params: {
     {
       amount: params.amountCents,
       currency: params.currency,
-      capture_method: 'manual',
       confirmation_method: 'automatic',
       'automatic_payment_methods[enabled]': true,
       receipt_email: params.customerEmail,
       application_fee_amount: params.applicationFeeCents,
       'transfer_data[destination]': params.coachStripeAccountId,
+      on_behalf_of: params.onBehalfOf ?? params.coachStripeAccountId,
       'metadata[order_id]': params.orderId,
       'metadata[source]': 'engagements',
       'metadata[env]': env.flagEnvironment

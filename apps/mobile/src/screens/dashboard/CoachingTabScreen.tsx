@@ -1,37 +1,55 @@
 import { Session } from '@supabase/supabase-js';
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CoachCatalogItem } from '../../hooks/useCoachCatalog';
-import { BookingMode } from '../../hooks/useBookingFlow';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { CoachCatalogItem, CoachService } from '../../hooks/useCoachCatalog';
+import { invokeFunction } from '../../lib/api';
 import { ActiveSessionScreen } from './coaching/ActiveSessionScreen';
 import { SessionChatScreen } from './coaching/SessionChatScreen';
 import { VideoCallScreen } from './coaching/VideoCallScreen';
 import { ReviewCoachSheet } from './coaching/ReviewCoachSheet';
 import { CoachBrowseScreen } from './coaching/CoachBrowseScreen';
 import { CoachProfileScreen } from './coaching/CoachProfileScreen';
-import { AvailabilityCalendarSheet } from './coaching/AvailabilityCalendarSheet';
-import { BookSessionScreen } from './coaching/BookSessionScreen';
+import { CoachServiceScreen } from './coaching/CoachServiceScreen';
+import { CoachRequestComposerScreen, CoachRequestDraftInput } from './coaching/CoachRequestComposerScreen';
+import { CoachVideoAttachScreen } from './coaching/CoachVideoAttachScreen';
+import { CoachCheckoutScreen } from './coaching/CoachCheckoutScreen';
+import { CoachRequestTimelineScreen } from './coaching/CoachRequestTimelineScreen';
+import { CoachFeedbackScreen } from './coaching/CoachFeedbackScreen';
 
 type PrimaryPane = 'browse' | 'active';
-type Stage = 'browse' | 'profile' | 'book' | 'active' | 'sessionChat' | 'videoCall';
+type Stage =
+  | 'browse'
+  | 'profile'
+  | 'service'
+  | 'compose'
+  | 'attach'
+  | 'checkout'
+  | 'timeline'
+  | 'feedback'
+  | 'active'
+  | 'sessionChat'
+  | 'videoCall';
 
 export function CoachingTabScreen({ session }: { session: Session }) {
   const [primary, setPrimary] = useState<PrimaryPane>('browse');
   const [stage, setStage] = useState<Stage>('browse');
   const [search, setSearch] = useState('');
   const [selectedCoach, setSelectedCoach] = useState<CoachCatalogItem | null>(null);
-  const [mode, setMode] = useState<BookingMode>('video_call');
-  const [availabilityOpen, setAvailabilityOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState('');
+  const [selectedService, setSelectedService] = useState<CoachService | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [activeEngagementId, setActiveEngagementId] = useState<string>('');
   const [reviewSessionId, setReviewSessionId] = useState<string | null>(null);
+  const [draftInput, setDraftInput] = useState<CoachRequestDraftInput | null>(null);
+  const [timelineRequestId, setTimelineRequestId] = useState<string>('');
+  const [checkoutDraft, setCheckoutDraft] = useState<{ request: { id: string }; order: { id: string }; clientSecret: string | null } | null>(null);
 
   const showActive = () => {
     setPrimary('active');
     setStage('active');
   };
+
   const showBrowse = () => {
     setPrimary('browse');
     setStage('browse');
@@ -82,8 +100,8 @@ export function CoachingTabScreen({ session }: { session: Session }) {
         <TopSwitch primary={primary} onBrowse={showBrowse} onActive={showActive} />
         <CoachProfileScreen
           coach={selectedCoach}
-          mode={mode}
-          setMode={setMode}
+          selectedServiceId={selectedService?.id ?? null}
+          onSelectService={setSelectedService}
           refreshing={refreshing}
           onRefresh={async () => {
             setRefreshing(true);
@@ -91,33 +109,102 @@ export function CoachingTabScreen({ session }: { session: Session }) {
             setRefreshing(false);
           }}
           onBack={() => setStage('browse')}
-          onBook={() => setAvailabilityOpen(true)}
+          onContinue={() => setStage('service')}
         />
-        <AvailabilityCalendarSheet
-          visible={availabilityOpen}
-          selected={selectedSlot}
-          onSelect={setSelectedSlot}
-          onClose={() => setAvailabilityOpen(false)}
-          onContinue={() => {
-            setAvailabilityOpen(false);
-            setStage('book');
+      </>
+    );
+  }
+
+  if (stage === 'service' && selectedCoach && selectedService) {
+    return (
+      <>
+        <TopSwitch primary={primary} onBrowse={showBrowse} onActive={showActive} />
+        <CoachServiceScreen coach={selectedCoach} service={selectedService} onBack={() => setStage('profile')} onContinue={() => setStage('compose')} />
+      </>
+    );
+  }
+
+  if (stage === 'compose' && selectedService) {
+    return (
+      <>
+        <TopSwitch primary={primary} onBrowse={showBrowse} onActive={showActive} />
+        <CoachRequestComposerScreen
+          service={selectedService}
+          initialValue={draftInput ?? undefined}
+          onBack={() => setStage('service')}
+          onContinue={(value) => {
+            setDraftInput(value);
+            invokeFunction<{ request: { id: string }; order: { id: string }; clientSecret: string | null }>('coach-request-create-draft', {
+              body: {
+                coachId: selectedCoach?.coachId,
+                coachServiceId: selectedService.id,
+                questionText: value.questionText,
+                buyerNote: value.buyerNote,
+                requestDetails: value.requestDetails,
+                sourceSurface: 'profile',
+                scheduledTime: selectedSlot || undefined
+              }
+            })
+              .then((draft) => {
+                setCheckoutDraft(draft);
+                setTimelineRequestId(draft.request.id);
+                setStage(selectedService.requiresVideo ? 'attach' : 'checkout');
+              })
+              .catch((error) => Alert.alert('Unable to start request', error instanceof Error ? error.message : 'Unknown error'));
           }}
         />
       </>
     );
   }
 
-  if (stage === 'book' && selectedCoach && selectedSlot) {
+  if (stage === 'attach' && timelineRequestId) {
     return (
       <>
         <TopSwitch primary={primary} onBrowse={showBrowse} onActive={showActive} />
-        <BookSessionScreen
+        <CoachVideoAttachScreen engagementRequestId={timelineRequestId} onBack={() => setStage('compose')} onContinue={() => setStage('checkout')} />
+      </>
+    );
+  }
+
+  if (stage === 'checkout' && selectedCoach && selectedService && draftInput) {
+    return (
+      <>
+        <TopSwitch primary={primary} onBrowse={showBrowse} onActive={showActive} />
+        <CoachCheckoutScreen
           coachId={selectedCoach.coachId}
-          selectedSlot={selectedSlot}
-          initialMode={mode}
-          onBack={() => setStage('profile')}
-          onDone={() => setStage('browse')}
+          service={selectedService}
+          scheduledTime={selectedSlot || undefined}
+          requestInput={draftInput}
+          sourceSurface="profile"
+          existingDraft={checkoutDraft}
+          onBack={() => setStage(selectedService.requiresVideo ? 'attach' : 'compose')}
+          onPaid={(engagementRequestId) => {
+            setTimelineRequestId(engagementRequestId);
+            setStage('timeline');
+          }}
         />
+      </>
+    );
+  }
+
+  if (stage === 'timeline' && timelineRequestId) {
+    return (
+      <>
+        <TopSwitch primary={primary} onBrowse={showBrowse} onActive={showActive} />
+        <CoachRequestTimelineScreen
+          engagementRequestId={timelineRequestId}
+          onBack={() => setStage('browse')}
+          onOpenFeedback={() => setStage('feedback')}
+        />
+      </>
+    );
+  }
+
+  if (stage === 'feedback' && timelineRequestId) {
+    return (
+      <>
+        <TopSwitch primary={primary} onBrowse={showBrowse} onActive={showActive} />
+        <CoachFeedbackScreen engagementRequestId={timelineRequestId} onBack={() => setStage('timeline')} />
       </>
     );
   }
@@ -130,6 +217,10 @@ export function CoachingTabScreen({ session }: { session: Session }) {
         onSearchChange={setSearch}
         onSelectCoach={(coach) => {
           setSelectedCoach(coach);
+          setSelectedService(coach.services[0] ?? null);
+          setDraftInput(null);
+          setTimelineRequestId('');
+          setSelectedSlot('');
           setStage('profile');
         }}
       />

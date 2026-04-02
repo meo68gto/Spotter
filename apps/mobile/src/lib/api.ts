@@ -176,6 +176,68 @@ const mockFunctionResponse = async <T>(path: string, body?: Record<string, unkno
     } as T;
   }
 
+  if (path === 'coach-request-create-draft') {
+    return {
+      request: { id: `demo-request-${Date.now()}` },
+      order: { id: `demo-order-${Date.now()}` },
+      clientSecret: 'pi_demo_secret'
+    } as T;
+  }
+
+  if (path === 'payments-review-order-get') {
+    return {
+      order: {
+        id: (body?.reviewOrderId as string) ?? `demo-order-${Date.now()}`,
+        status: 'paid'
+      }
+    } as T;
+  }
+
+  if (path === 'coach-feedback-get') {
+    return {
+      id: (body?.engagementRequestId as string) ?? `demo-request-${Date.now()}`,
+      status: 'delivered',
+      question_text: 'How do I shallow the club in transition?',
+      coach_service: { title: 'Video Review', service_type: 'video_review' },
+      engagement_status_events: [
+        { id: 'evt-1', event_type: 'draft_created', created_at: now.toISOString() },
+        { id: 'evt-2', event_type: 'payment_succeeded', created_at: now.toISOString() },
+        { id: 'evt-3', event_type: 'feedback_delivered', created_at: now.toISOString() }
+      ],
+      engagement_responses: [
+        {
+          id: 'resp-1',
+          summary_text: 'Work on lower-body sequence and keep the club head outside your hands longer.',
+          response_text: 'Here are the three priority fixes for your next range session.',
+          structured_feedback: {
+            priorities: ['Transition sequence', 'Club path', 'Face control'],
+            drills: ['Pump drill', 'Split-hand rehearsal']
+          }
+        }
+      ]
+    } as T;
+  }
+
+  if (path === 'videos-presign') {
+    return {
+      id: `demo-video-${Date.now()}`,
+      storage_path: `demo/${Date.now()}.mp4`,
+      status: 'uploaded',
+      upload_url: 'https://example.com/upload',
+      upload_expires_at: plusDays(1),
+      token: 'demo-token',
+      path: `demo/${Date.now()}.mp4`
+    } as T;
+  }
+
+  if (path === 'videos-enqueue-processing') {
+    return {
+      id: `demo-job-${Date.now()}`,
+      video_submission_id: (body?.videoSubmissionId as string) ?? `demo-video-${Date.now()}`,
+      status: 'pending'
+    } as T;
+  }
+
   if (path === 'engagements-publish') {
     return {
       id: (body?.engagementRequestId as string) ?? `demo-engagement-${Date.now()}`,

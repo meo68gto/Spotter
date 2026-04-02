@@ -40,7 +40,7 @@ export function useSessionLifecycle(session: Session) {
       .select('id, status, scheduled_time')
       .eq('requester_user_id', session.user.id)
       .eq('engagement_mode', 'video_call')
-      .in('status', ['accepted', 'in_progress'])
+      .in('status', ['accepted', 'scheduled', 'in_call', 'in_progress'])
       .order('created_at', { ascending: false })
       .limit(20);
     const coachQuery = coach?.id
@@ -49,7 +49,7 @@ export function useSessionLifecycle(session: Session) {
           .select('id, status, scheduled_time')
           .eq('coach_id', coach.id)
           .eq('engagement_mode', 'video_call')
-          .in('status', ['accepted', 'in_progress'])
+          .in('status', ['accepted', 'scheduled', 'in_call', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(20)
       : Promise.resolve({ data: [] as Record<string, unknown>[] });

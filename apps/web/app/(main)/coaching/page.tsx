@@ -1,516 +1,769 @@
 'use client'
 
 import { createBrowserClient } from '@/lib/supabase/client'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 
-type TierSlug = 'free' | 'select' | 'summit'
-
-interface Coach {
-  id: string
-  userId: string
-  displayName: string
-  avatarUrl?: string
-  sport: 'golf'
-  hourlyRate: number
-  rating: number
-  reviewCount: number
-  bio?: string
-  specialties: string[]
+type CoachConsoleRow = {
+  engagementRequestId: string
+  reviewOrderId: string | null
+  status: string
+  serviceTitle: string
+  serviceType: string
+  buyerName: string
+  buyerUserId: string | null
+  questionText: string
+  amountCents: number
+  currency: string
+  paidAt: string | null
+  acceptedDeadlineAt: string | null
+  deliveryDeadlineAt: string | null
+  createdAt: string
+  assetCount: number
 }
 
-interface CoachingSession {
+type CoachRequestDetail = {
   id: string
-  coachId: string
-  coachName: string
-  coachAvatar?: string
-  scheduledTime: string
-  status: 'upcoming' | 'completed' | 'cancelled'
-  mode: 'video_call' | 'in_person'
+  status: string
+  question_text: string
+  buyer_note?: string | null
+  request_details?: Record<string, unknown> | null
+  scheduled_time?: string | null
+  accepted_deadline_at?: string | null
+  delivery_deadline_at?: string | null
+  delivered_at?: string | null
+  coach_service?: {
+    id: string
+    title: string
+    service_type: string
+    price_cents: number
+    currency: string
+    turnaround_hours?: number | null
+    requires_video?: boolean | null
+  } | null
+  requester?: {
+    id: string
+    display_name?: string | null
+    avatar_url?: string | null
+    bio?: string | null
+  } | null
+  review_order?: {
+    id: string
+    status: string
+    amount_cents: number
+    currency: string
+    payout_status?: string | null
+    refund_reason?: string | null
+    paid_at?: string | null
+    refunded_at?: string | null
+  } | null
+  engagement_assets?: Array<{
+    id: string
+    asset_type?: string | null
+    role?: string | null
+    storage_path?: string | null
+  }>
+  engagement_responses?: Array<{
+    id: string
+    summary_text?: string | null
+    response_text?: string | null
+    structured_feedback?: Record<string, unknown> | null
+  }>
+  engagement_status_events?: Array<{
+    id: string
+    event_type: string
+    from_status?: string | null
+    to_status?: string | null
+    created_at: string
+  }>
 }
 
-interface CoachRequest {
+type CoachService = {
   id: string
-  coachId: string
-  coachName: string
-  coachAvatar?: string
-  requestDate: string
-  status: 'pending' | 'accepted' | 'declined'
+  coach_id: string
+  service_type: string
+  title: string
+  description: string | null
+  price_cents: number
+  currency: string
+  turnaround_hours: number | null
+  duration_minutes: number | null
+  requires_video: boolean
+  requires_schedule: boolean
+  active: boolean
+  sort_order: number
 }
 
-const MOCK_COACHES: Coach[] = [
-  {
-    id: 'c1',
-    userId: 'u1',
-    displayName: 'Coach Sarah Mitchell',
-    avatarUrl: undefined,
-    sport: 'golf',
-    hourlyRate: 85,
-    rating: 4.9,
-    reviewCount: 47,
-    bio: 'PGA-certified instructor with 15 years of experience. Specializing in swing mechanics and short game.',
-    specialties: ['Swing Mechanics', 'Short Game', 'Putting'],
-  },
-  {
-    id: 'c2',
-    userId: 'u2',
-    displayName: 'Coach David Chen',
-    avatarUrl: undefined,
-    sport: 'golf',
-    hourlyRate: 100,
-    rating: 4.8,
-    reviewCount: 63,
-    bio: 'Former collegiate golfer turned coach. Focus on course management and mental game.',
-    specialties: ['Mental Game', 'Course Management', 'Driving'],
-  },
-  {
-    id: 'c3',
-    userId: 'u3',
-    displayName: 'Coach Lisa Torres',
-    avatarUrl: undefined,
-    sport: 'golf',
-    hourlyRate: 75,
-    rating: 4.7,
-    reviewCount: 28,
-    bio: 'Patient instructor great for beginners. Expertise in building fundamentals and confidence.',
-    specialties: ['Beginners', 'Fundamentals', ' etiquette'],
-  },
+type ReviewOrderRow = {
+  id: string
+  status: string
+  payout_status: string | null
+  amount_cents: number
+  coach_payout_cents: number | null
+  currency: string
+  refunded_at: string | null
+  created_at: string
+}
+
+type ServiceDraft = {
+  title: string
+  serviceType: string
+  description: string
+  price: string
+  turnaroundHours: string
+  durationMinutes: string
+  requiresVideo: boolean
+  requiresSchedule: boolean
+}
+
+const EMPTY_SERVICE_DRAFT: ServiceDraft = {
+  title: '',
+  serviceType: 'video_review',
+  description: '',
+  price: '79',
+  turnaroundHours: '48',
+  durationMinutes: '45',
+  requiresVideo: true,
+  requiresSchedule: false
+}
+
+const statusBuckets: Array<{ key: string; label: string; match: (row: CoachConsoleRow) => boolean }> = [
+  { key: 'needs_acceptance', label: 'Needs Acceptance', match: (row) => ['paid', 'queued'].includes(row.status) },
+  { key: 'due_soon', label: 'Due Soon', match: (row) => ['accepted', 'in_review', 'scheduled'].includes(row.status) },
+  { key: 'in_review', label: 'In Review', match: (row) => row.status === 'in_review' },
+  { key: 'scheduled', label: 'Scheduled Calls', match: (row) => ['scheduled', 'in_call'].includes(row.status) },
+  { key: 'delivered', label: 'Delivered', match: (row) => row.status === 'delivered' },
+  { key: 'refund_problem', label: 'Refund / Problem', match: (row) => ['refund_pending', 'refunded', 'declined', 'expired'].includes(row.status) }
 ]
 
-const MOCK_SESSIONS: CoachingSession[] = [
-  {
-    id: 's1',
-    coachId: 'c1',
-    coachName: 'Coach Sarah Mitchell',
-    coachAvatar: undefined,
-    scheduledTime: '2026-04-10T14:00:00',
-    status: 'upcoming',
-    mode: 'video_call',
-  },
-  {
-    id: 's2',
-    coachId: 'c2',
-    coachName: 'Coach David Chen',
-    coachAvatar: undefined,
-    scheduledTime: '2026-03-20T10:00:00',
-    status: 'completed',
-    mode: 'in_person',
-  },
-]
-
-const MOCK_REQUESTS: CoachRequest[] = [
-  {
-    id: 'r1',
-    coachId: 'c3',
-    coachName: 'Coach Lisa Torres',
-    coachAvatar: undefined,
-    requestDate: '2026-03-27',
-    status: 'pending',
-  },
-]
-
-function renderStars(rating: number) {
-  const fullStars = Math.floor(rating)
-  const hasHalfStar = rating % 1 >= 0.5
-  return (
-    <div className="flex items-center gap-0.5">
-      {[...Array(5)].map((_, i) => (
-        <span
-          key={i}
-          className={`text-sm ${i < fullStars ? 'text-yellow-400' : i === fullStars && hasHalfStar ? 'text-yellow-400/50' : 'text-slate-600'}`}
-        >
-          ★
-        </span>
-      ))}
-      <span className="text-slate-400 text-sm ml-1">({rating})</span>
-    </div>
-  )
-}
+const currency = (amountCents: number, code = 'usd') =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: code.toUpperCase() }).format((amountCents ?? 0) / 100)
 
 export default function CoachingPage() {
-  const [user, setUser] = useState<any>(null)
-  const [tierSlug, setTierSlug] = useState<TierSlug>('free')
-  const [coaches, setCoaches] = useState<Coach[]>(MOCK_COACHES)
-  const [sessions, setSessions] = useState<CoachingSession[]>(MOCK_SESSIONS)
-  const [requests, setRequests] = useState<CoachRequest[]>(MOCK_REQUESTS)
-  const [activeTab, setActiveTab] = useState<'all' | 'my-requests'>('all')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [requestingCoachId, setRequestingCoachId] = useState<string | null>(null)
   const supabase = createBrowserClient()
+  const [coachId, setCoachId] = useState<string | null>(null)
+  const [coachName, setCoachName] = useState('Coach Console')
+  const [loading, setLoading] = useState(true)
+  const [savingService, setSavingService] = useState(false)
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const [transitioning, setTransitioning] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
+  const [consoleRows, setConsoleRows] = useState<CoachConsoleRow[]>([])
+  const [requestDetail, setRequestDetail] = useState<CoachRequestDetail | null>(null)
+  const [services, setServices] = useState<CoachService[]>([])
+  const [orders, setOrders] = useState<ReviewOrderRow[]>([])
+  const [serviceDraft, setServiceDraft] = useState<ServiceDraft>(EMPTY_SERVICE_DRAFT)
+  const [reviewSummary, setReviewSummary] = useState('')
+  const [reviewBody, setReviewBody] = useState('')
+  const [reviewJson, setReviewJson] = useState('{\n  "priorities": [],\n  "drills": []\n}')
 
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      setUser(user)
-      // Load tier
-      const { data } = await supabase
-        .from('profiles')
-        .select('tier_slug')
-        .eq('id', user.id)
-        .single()
-      if (data) {
-        setTierSlug((data.tier_slug || 'free') as TierSlug)
-      }
-      // Load coaches from edge function or direct
-      try {
-        const res = await fetch('/api/coaches-list')
-        if (res.ok) {
-          const coachData = await res.json()
-          if (coachData?.coaches) setCoaches(coachData.coaches)
-        }
-      } catch {
-        // fallback to mock
-      }
-      // Load my sessions
-      const { data: sessionsData } = await supabase
-        .from('coaching_sessions')
-        .select('*, coach:coaches!inner(id, profiles!inner(display_name, avatar_url))')
-        .eq('user_id', user.id)
-        .order('scheduled_time', { ascending: true })
-        .limit(10)
-      if (sessionsData) {
-        setSessions(sessionsData.map((s: any) => ({
-          id: s.id,
-          coachId: s.coach_id,
-          coachName: s.coach?.profiles?.display_name || 'Coach',
-          coachAvatar: s.coach?.profiles?.avatar_url,
-          scheduledTime: s.scheduled_time,
-          status: s.status,
-          mode: s.mode,
-        })))
-      }
-      // Load pending requests
-      try {
-        const reqRes = await fetch('/api/coaches-pending-requests')
-        if (reqRes.ok) {
-          const reqData = await reqRes.json()
-          if (reqData?.requests) setRequests(reqData.requests)
-        }
-      } catch {
-        // fallback
-      }
-    }
-    getUser()
-  }, [supabase])
-
-  const handleRequestCoach = async (coachId: string) => {
-    if (tierSlug === 'free') return
-    setRequestingCoachId(coachId)
-    await new Promise(r => setTimeout(r, 1000))
-    setRequests(prev => [...prev, {
-      id: `r${Date.now()}`,
-      coachId,
-      coachName: coaches.find(c => c.id === coachId)?.displayName || 'Coach',
-      coachAvatar: undefined,
-      requestDate: new Date().toISOString().split('T')[0],
-      status: 'pending',
-    }])
-    setRequestingCoachId(null)
-  }
-
-  const filteredCoaches = coaches.filter(c =>
-    !searchQuery ||
-    c.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.bio?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
+  const groupedRows = useMemo(
+    () =>
+      statusBuckets.map((bucket) => ({
+        ...bucket,
+        rows: consoleRows.filter(bucket.match)
+      })),
+    [consoleRows]
   )
 
-  const upcomingSessions = sessions.filter(s => s.status === 'upcoming')
-  const pastSessions = sessions.filter(s => s.status !== 'upcoming')
+  const payoutSummary = useMemo(() => {
+    return orders.reduce(
+      (acc, order) => {
+        if (order.payout_status === 'eligible') acc.eligible += order.coach_payout_cents ?? 0
+        else if (order.payout_status === 'reversed') acc.reversed += order.coach_payout_cents ?? 0
+        else acc.held += order.coach_payout_cents ?? 0
+        return acc
+      },
+      { held: 0, eligible: 0, reversed: 0 }
+    )
+  }, [orders])
 
-  const showUpgradeCTA = tierSlug === 'free'
+  const loadConsole = async (preserveSelection = true) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const {
+        data: { user }
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setError('Sign in to access the coach console.')
+        return
+      }
+
+      const [{ data: coach }, { data: profile }] = await Promise.all([
+        supabase.from('coaches').select('id').eq('user_id', user.id).maybeSingle(),
+        supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle()
+      ])
+
+      setCoachName(profile?.display_name || 'Coach Console')
+      setCoachId(coach?.id ?? null)
+      if (!coach?.id) {
+        setError('You do not have an active coach profile yet.')
+        setConsoleRows([])
+        setServices([])
+        setOrders([])
+        return
+      }
+
+      const [{ data: inboxResp, error: inboxError }, { data: servicesData }, { data: payoutRows }] = await Promise.all([
+        supabase.functions.invoke('coach-console-list'),
+        supabase
+          .from('coach_services')
+          .select('id, coach_id, service_type, title, description, price_cents, currency, turnaround_hours, duration_minutes, requires_video, requires_schedule, active, sort_order')
+          .eq('coach_id', coach.id)
+          .order('sort_order', { ascending: true }),
+        supabase
+          .from('review_orders')
+          .select('id, status, payout_status, amount_cents, coach_payout_cents, currency, refunded_at, created_at')
+          .eq('coach_id', coach.id)
+          .order('created_at', { ascending: false })
+          .limit(50)
+      ])
+
+      if (inboxError) throw inboxError
+
+      const inboxRows = (inboxResp?.data ?? inboxResp ?? []) as CoachConsoleRow[]
+      setConsoleRows(inboxRows)
+      setServices((servicesData ?? []) as CoachService[])
+      setOrders((payoutRows ?? []) as ReviewOrderRow[])
+
+      const nextSelectedId =
+        preserveSelection && selectedRequestId && inboxRows.some((row) => row.engagementRequestId === selectedRequestId)
+          ? selectedRequestId
+          : inboxRows[0]?.engagementRequestId ?? null
+      setSelectedRequestId(nextSelectedId)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load coach console')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadDetail = async (engagementRequestId: string) => {
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('coach-request-detail', {
+        body: { engagementRequestId }
+      })
+      if (invokeError) throw invokeError
+      setRequestDetail((data?.data ?? data) as CoachRequestDetail)
+    } catch (detailError) {
+      setError(detailError instanceof Error ? detailError.message : 'Unable to load request detail')
+    }
+  }
+
+  useEffect(() => {
+    loadConsole(false)
+  }, [])
+
+  useEffect(() => {
+    if (selectedRequestId) {
+      loadDetail(selectedRequestId)
+    } else {
+      setRequestDetail(null)
+    }
+  }, [selectedRequestId])
+
+  const runTransition = async (action: 'accept' | 'decline' | 'start_review' | 'mark_scheduled' | 'mark_in_call') => {
+    if (!requestDetail) return
+    setTransitioning(action)
+    setError(null)
+    try {
+      const { error: invokeError } = await supabase.functions.invoke('coach-request-transition', {
+        body: { engagementRequestId: requestDetail.id, action }
+      })
+      if (invokeError) throw invokeError
+      await loadConsole()
+      await loadDetail(requestDetail.id)
+    } catch (transitionError) {
+      setError(transitionError instanceof Error ? transitionError.message : 'Unable to update request')
+    } finally {
+      setTransitioning(null)
+    }
+  }
+
+  const submitReview = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!requestDetail) return
+    setSubmittingReview(true)
+    setError(null)
+    try {
+      const structuredFeedback = reviewJson.trim() ? JSON.parse(reviewJson) : {}
+      const { error: invokeError } = await supabase.functions.invoke('coach-review-submit', {
+        body: {
+          engagementRequestId: requestDetail.id,
+          summaryText: reviewSummary.trim(),
+          responseText: reviewBody.trim(),
+          structuredFeedback
+        }
+      })
+      if (invokeError) throw invokeError
+      setReviewSummary('')
+      setReviewBody('')
+      await loadConsole()
+      await loadDetail(requestDetail.id)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Unable to submit feedback')
+    } finally {
+      setSubmittingReview(false)
+    }
+  }
+
+  const saveService = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!coachId) return
+    setSavingService(true)
+    setError(null)
+    try {
+      const sortOrder = services.length + 1
+      const payload = {
+        coach_id: coachId,
+        service_type: serviceDraft.serviceType,
+        title: serviceDraft.title.trim(),
+        description: serviceDraft.description.trim() || null,
+        price_cents: Math.round(Number(serviceDraft.price) * 100),
+        currency: 'usd',
+        turnaround_hours: serviceDraft.turnaroundHours ? Number(serviceDraft.turnaroundHours) : null,
+        duration_minutes: serviceDraft.durationMinutes ? Number(serviceDraft.durationMinutes) : null,
+        requires_video: serviceDraft.requiresVideo,
+        requires_schedule: serviceDraft.requiresSchedule,
+        active: true,
+        sort_order: sortOrder
+      }
+
+      const { error: upsertError } = await supabase.from('coach_services').insert(payload)
+      if (upsertError) throw upsertError
+      setServiceDraft(EMPTY_SERVICE_DRAFT)
+      await loadConsole()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save service')
+    } finally {
+      setSavingService(false)
+    }
+  }
+
+  const toggleService = async (serviceId: string, active: boolean) => {
+    setError(null)
+    try {
+      const { error: updateError } = await supabase.from('coach_services').update({ active: !active }).eq('id', serviceId)
+      if (updateError) throw updateError
+      await loadConsole()
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : 'Unable to update service')
+    }
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Coaching</h1>
-        <p className="text-slate-400 mt-1">Book sessions with expert golf coaches</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl w-fit">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'all'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          All Coaches
-        </button>
-        <button
-          onClick={() => setActiveTab('my-requests')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'my-requests'
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          My Sessions
-          {upcomingSessions.length > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 rounded text-xs bg-green-500/20 text-green-400">{upcomingSessions.length}</span>
-          )}
-        </button>
-      </div>
-
-      {/* FREE tier CTA */}
-      {showUpgradeCTA && activeTab === 'all' && (
-        <div className="bg-gradient-to-r from-blue-600/20 to-green-600/20 border border-blue-500/30 rounded-2xl p-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-3">
-            <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-bold text-white mb-1">Unlock Coaching</h3>
-          <p className="text-slate-400 text-sm mb-4 max-w-sm mx-auto">
-            Upgrade to Select or Summit to book coaching sessions with expert golf instructors.
+      <header className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">{coachName}</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Unified coach commerce inbox, review workspace, services, and payouts.
           </p>
-          <Link
-            href="/settings"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold transition-colors text-sm"
-          >
-            Upgrade to Select →
-          </Link>
         </div>
-      )}
+        <button
+          onClick={() => loadConsole()}
+          className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          Refresh
+        </button>
+      </header>
 
-      {/* All Coaches Tab */}
-      {activeTab === 'all' && (
-        <>
-          {/* Search */}
-          <div className="relative">
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search coaches, specialties..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-colors"
-            />
+      {error ? (
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>
+      ) : null}
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <MetricCard label="Inbox" value={String(consoleRows.length)} hint="Open requests across all coach workflows" />
+        <MetricCard label="Held earnings" value={currency(payoutSummary.held)} hint="Paid orders waiting on delivery or settlement" />
+        <MetricCard label="Payout eligible" value={currency(payoutSummary.eligible)} hint="Delivered orders ready for payout release" />
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_1.4fr]">
+        <section className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Coach Inbox</h2>
+              <p className="text-sm text-slate-400">Requests grouped by coach action and SLA stage.</p>
+            </div>
+            {loading ? <span className="text-xs text-slate-500">Loading…</span> : null}
           </div>
 
-          {/* Coach Cards Grid */}
-          {filteredCoaches.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">🎯</span>
-              </div>
-              <p className="text-slate-400 font-medium">No coaches found</p>
-              <p className="text-slate-500 text-sm mt-1">Try adjusting your search</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredCoaches.map(coach => (
-                <div key={coach.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-5 hover:border-slate-600 transition-all">
-                  {/* Header */}
-                  <div className="flex items-start gap-4 mb-4">
-                    {coach.avatarUrl ? (
-                      <img src={coach.avatarUrl} alt={coach.displayName} className="w-14 h-14 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-lg">
-                        {coach.displayName.charAt(0)}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold">{coach.displayName}</p>
-                      {renderStars(coach.rating)}
-                      <p className="text-slate-500 text-xs mt-0.5">{coach.reviewCount} reviews</p>
+          <div className="space-y-5">
+            {groupedRows.map((bucket) => (
+              <div key={bucket.key}>
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">{bucket.label}</h3>
+                  <span className="text-xs text-slate-500">{bucket.rows.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {bucket.rows.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-800 px-3 py-4 text-sm text-slate-500">
+                      No requests in this lane.
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-white font-bold text-lg">${coach.hourlyRate}</p>
-                      <p className="text-slate-500 text-xs">/hr</p>
-                    </div>
-                  </div>
-
-                  {/* Bio */}
-                  <p className="text-slate-300 text-sm mb-3 line-clamp-2">
-                    {coach.bio || 'No bio available.'}
-                  </p>
-
-                  {/* Specialties */}
-                  {coach.specialties.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {coach.specialties.slice(0, 3).map((specialty, i) => (
-                        <span key={i} className="px-2.5 py-1 rounded-lg text-xs bg-slate-700 text-slate-300 border border-slate-600">
-                          {specialty}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Request Button */}
-                  {tierSlug === 'free' ? (
-                    <Link
-                      href="/settings"
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold transition-colors text-sm"
-                    >
-                      Upgrade to Book
-                    </Link>
                   ) : (
-                    <button
-                      onClick={() => handleRequestCoach(coach.id)}
-                      disabled={requestingCoachId === coach.id}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors text-sm disabled:opacity-50"
-                    >
-                      {requestingCoachId === coach.id ? (
-                        <>
-                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
-                          Requesting...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          Request Coach
-                        </>
-                      )}
-                    </button>
+                    bucket.rows.map((row) => (
+                      <button
+                        key={row.engagementRequestId}
+                        onClick={() => setSelectedRequestId(row.engagementRequestId)}
+                        className={`w-full rounded-2xl border p-4 text-left transition ${
+                          selectedRequestId === row.engagementRequestId
+                            ? 'border-cyan-400/50 bg-cyan-500/10'
+                            : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{row.buyerName}</p>
+                            <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">{row.serviceTitle}</p>
+                          </div>
+                          <span className="rounded-full bg-slate-800 px-2 py-1 text-[11px] font-semibold uppercase text-slate-300">
+                            {row.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <p className="mt-3 line-clamp-2 text-sm text-slate-300">{row.questionText}</p>
+                        <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                          <span>{currency(row.amountCents, row.currency)}</span>
+                          <span>{row.assetCount} assets</span>
+                          <span>{new Date(row.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </button>
+                    ))
                   )}
                 </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+              </div>
+            ))}
+          </div>
+        </section>
 
-      {/* My Sessions Tab */}
-      {activeTab === 'my-requests' && (
-        <>
-          {/* Pending Requests */}
-          {requests.filter(r => r.status === 'pending').length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3">Pending Requests</h3>
-              <div className="space-y-3">
-                {requests.filter(r => r.status === 'pending').map(req => (
-                  <div key={req.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                    <div className="flex items-center gap-4">
-                      {req.coachAvatar ? (
-                        <img src={req.coachAvatar} alt={req.coachName} className="w-12 h-12 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-bold text-lg">
-                          {req.coachName.charAt(0)}
+        <section className="space-y-6">
+          <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Request Detail</h2>
+                <p className="text-sm text-slate-400">Buyer context, payment state, assets, and delivery controls.</p>
+              </div>
+              {requestDetail ? (
+                <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">
+                  {requestDetail.status.replace(/_/g, ' ')}
+                </span>
+              ) : null}
+            </div>
+
+            {!requestDetail ? (
+              <div className="rounded-2xl border border-dashed border-slate-800 px-4 py-10 text-sm text-slate-500">
+                Select a request from the inbox to open the coach workspace.
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <DetailCard label="Buyer" value={requestDetail.requester?.display_name ?? 'Buyer'} />
+                  <DetailCard label="Service" value={requestDetail.coach_service?.title ?? 'Coach Service'} />
+                  <DetailCard label="Payment" value={requestDetail.review_order?.status ?? 'unpaid'} />
+                  <DetailCard label="Payout" value={requestDetail.review_order?.payout_status ?? 'pending'} />
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Question</p>
+                  <p className="mt-2 text-sm text-slate-200">{requestDetail.question_text}</p>
+                  {requestDetail.buyer_note ? <p className="mt-3 text-sm text-slate-400">Buyer note: {requestDetail.buyer_note}</p> : null}
+                  {requestDetail.request_details ? (
+                    <pre className="mt-3 overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-300">
+                      {JSON.stringify(requestDetail.request_details, null, 2)}
+                    </pre>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <DetailCard
+                    label="Accept by"
+                    value={requestDetail.accepted_deadline_at ? new Date(requestDetail.accepted_deadline_at).toLocaleString() : 'Not set'}
+                  />
+                  <DetailCard
+                    label="Deliver by"
+                    value={requestDetail.delivery_deadline_at ? new Date(requestDetail.delivery_deadline_at).toLocaleString() : 'Not set'}
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Assets</p>
+                  <div className="mt-3 space-y-2">
+                    {(requestDetail.engagement_assets ?? []).length === 0 ? (
+                      <p className="text-sm text-slate-500">No uploaded assets yet.</p>
+                    ) : (
+                      requestDetail.engagement_assets?.map((asset) => (
+                        <div key={asset.id} className="rounded-xl border border-slate-800 px-3 py-2 text-sm text-slate-300">
+                          {(asset.role ?? asset.asset_type ?? 'asset').replace(/_/g, ' ')}: {asset.storage_path ?? asset.id}
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="text-white font-semibold">{req.coachName}</p>
-                        <p className="text-slate-400 text-sm">Requested {req.requestDate}</p>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <ActionButton disabled={!!transitioning} label="Accept" onClick={() => runTransition('accept')} />
+                  <ActionButton disabled={!!transitioning} label="Start Review" onClick={() => runTransition('start_review')} />
+                  <ActionButton disabled={!!transitioning} label="Mark Scheduled" onClick={() => runTransition('mark_scheduled')} />
+                  <ActionButton disabled={!!transitioning} label="Mark In Call" onClick={() => runTransition('mark_in_call')} />
+                  <ActionButton disabled={!!transitioning} destructive label="Decline + Refund" onClick={() => runTransition('decline')} />
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Timeline</p>
+                  <div className="mt-3 space-y-3">
+                    {(requestDetail.engagement_status_events ?? []).map((event) => (
+                      <div key={event.id} className="border-l border-slate-700 pl-3">
+                        <p className="text-sm font-medium text-slate-200">{event.event_type}</p>
+                        <p className="text-xs text-slate-500">
+                          {new Date(event.created_at).toLocaleString()}
+                          {event.to_status ? ` • ${event.to_status.replace(/_/g, ' ')}` : ''}
+                        </p>
                       </div>
-                      <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                        Pending
-                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <form onSubmit={submitReview} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                  <div className="mb-4">
+                    <h3 className="text-base font-semibold text-white">Review Workspace</h3>
+                    <p className="text-sm text-slate-400">Deliver the canonical feedback package for this request.</p>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="block text-sm text-slate-300">
+                      Summary
+                      <input
+                        value={reviewSummary}
+                        onChange={(event) => setReviewSummary(event.target.value)}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none"
+                        placeholder="Three sentence summary of the review"
+                      />
+                    </label>
+                    <label className="block text-sm text-slate-300">
+                      Feedback body
+                      <textarea
+                        value={reviewBody}
+                        onChange={(event) => setReviewBody(event.target.value)}
+                        className="mt-1 min-h-28 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none"
+                        placeholder="Timestamped notes, drills, and next steps"
+                      />
+                    </label>
+                    <label className="block text-sm text-slate-300">
+                      Structured feedback JSON
+                      <textarea
+                        value={reviewJson}
+                        onChange={(event) => setReviewJson(event.target.value)}
+                        className="mt-1 min-h-28 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm text-white outline-none"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={submittingReview}
+                      className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {submittingReview ? 'Submitting…' : 'Deliver Feedback'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-white">Coach Services</h2>
+                <p className="text-sm text-slate-400">Create, price, and activate your sellable services.</p>
+              </div>
+              <form onSubmit={saveService} className="space-y-3">
+                <input
+                  value={serviceDraft.title}
+                  onChange={(event) => setServiceDraft((current) => ({ ...current, title: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none"
+                  placeholder="Video Review"
+                />
+                <select
+                  value={serviceDraft.serviceType}
+                  onChange={(event) =>
+                    setServiceDraft((current) => ({
+                      ...current,
+                      serviceType: event.target.value,
+                      requiresVideo: event.target.value === 'video_review',
+                      requiresSchedule: event.target.value === 'live_video_call'
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none"
+                >
+                  <option value="video_review">Video Review</option>
+                  <option value="live_video_call">Live Video Call</option>
+                  <option value="swing_plan">Swing Plan</option>
+                  <option value="text_qna">Text Q&amp;A</option>
+                </select>
+                <textarea
+                  value={serviceDraft.description}
+                  onChange={(event) => setServiceDraft((current) => ({ ...current, description: event.target.value }))}
+                  className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none"
+                  placeholder="What the buyer gets, turnaround promise, and ideal use case"
+                />
+                <div className="grid gap-3 md:grid-cols-3">
+                  <input
+                    value={serviceDraft.price}
+                    onChange={(event) => setServiceDraft((current) => ({ ...current, price: event.target.value }))}
+                    className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none"
+                    placeholder="79"
+                  />
+                  <input
+                    value={serviceDraft.turnaroundHours}
+                    onChange={(event) => setServiceDraft((current) => ({ ...current, turnaroundHours: event.target.value }))}
+                    className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none"
+                    placeholder="48"
+                  />
+                  <input
+                    value={serviceDraft.durationMinutes}
+                    onChange={(event) => setServiceDraft((current) => ({ ...current, durationMinutes: event.target.value }))}
+                    className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none"
+                    placeholder="45"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-4 text-sm text-slate-300">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={serviceDraft.requiresVideo}
+                      onChange={(event) => setServiceDraft((current) => ({ ...current, requiresVideo: event.target.checked }))}
+                    />
+                    Requires video
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={serviceDraft.requiresSchedule}
+                      onChange={(event) => setServiceDraft((current) => ({ ...current, requiresSchedule: event.target.checked }))}
+                    />
+                    Requires schedule
+                  </label>
+                </div>
+                <button
+                  type="submit"
+                  disabled={savingService || !serviceDraft.title.trim()}
+                  className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingService ? 'Saving…' : 'Add Service'}
+                </button>
+              </form>
+
+              <div className="mt-5 space-y-3">
+                {services.map((serviceRow) => (
+                  <div key={serviceRow.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{serviceRow.title}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">{serviceRow.service_type.replace(/_/g, ' ')}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleService(serviceRow.id, serviceRow.active)}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          serviceRow.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-300'
+                        }`}
+                      >
+                        {serviceRow.active ? 'Active' : 'Inactive'}
+                      </button>
+                    </div>
+                    <p className="mt-3 text-sm text-slate-300">{serviceRow.description || 'No description yet.'}</p>
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                      <span>{currency(serviceRow.price_cents, serviceRow.currency)}</span>
+                      <span>{serviceRow.turnaround_hours ?? 'n/a'}h turnaround</span>
+                      <span>{serviceRow.duration_minutes ?? 'n/a'} min</span>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            </section>
 
-          {/* Upcoming Sessions */}
-          {upcomingSessions.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3">Upcoming Sessions</h3>
-              <div className="space-y-3">
-                {upcomingSessions.map(session => {
-                  const date = new Date(session.scheduledTime)
-                  return (
-                    <div key={session.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                      <div className="flex items-center gap-4">
-                        {session.coachAvatar ? (
-                          <img src={session.coachAvatar} alt={session.coachName} className="w-12 h-12 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-lg">
-                            {session.coachName.charAt(0)}
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <p className="text-white font-semibold">{session.coachName}</p>
-                          <p className="text-slate-400 text-sm">
-                            {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at{' '}
-                            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-slate-500">
-                              {session.mode === 'video_call' ? '📹 Video Call' : '🤝 In Person'}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                          Upcoming
-                        </span>
+            <section className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-white">Payouts</h2>
+                <p className="text-sm text-slate-400">Held, eligible, and reversed earnings across coach orders.</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <MetricCard label="Held" value={currency(payoutSummary.held)} hint="Waiting on delivery" compact />
+                <MetricCard label="Eligible" value={currency(payoutSummary.eligible)} hint="Ready to release" compact />
+                <MetricCard label="Reversed" value={currency(payoutSummary.reversed)} hint="Refunded or reversed" compact />
+              </div>
+              <div className="mt-4 space-y-3">
+                {orders.slice(0, 8).map((order) => (
+                  <div key={order.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{currency(order.amount_cents, order.currency)}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+                          {order.status} • {order.payout_status ?? 'pending'}
+                        </p>
                       </div>
+                      <span className="text-xs text-slate-500">{new Date(order.created_at).toLocaleDateString()}</span>
                     </div>
-                  )
-                })}
+                    <p className="mt-2 text-sm text-slate-300">Coach payout: {currency(order.coach_payout_cents ?? 0, order.currency)}</p>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
-
-          {/* Past Sessions */}
-          {pastSessions.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-3">Past Sessions</h3>
-              <div className="space-y-3">
-                {pastSessions.map(session => {
-                  const date = new Date(session.scheduledTime)
-                  return (
-                    <div key={session.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-5 opacity-75">
-                      <div className="flex items-center gap-4">
-                        {session.coachAvatar ? (
-                          <img src={session.coachAvatar} alt={session.coachName} className="w-12 h-12 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center text-white font-bold text-lg">
-                            {session.coachName.charAt(0)}
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <p className="text-white font-semibold">{session.coachName}</p>
-                          <p className="text-slate-400 text-sm">
-                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
-                          session.status === 'completed'
-                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                            : 'bg-red-500/20 text-red-400 border-red-500/30'
-                        }`}>
-                          {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {sessions.length === 0 && requests.filter(r => r.status === 'pending').length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">📅</span>
-              </div>
-              <p className="text-slate-400 font-medium">No sessions yet</p>
-              <p className="text-slate-500 text-sm mt-1 mb-4">Book your first coaching session to get started</p>
-              <button
-                onClick={() => setActiveTab('all')}
-                className="text-green-400 hover:text-green-300 text-sm font-medium"
-              >
-                Browse Coaches →
-              </button>
-            </div>
-          )}
-        </>
-      )}
+            </section>
+          </div>
+        </section>
+      </div>
     </div>
+  )
+}
+
+function MetricCard({
+  label,
+  value,
+  hint,
+  compact = false
+}: {
+  label: string
+  value: string
+  hint: string
+  compact?: boolean
+}) {
+  return (
+    <div className={`rounded-3xl border border-slate-800 bg-slate-950/70 ${compact ? 'p-4' : 'p-5'}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className={`mt-2 font-semibold text-white ${compact ? 'text-xl' : 'text-3xl'}`}>{value}</p>
+      <p className="mt-2 text-sm text-slate-400">{hint}</p>
+    </div>
+  )
+}
+
+function DetailCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className="mt-2 text-sm text-slate-200">{value}</p>
+    </div>
+  )
+}
+
+function ActionButton({
+  label,
+  onClick,
+  disabled,
+  destructive = false
+}: {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  destructive?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+        destructive
+          ? 'bg-rose-500/15 text-rose-200 hover:bg-rose-500/25'
+          : 'bg-slate-800 text-white hover:bg-slate-700'
+      }`}
+    >
+      {label}
+    </button>
   )
 }

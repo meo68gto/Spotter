@@ -1,4 +1,5 @@
 import { createServiceClient } from '../_shared/client.ts';
+import { transitionEngagementStatus } from '../_shared/coach-commerce.ts';
 import { parseJson, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
 import { stripeRequest } from '../_shared/payments.ts';
@@ -67,7 +68,9 @@ Deno.serve(async (req) => {
   try {
     const stripeRefund = await stripeRequest<StripeRefund>('/refunds', 'POST', {
       payment_intent: order.stripe_payment_intent_id,
-      reason: 'requested_by_customer'
+      reason: 'requested_by_customer',
+      reverse_transfer: true,
+      refund_application_fee: true
     });
 
     const resolvedAt = new Date().toISOString();
@@ -78,8 +81,24 @@ Deno.serve(async (req) => {
 
     await service
       .from('review_orders')
-      .update({ status: 'refunded', refunded_at: resolvedAt })
+      .update({ status: 'refunded', refunded_at: resolvedAt, refund_reason: body.reason ?? null, payout_status: 'reversed' })
       .eq('id', order.id);
+
+    const { data: engagement } = await service
+      .from('engagement_requests')
+      .select('id')
+      .eq('review_order_id', order.id)
+      .maybeSingle();
+
+    if (engagement?.id) {
+      await transitionEngagementStatus({
+        engagementRequestId: engagement.id,
+        toStatus: 'refunded',
+        actorUserId: auth.user.id,
+        payload: { eventType: 'refund_processed', reason: body.reason ?? null },
+        extraFields: { closed_reason: body.reason ?? 'refund_requested' }
+      });
+    }
 
     return json(200, {
       data: {

@@ -1,5 +1,6 @@
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { createAuthedClient, createServiceClient } from '../_shared/client.ts';
+import { addEngagementStatusEvent } from '../_shared/coach-commerce.ts';
 import { getRuntimeEnv } from '../_shared/env.ts';
 import { resolveBooleanFlag } from '../_shared/flags-db.ts';
 import { trackServerEvent } from '../_shared/telemetry.ts';
@@ -9,10 +10,12 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return unauthorized('Missing Authorization header', 'missing_auth_header');
 
-  const { activityId, fileExt = 'mp4', sessionId } = (await req.json()) as {
+  const { activityId, fileExt = 'mp4', sessionId, engagementRequestId, assetRole = 'primary' } = (await req.json()) as {
     activityId?: string;
     fileExt?: string;
     sessionId?: string;
+    engagementRequestId?: string;
+    assetRole?: string;
   };
 
   if (!activityId) return badRequest('Missing activityId', 'missing_activity_id');
@@ -47,6 +50,7 @@ Deno.serve(async (req) => {
       session_id: sessionId ?? null,
       storage_path: objectPath,
       status: 'uploaded',
+      metadata: engagementRequestId ? { engagementRequestId, assetRole } : {},
       upload_url: signed.data.signedUrl,
       upload_expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
     })
@@ -54,6 +58,24 @@ Deno.serve(async (req) => {
     .single();
 
   if (error) return json(500, { error: error.message, code: 'video_submission_create_failed' });
+
+  if (engagementRequestId) {
+    await service.from('engagement_assets').insert({
+      engagement_request_id: engagementRequestId,
+      asset_type: 'video_submission',
+      video_submission_id: data.id,
+      storage_path: data.storage_path,
+      role: assetRole,
+      metadata: { uploadedBy: user.id }
+    });
+
+    await addEngagementStatusEvent({
+      engagementRequestId,
+      eventType: 'video_attached',
+      actorUserId: user.id,
+      payload: { videoSubmissionId: data.id, assetRole }
+    });
+  }
 
   await trackServerEvent('video_presign_created', user.id, {
     activity_id: activityId,

@@ -56,17 +56,42 @@ serve(async (req: Request) => {
     // Fetch pending engagement requests through the API layer (respects RLS)
     const { data, error } = await supabase
       .from('engagement_requests')
-      .select('id, question_text, status, created_at')
+      .select(`
+        id,
+        question_text,
+        status,
+        created_at,
+        accepted_deadline_at,
+        delivery_deadline_at,
+        requester_user_id,
+        coach_service:coach_services!engagement_requests_coach_service_id_fkey(title, service_type, price_cents, currency),
+        review_order:review_orders!engagement_requests_review_order_id_fkey(id)
+      `)
       .eq('coach_id', coachId)
-      .in('status', ['awaiting_expert', 'created'])
+      .in('status', ['queued', 'paid', 'awaiting_expert'])
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(25);
 
     if (error) {
       return errorResponse('Failed to fetch pending requests', 500);
     }
 
-    return successResponse(data ?? []);
+    return successResponse(
+      (data ?? []).map((row: any) => ({
+        id: row.id,
+        questionText: row.question_text,
+        status: row.status,
+        createdAt: row.created_at,
+        acceptedDeadlineAt: row.accepted_deadline_at,
+        deliveryDeadlineAt: row.delivery_deadline_at,
+        requesterUserId: row.requester_user_id,
+        reviewOrderId: row.review_order?.id ?? null,
+        serviceTitle: row.coach_service?.title ?? 'Coach Service',
+        serviceType: row.coach_service?.service_type ?? 'video_review',
+        amountCents: row.coach_service?.price_cents ?? 0,
+        currency: row.coach_service?.currency ?? 'usd'
+      }))
+    );
   } catch (err) {
     console.error('[coaches-pending-requests] Unexpected error:', err);
     return errorResponse('Internal server error', 500);

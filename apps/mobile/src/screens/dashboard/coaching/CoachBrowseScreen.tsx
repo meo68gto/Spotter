@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { CoachCatalogItem, useCoachCatalog, FilterOptions, EngagementMode } from '../../../hooks/useCoachCatalog';
+import { CoachCatalogItem, useCoachCatalog, FilterOptions, CoachServiceType } from '../../../hooks/useCoachCatalog';
 import { stockPhotos } from '../../../lib/stockPhotos';
 import { CoachListCard } from '../../../components/coaching/CoachListCard';
 import { Button } from '../../../components/Button';
@@ -18,10 +18,10 @@ const PRICE_RANGES = [
   { label: '$60+', min: 6000, max: undefined }
 ];
 
-const SESSION_MODES: Array<{ mode: EngagementMode; label: string }> = [
-  { mode: 'text_answer', label: 'Text' },
-  { mode: 'video_answer', label: 'Video' },
-  { mode: 'video_call', label: 'Live Call' }
+const SESSION_MODES: Array<{ mode: CoachServiceType; label: string }> = [
+  { mode: 'text_qna', label: 'Text Q&A' },
+  { mode: 'video_review', label: 'Video Review' },
+  { mode: 'live_video_call', label: 'Live Call' }
 ];
 
 const MIN_RATINGS = [
@@ -206,6 +206,8 @@ export function CoachBrowseScreen({ search, onSearchChange, onSelectCoach }: Pro
           minPrice={coach.minPrice}
           maxPrice={coach.maxPrice}
           avgResponseMinutes={coach.avgResponseMinutes}
+          hasVideoReview={coach.hasVideoReview}
+          serviceCount={coach.services.length}
           onPress={() => onSelectCoach(coach)}
         />
       ))}

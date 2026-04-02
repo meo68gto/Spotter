@@ -1,5 +1,5 @@
 import { createServiceClient } from '../_shared/client.ts';
-import { capturePaymentIntent } from '../_shared/engagements.ts';
+import { transitionEngagementStatus } from '../_shared/coach-commerce.ts';
 import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { trackServerEvent } from '../_shared/telemetry.ts';
@@ -21,37 +21,37 @@ Deno.serve(async (req) => {
 
   const { data: engagement, error } = await service
     .from('engagement_requests')
-    .select('id, coach_id, status, review_order_id, engagement_mode')
+    .select('id, coach_id, status, review_order_id, engagement_mode, scheduled_time')
     .eq('id', body.engagementRequestId)
     .eq('coach_id', coach.id)
     .maybeSingle();
 
   if (error || !engagement) return badRequest('Engagement not found', 'engagement_not_found');
-  if (!['awaiting_expert', 'created'].includes(engagement.status)) return badRequest('Engagement not in accept state', 'invalid_status');
+  if (!['queued', 'paid', 'awaiting_expert'].includes(engagement.status)) {
+    return badRequest('Engagement not in accept state', 'invalid_status');
+  }
 
-  await service
-    .from('engagement_requests')
-    .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-    .eq('id', engagement.id);
-
-  if (engagement.review_order_id && engagement.engagement_mode !== 'video_call') {
-    const { data: order } = await service
-      .from('review_orders')
-      .select('id, stripe_payment_intent_id')
-      .eq('id', engagement.review_order_id)
-      .maybeSingle();
-
-    if (order?.stripe_payment_intent_id) {
-      try {
-        await capturePaymentIntent(order.stripe_payment_intent_id);
-        await service.from('review_orders').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', order.id);
-      } catch {
-        await service.from('review_orders').update({ status: 'failed' }).eq('id', order.id);
-      }
+  const now = new Date();
+  const deliveryDeadline = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
+  const accepted = await transitionEngagementStatus({
+    engagementRequestId: engagement.id,
+    toStatus: engagement.engagement_mode === 'video_call' && engagement.scheduled_time ? 'scheduled' : 'accepted',
+    actorUserId: auth.user.id,
+    payload: { eventType: 'coach_accepted' },
+    extraFields: {
+      accepted_at: now.toISOString(),
+      delivery_deadline_at: deliveryDeadline
     }
+  });
+
+  if (engagement.review_order_id) {
+    await service
+      .from('review_orders')
+      .update({ payout_status: 'held' })
+      .eq('id', engagement.review_order_id);
   }
 
   await trackServerEvent('engagement_accepted', auth.user.id, { engagement_request_id: engagement.id });
 
-  return json(200, { data: { id: engagement.id, status: 'accepted' } });
+  return json(200, { data: { id: accepted.id, status: accepted.status } });
 });

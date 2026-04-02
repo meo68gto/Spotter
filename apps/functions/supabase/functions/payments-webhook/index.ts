@@ -1,4 +1,5 @@
 import { createServiceClient } from '../_shared/client.ts';
+import { addEngagementStatusEvent } from '../_shared/coach-commerce.ts';
 import { json } from '../_shared/http.ts';
 import { sendTransactionalEmail } from '../_shared/notifications.ts';
 import { verifyStripeWebhookSignature } from '../_shared/payments.ts';
@@ -56,25 +57,38 @@ Deno.serve(async (req) => {
     const paymentIntentId = String(event.data.object.id ?? '');
     const order = await resolveOrderByPaymentIntent(paymentIntentId);
     if (order) {
+      const paidAt = new Date().toISOString();
       await service
         .from('review_orders')
-        .update({ status: 'paid', paid_at: new Date().toISOString() })
+        .update({ status: 'paid', paid_at: paidAt, payout_status: 'held' })
         .eq('id', order.id)
         .in('status', ['created', 'requires_payment_method', 'processing']);
 
-      // Auto-publish any associated engagement (reduces client fragility)
+      // Queue any associated engagement so it becomes visible in coach inbox immediately.
       const { data: engagement } = await service
         .from('engagement_requests')
         .select('id, status')
         .eq('review_order_id', order.id)
-        .eq('status', 'created')
+        .in('status', ['payment_pending', 'draft', 'created'])
         .maybeSingle();
 
       if (engagement) {
         await service
           .from('engagement_requests')
-          .update({ status: 'awaiting_expert', published_at: new Date().toISOString() })
+          .update({
+            status: 'queued',
+            paid_at: paidAt,
+            accepted_deadline_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          })
           .eq('id', engagement.id);
+
+        await addEngagementStatusEvent({
+          engagementRequestId: engagement.id,
+          eventType: 'payment_succeeded',
+          fromStatus: engagement.status,
+          toStatus: 'queued',
+          payload: { reviewOrderId: order.id, paymentIntentId }
+        });
         
         await trackServerEvent('engagement_auto_published', order.buyer_user_id, {
           engagement_id: engagement.id,
@@ -113,6 +127,28 @@ Deno.serve(async (req) => {
       .in('status', ['created', 'requires_payment_method', 'processing']);
     const order = await resolveOrderByPaymentIntent(paymentIntentId);
     if (order) {
+      const { data: engagement } = await service
+        .from('engagement_requests')
+        .select('id, status')
+        .eq('review_order_id', order.id)
+        .maybeSingle();
+
+      if (engagement) {
+        await service
+          .from('engagement_requests')
+          .update({ status: 'payment_pending' })
+          .eq('id', engagement.id)
+          .in('status', ['payment_pending', 'draft', 'created']);
+
+        await addEngagementStatusEvent({
+          engagementRequestId: engagement.id,
+          eventType: 'payment_failed',
+          fromStatus: engagement.status,
+          toStatus: 'payment_pending',
+          payload: { reviewOrderId: order.id, paymentIntentId }
+        });
+      }
+
       await trackServerEvent('payment_intent_failed', order.buyer_user_id, {
         review_order_id: order.id,
         payment_intent_id: paymentIntentId
@@ -131,8 +167,29 @@ Deno.serve(async (req) => {
     if (order) {
       await service
         .from('review_orders')
-        .update({ status: 'refunded', refunded_at: new Date().toISOString() })
+        .update({ status: 'refunded', refunded_at: new Date().toISOString(), payout_status: 'reversed' })
         .eq('id', order.id);
+
+      const { data: engagement } = await service
+        .from('engagement_requests')
+        .select('id, status')
+        .eq('review_order_id', order.id)
+        .maybeSingle();
+
+      if (engagement) {
+        await service
+          .from('engagement_requests')
+          .update({ status: 'refunded', closed_reason: 'charge_refunded' })
+          .eq('id', engagement.id);
+
+        await addEngagementStatusEvent({
+          engagementRequestId: engagement.id,
+          eventType: 'charge_refunded',
+          fromStatus: engagement.status,
+          toStatus: 'refunded',
+          payload: { reviewOrderId: order.id, paymentIntentId }
+        });
+      }
 
       const userRecord = await service.auth.admin.getUserById(order.buyer_user_id);
       const email = userRecord.data.user?.email;

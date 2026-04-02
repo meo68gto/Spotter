@@ -1,5 +1,5 @@
 import { createServiceClient } from '../_shared/client.ts';
-import { cancelPaymentIntent } from '../_shared/engagements.ts';
+import { refundOrderWithTransferReversal, transitionEngagementStatus } from '../_shared/coach-commerce.ts';
 import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json, unauthorized } from '../_shared/http.ts';
 import { trackServerEvent } from '../_shared/telemetry.ts';
@@ -28,26 +28,20 @@ Deno.serve(async (req) => {
 
   if (error || !engagement) return badRequest('Engagement not found', 'engagement_not_found');
 
-  await service.from('engagement_requests').update({ status: 'declined' }).eq('id', engagement.id);
+  await transitionEngagementStatus({
+    engagementRequestId: engagement.id,
+    toStatus: engagement.review_order_id ? 'refund_pending' : 'declined',
+    actorUserId: auth.user.id,
+    payload: { eventType: 'coach_declined' },
+    extraFields: { closed_reason: 'coach_declined' }
+  });
 
   if (engagement.review_order_id) {
-    const { data: order } = await service
-      .from('review_orders')
-      .select('id, stripe_payment_intent_id')
-      .eq('id', engagement.review_order_id)
-      .maybeSingle();
-
-    if (order?.stripe_payment_intent_id) {
-      try {
-        await cancelPaymentIntent(order.stripe_payment_intent_id);
-      } catch {
-        // no-op
-      }
-      await service
-        .from('review_orders')
-        .update({ status: 'cancelled', authorization_released_at: new Date().toISOString() })
-        .eq('id', order.id);
-    }
+    await refundOrderWithTransferReversal({
+      reviewOrderId: engagement.review_order_id,
+      reason: 'coach_declined',
+      requestStatus: 'refunded'
+    });
   }
 
   await trackServerEvent('engagement_declined', auth.user.id, { engagement_request_id: engagement.id });

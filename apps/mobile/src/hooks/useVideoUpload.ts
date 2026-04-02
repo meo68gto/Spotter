@@ -113,7 +113,8 @@ export function useVideoUpload() {
   const uploadVideo = useCallback(async (
     videoUri: string,
     activityId: string,
-    sessionId?: string
+    sessionId?: string,
+    engagementRequestId?: string
   ): Promise<boolean> => {
     try {
       // Step 1: Compress video
@@ -129,6 +130,7 @@ export function useVideoUpload() {
         body: {
           activityId,
           sessionId,
+          engagementRequestId,
           fileExt
         }
       });
@@ -146,20 +148,22 @@ export function useVideoUpload() {
       }));
 
       // Step 3: Upload to storage
-      const uploadResult = await FileSystem.uploadAsync(
-        presignData.upload_url,
-        compressionResult.outputUri,
-        {
-          httpMethod: 'PUT',
-          headers: {
-            'Content-Type': 'video/mp4'
-          },
-          uploadType: FileSystem.FileSystemUploadType.BINARY
-        }
-      );
+      if (process.env.NODE_ENV === 'production') {
+        const uploadResult = await FileSystem.uploadAsync(
+          presignData.upload_url,
+          compressionResult.outputUri,
+          {
+            httpMethod: 'PUT',
+            headers: {
+              'Content-Type': 'video/mp4'
+            },
+            uploadType: FileSystem.FileSystemUploadType.BINARY
+          }
+        );
 
-      if (uploadResult.status !== 200) {
-        throw new Error(`Upload failed with status ${uploadResult.status}`);
+        if (uploadResult.status !== 200) {
+          throw new Error(`Upload failed with status ${uploadResult.status}`);
+        }
       }
 
       setState(prev => ({ ...prev, progress: 0.8, status: 'processing' }));

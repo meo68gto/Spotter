@@ -3,10 +3,18 @@ import { supabase } from '../lib/supabase';
 
 export type EngagementMode = 'text_answer' | 'video_answer' | 'video_call';
 
-export type CoachPricing = {
-  mode: EngagementMode;
+export type CoachServiceType = 'video_review' | 'live_video_call' | 'swing_plan' | 'text_qna';
+
+export type CoachService = {
+  id: string;
+  serviceType: CoachServiceType;
+  title: string;
+  description?: string;
   priceCents: number;
   currency: string;
+  turnaroundHours?: number | null;
+  requiresVideo: boolean;
+  requiresSchedule: boolean;
 };
 
 export type CoachCatalogItem = {
@@ -19,16 +27,17 @@ export type CoachCatalogItem = {
   ratingAvg: number | null;
   ratingCount: number;
   avgResponseMinutes: number | null;
-  pricing: CoachPricing[];
+  services: CoachService[];
   minPrice: number;
   maxPrice: number;
+  hasVideoReview: boolean;
 };
 
 export type FilterOptions = {
   specialty?: string;
   minPrice?: number;
   maxPrice?: number;
-  mode?: EngagementMode;
+  mode?: CoachServiceType;
   minRating?: number;
 };
 
@@ -59,11 +68,10 @@ export function useCoachCatalog(search: string, filters: FilterOptions = {}) {
           rating_count,
           users!inner(display_name, home_location)
         ),
-        expert_pricing(engagement_mode, price_cents, currency, active)
+        coach_services(id, service_type, title, description, price_cents, currency, turnaround_hours, requires_video, requires_schedule, active, sort_order)
       `)
       .eq('discoverable', true)
       .eq('is_dnd', false)
-      .eq('expert_pricing.active', true)
       .order('updated_at', { ascending: false })
       .range(from, to);
 
@@ -98,15 +106,21 @@ export function useCoachCatalog(search: string, filters: FilterOptions = {}) {
       const userData = coachData?.users?.[0];
       
       // Parse pricing data
-      const pricing: CoachPricing[] = (row.expert_pricing ?? [])
+      const services: CoachService[] = (row.coach_services ?? [])
         .filter((p: any) => p.active)
         .map((p: any) => ({
-          mode: p.engagement_mode as EngagementMode,
+          id: p.id,
+          serviceType: p.service_type as CoachServiceType,
+          title: p.title,
+          description: p.description,
           priceCents: p.price_cents,
-          currency: p.currency || 'usd'
+          currency: p.currency || 'usd',
+          turnaroundHours: p.turnaround_hours ?? null,
+          requiresVideo: Boolean(p.requires_video),
+          requiresSchedule: Boolean(p.requires_schedule)
         }));
 
-      const prices = pricing.map(p => p.priceCents);
+      const prices = services.map(p => p.priceCents);
       const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
       const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
@@ -128,9 +142,10 @@ export function useCoachCatalog(search: string, filters: FilterOptions = {}) {
         ratingAvg: coachData?.rating_avg ?? null,
         ratingCount: coachData?.rating_count ?? 0,
         avgResponseMinutes: row.avg_response_minutes ?? null,
-        pricing,
+        services,
         minPrice,
-        maxPrice
+        maxPrice,
+        hasVideoReview: services.some((service) => service.serviceType === 'video_review')
       };
     });
 
@@ -143,7 +158,7 @@ export function useCoachCatalog(search: string, filters: FilterOptions = {}) {
       filtered = filtered.filter(c => c.minPrice <= filters.maxPrice!);
     }
     if (filters.mode) {
-      filtered = filtered.filter(c => c.pricing.some(p => p.mode === filters.mode));
+      filtered = filtered.filter(c => c.services.some(p => p.serviceType === filters.mode));
     }
 
     setItems(filtered);

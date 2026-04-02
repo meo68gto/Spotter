@@ -1,4 +1,5 @@
 import { createServiceClient } from '../_shared/client.ts';
+import { transitionEngagementStatus } from '../_shared/coach-commerce.ts';
 import { mapStripeIntentToOrderStatus } from '../_shared/engagements.ts';
 import { parseJson, requireLegalConsent, requireUser } from '../_shared/guard.ts';
 import { badRequest, json } from '../_shared/http.ts';
@@ -28,8 +29,7 @@ Deno.serve(async (req) => {
 
   if (engagementError || !engagement) return badRequest('Engagement not found', 'engagement_not_found');
 
-  // If already awaiting_expert or beyond, consider it published
-  if (engagement.status !== 'created') {
+  if (!['draft', 'payment_pending', 'paid', 'queued'].includes(engagement.status)) {
     return json(200, { data: { id: engagement.id, status: engagement.status, alreadyPublished: true } });
   }
 
@@ -74,14 +74,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  const nextStatus = engagement.status === 'created' ? 'awaiting_expert' : engagement.status;
-  const { data, error } = await service
-    .from('engagement_requests')
-    .update({ status: nextStatus, published_at: new Date().toISOString() })
-    .eq('id', engagement.id)
-    .select('id, status, published_at')
-    .single();
+  const data = await transitionEngagementStatus({
+    engagementRequestId: engagement.id,
+    toStatus: 'queued',
+    actorUserId: auth.user.id,
+    payload: { eventType: 'request_queued' },
+    extraFields: { paid_at: new Date().toISOString() }
+  });
 
-  if (error) return json(500, { error: error.message, code: 'engagement_publish_failed' });
-  return json(200, { data });
+  return json(200, { data: { id: data.id, status: data.status, paidAt: data.paid_at } });
 });

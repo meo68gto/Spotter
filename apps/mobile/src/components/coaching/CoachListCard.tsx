@@ -11,6 +11,8 @@ export type CoachListCardProps = {
   minPrice?: number;
   maxPrice?: number;
   avgResponseMinutes?: number | null;
+  hasVideoReview?: boolean;
+  serviceCount?: number;
   onPress: () => void;
 };
 
@@ -35,6 +37,8 @@ export function CoachListCard({
   minPrice = 0,
   maxPrice = 0,
   avgResponseMinutes,
+  hasVideoReview = false,
+  serviceCount = 0,
   onPress
 }: CoachListCardProps) {
   const hasPricing = minPrice > 0 || maxPrice > 0;
@@ -78,6 +82,15 @@ export function CoachListCard({
             )}
           </View>
         )}
+
+        <View style={styles.badgesRow}>
+          {hasVideoReview ? (
+            <View style={styles.videoReviewBadge}>
+              <Text style={styles.videoReviewText}>Video Review</Text>
+            </View>
+          ) : null}
+          {serviceCount > 0 ? <Text style={styles.serviceCount}>{serviceCount} services</Text> : null}
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.city}>{city}</Text>
@@ -177,5 +190,26 @@ const styles = StyleSheet.create({
     color: '#486581',
     fontSize: 12,
     fontWeight: '500'
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8
+  },
+  videoReviewBadge: {
+    backgroundColor: '#fee3b5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999
+  },
+  videoReviewText: {
+    color: '#8d2b0b',
+    fontWeight: '700',
+    fontSize: 11
+  },
+  serviceCount: {
+    color: '#627d98',
+    fontSize: 12
   }
 });
