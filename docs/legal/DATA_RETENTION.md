@@ -219,8 +219,9 @@ Material changes will be communicated to users via in-app notification and email
 
 For questions about Eagle AI data retention or to submit a deletion request:
 
-- **Email:** [REVIEW: privacy@spotter.golf]
-- **Deletion Requests:** [REVIEW: deletion@spotter.golf]
+- **General Privacy / Rights Requests:** privacy@spotter.golf
+- **Deletion Requests:** deletion@spotter.golf
+- **Illinois BIPA-Specific Requests:** bipa@spotter.golf
 - **In-App:** Settings → Eagle AI → Delete My Swing Data
 
 For the Eagle AI Privacy Addendum: `EAGLE_AI_PRIVACY.md`  

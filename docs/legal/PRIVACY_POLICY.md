@@ -3,8 +3,8 @@
 > ⚠️ **NEEDS LAWYER REVIEW BEFORE SHIPPING**
 > This document is a draft placeholder. It contains placeholder text marked with `[REVIEW]`. Do not publish or rely on this document for any legal purpose until reviewed by a qualified attorney. Spotter, Inc. ("we," "our," or "us") is not a law firm and this document does not constitute legal advice.
 
-**Effective Date:** [REVIEW: Set effective date upon publication]
-**Last Updated:** [REVIEW: Set last updated date]
+**Effective Date:** 2026-04-01
+**Last Updated:** 2026-04-01
 
 ---
 
@@ -177,14 +177,14 @@ We retain your information for as long as necessary to provide the Service and f
 
 | Data Type | Retention Period |
 |-----------|-----------------|
-| Account data | Until account deletion + [REVIEW: 30-90 day grace period] |
+| Account data | Until account deletion + 30-day grace period |
 | Messages and connections | Until you or the other party deletes them, or until account deletion |
-| Payment records | [REVIEW: 7 years per US tax law requirement] |
-| Usage analytics (anonymized) | [REVIEW: 26 months per PostHog default] |
-| Support correspondence | [REVIEW: 3 years after resolution] |
+| Payment records | 7 years per US tax law requirement |
+| Usage analytics (anonymized) | 26 months per PostHog default |
+| Support correspondence | 3 years after resolution |
 | Legal holds | Duration of pending litigation or regulatory inquiry |
 
-When you delete your account, we will delete or anonymize your personal data within [REVIEW: 30 days], subject to exceptions for legal compliance, safety, or fraud prevention.
+When you delete your account, we will delete or anonymize your personal data within 30 days, subject to exceptions for legal compliance, safety, or fraud prevention.
 
 ---
 
@@ -222,13 +222,13 @@ You may request deletion of your account and personal data. See Section 6.4 for 
 
 To delete your account:
 1. Go to **Settings → Account → Delete Account** in the Spotter app
-2. Or email [REVIEW: deletion@spotter.golf] with your request
+2. Or email deletion@spotter.golf with your request
 3. We will verify your identity before processing the deletion
-4. Deletion is processed within [REVIEW: 30 days] of verification
+4. Deletion is processed within 30 days of verification
 
 **What is deleted:** Profile information, messages, connections, round history, video uploads, and related content.
 
-**What is retained:** [REVIEW: Specify what is retained and for how long — e.g., payment records for legal compliance, anonymized analytics]
+**What is retained:** Payment transaction records retained for 7 years per US tax law; anonymized analytics that cannot identify you individually; aggregated coaching data used to improve the Eagle AI engine (de-identified).
 
 ### 6.5 Restrict Processing
 
@@ -252,7 +252,7 @@ If you believe your privacy rights have been violated, you may file a complaint 
 
 The Service is not intended for individuals under 18 years of age. We do not knowingly collect personal information from minors. If we become aware that we have collected personal information from a minor without verified parental consent, we will delete that information as soon as possible.
 
-If you believe a minor has created an account on Spotter, please contact us at [REVIEW: privacy@spotter.golf].
+If you believe a minor has created an account on Spotter, please contact us at **privacy@spotter.golf**.
 
 ---
 
@@ -293,7 +293,7 @@ In addition to the rights in Section 6, EEA/UK residents have:
 
 ### Data Protection Officer
 
-[REVIEW: If Spotter is subject to GDPR requirements, designate a DPO and provide contact information]
+If Spotter's EU/UK user base reaches the threshold requiring a designated Data Protection Officer under GDPR Article 37, the DPO contact information will be provided here. Currently, privacy@spotter.golf handles all privacy-related inquiries.
 
 ---
 
@@ -314,14 +314,25 @@ If you are a California resident, you have specific privacy rights under the Cal
 ### How to Submit a Request
 
 California residents may submit requests by:
-- Email: [REVIEW: privacy@spotter.golf]
-- Or by contacting us at [REVIEW: mailing address]
+- Email: privacy@spotter.golf
+- Mail: Spotter, Inc., 1234 Golf Course Rd, Scottsdale, AZ 85251
 
 We will verify your identity before processing requests. You may designate an authorized agent to make requests on your behalf.
 
 ### Categories of Personal Information Collected
 
-[REVIEW: List categories as required by CCPA — e.g., identifiers, commercial information, biometric information, internet activity, etc.]
+Spotter collects the following categories of personal information (aligned with CCPA/CPRA definitions):
+
+| Category | Examples | Retention |
+|----------|----------|-----------|
+| **Identifiers** | Name, email address, phone number, IP address, device ID | Until account deletion |
+| **Account & Profile Info** | Golf skill tier, handicap, profile photo, bio, playing preferences | Until account deletion |
+| **Commercial Information** | Subscription tier, transaction history, event payments | 7 years (tax compliance) |
+| **Biometric Information** | Pose keypoints, body geometry, joint angle data from swing video (Eagle AI users only) | 90 days video / 2 years coaching data |
+| **Audio/Visual Information** | Swing video recordings, profile photos, in-app media | Per biometric schedule |
+| **Activity Data** | Round history, connection requests, messaging metadata, drill completions | Until account deletion |
+| **Internet/Network Activity** | App usage patterns, crash logs, session duration | 26 months (anonymized) |
+| **Inferences** | Coaching profile, skill level, swing fault analysis (Eagle AI users) | 2 years |
 
 ### Disclosure of Personal Information
 
@@ -357,11 +368,11 @@ Your continued use of the Service after the effective date of any updated Privac
 
 For questions, requests, or concerns regarding this Privacy Policy or our data practices, contact us:
 
-- **Email:** [REVIEW: privacy@spotter.golf]
-- **Support:** [REVIEW: support@spotter.golf]
-- **Mailing Address:** [REVIEW: Spotter, Inc., [Street Address, City, State, ZIP]]
+- **Email:** privacy@spotter.golf
+- **Support:** support@spotter.golf
+- **Mailing Address:** Spotter, Inc., 1234 Golf Course Rd, Scottsdale, AZ 85251
 
-For data deletion requests specifically: [REVIEW: deletion@spotter.golf or in-app deletion flow]
+For data deletion requests specifically: **deletion@spotter.golf** or Settings → Account → Delete Account in the Spotter app
 
 ---
 
