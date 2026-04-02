@@ -16,28 +16,30 @@ export type ThemeTokens = {
   success: string;
   warning: string;
   danger: string;
+  error: string;
   shadow: string;
   overlay: string;
 };
 
 export const lightTokens: ThemeTokens = {
-  background: '#f6f9fc',
+  background: '#f3efe6',
   backgroundElevated: '#ffffff',
-  backgroundMuted: '#eaf2f8',
+  backgroundMuted: '#ece7db',
   surface: '#ffffff',
-  surfaceElevated: '#ffffff',
-  border: '#d9e2ec',
-  borderStrong: '#bcccdc',
-  text: '#102a43',
-  textSecondary: '#334e68',
-  textMuted: '#627d98',
-  primary: '#0b3a53',
+  surfaceElevated: '#fffdf8',
+  border: '#d9d2c1',
+  borderStrong: '#bfae84',
+  text: '#14261f',
+  textSecondary: '#41524b',
+  textMuted: '#6c786e',
+  primary: '#173528',
   primaryContrast: '#ffffff',
-  success: '#2f855a',
-  warning: '#b7791f',
-  danger: '#c53030',
-  shadow: '#0b3a53',
-  overlay: 'rgba(11, 58, 83, 0.5)'
+  success: '#2e6b4b',
+  warning: '#9e7441',
+  danger: '#b2473d',
+  error: '#b2473d',
+  shadow: '#14261f',
+  overlay: 'rgba(20, 38, 31, 0.5)'
 };
 
 export const darkTokens: ThemeTokens = {
@@ -56,6 +58,7 @@ export const darkTokens: ThemeTokens = {
   success: '#6ed9a4',
   warning: '#f4c26d',
   danger: '#ff8c8c',
+  error: '#ff8c8c',
   shadow: '#03070b',
   overlay: 'rgba(0, 0, 0, 0.6)'
 };

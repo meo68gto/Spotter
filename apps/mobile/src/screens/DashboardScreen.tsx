@@ -1,65 +1,45 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
-import { HomeScreen } from './HomeScreen';
-import { FeedScreen } from './FeedScreen';
-import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
-import { EagleAIHubScreen } from './eagle-ai/EagleAIHubScreen';
-import { AskScreen } from './AskScreen';
-import { RequestsScreen } from './RequestsScreen';
-import { SessionsScreen } from './SessionsScreen';
-import { ProfileScreen } from './ProfileScreen';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { loadFeatureFlags } from '../lib/flags';
+import { useTheme } from '../theme/provider';
+import { radius, spacing } from '../theme/design';
 import { DiscoveryScreen } from './discovery/DiscoveryScreen';
-import { MatchingScreen } from './matching/MatchingScreen';
+import { GolfHomeHubScreen } from './redesign/GolfHomeHubScreen';
+import { PlayHubScreen } from './redesign/PlayHubScreen';
+import { ImproveHubScreen } from './redesign/ImproveHubScreen';
+import { GolferProfileScreen } from './redesign/GolferProfileScreen';
 import { RoundsScreen } from './rounds/RoundsScreen';
 import { CreateRoundScreen } from './rounds/CreateRoundScreen';
 import { RoundInvitationsScreen } from './rounds/RoundInvitationsScreen';
 import { RoundDetailScreen } from './rounds/RoundDetailScreen';
-import { NetworkScreen } from './network/NetworkScreen';
-import { SavedMembersScreen } from './network/SavedMembersScreen';
 import { SponsoredEventsScreen } from './dashboard/SponsoredEventsScreen';
 import { EventDetailScreen } from './dashboard/EventDetailScreen';
 import { EventRegistrationScreen } from './dashboard/EventRegistrationScreen';
-import {
-  OrganizerDashboardScreen,
-  OrganizerEventCreateScreen,
-  OrganizerEventDetailScreen,
-  OrganizerRegistrationListScreen
-} from './dashboard/organizer';
-import {
-  AdminLoginScreen,
-  AdminDashboardScreen,
-  AdminUserManagementScreen,
-  AdminJobsScreen,
-  AdminFeatureFlagsScreen
-} from './admin';
+import { CoachingTabScreen } from './dashboard/CoachingTabScreen';
 import { VideoScreen } from './VideoScreen';
-import { stockPhotos } from '../lib/stockPhotos';
-import { loadFeatureFlags } from '../lib/flags';
-import { font, isWeb, palette, radius, spacing } from '../theme/design';
+import { InboxTabScreen } from './dashboard/InboxTabScreen';
+import { ProfileScreen } from './ProfileScreen';
+import type { DiscoverableGolfer } from '@spotter/types';
 
-export type DeepLinkTarget = 'home' | 'feed' | 'coaching' | 'ask' | 'requests' | 'sessions' | 'profile' | 'discover' | 'rounds' | 'network' | 'events' | 'organizer' | 'videos' | 'admin' | 'eagle';
-
-// BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events for Phase 2
-// Previously cut: feed, matches, videos, progress, expert console, call room, inbox
-// Kept: home, coaching, ask, requests, sessions, profile, discover, rounds, network, events
-
-type TabKey =
+export type DeepLinkTarget =
   | 'home'
   | 'feed'
-  | 'coaching'
-  | 'ask'
-  | 'requests'
-  | 'sessions'
-  | 'profile'
   | 'discover'
   | 'rounds'
   | 'network'
   | 'events'
-  | 'organizer'
+  | 'coaching'
   | 'videos'
-  | 'admin'
-  | 'eagle'; // Eagle AI coaching hub — Phase 3 integration
+  | 'profile'
+  | 'ask'
+  | 'requests'
+  | 'sessions';
+
+type TabKey = 'home' | 'discover' | 'play' | 'events' | 'improve';
+type PlayView = 'hub' | 'rounds' | 'create' | 'invitations' | 'detail' | 'inbox';
+type EventsView = 'list' | 'detail' | 'register';
+type ImproveView = 'hub' | 'coaching' | 'videos';
 
 type Props = {
   session: Session;
@@ -67,83 +47,24 @@ type Props = {
   deepLinkTarget?: DeepLinkTarget | null;
 };
 
-type NetworkView = 'network' | 'saved-members' | 'profile';
-type EventsView = 'list' | 'detail' | 'register';
-type OrganizerView = 'dashboard' | 'create' | 'detail' | 'registrations';
-type AdminView = 'login' | 'dashboard' | 'users' | 'jobs' | 'featureflags';
-
-type NavItem = {
-  key: TabKey;
-  label: string;
-  group: 'core' | 'growth' | 'ops' | 'account';
-  mobilePrimary?: boolean;
-};
-
-// EPIC 14: Added Feed tab for content discovery
-// EPIC 17: Added Videos tab for video content & analysis
-// REPOSITIONED: Coaching moved from 'core' to 'account' group (Epic 8)
-// ADDED: Events to core group
-// ADDED: Organizer to account group
-const NAV_ITEMS: NavItem[] = [
-  { key: 'home', label: 'Home', group: 'core', mobilePrimary: true },
-  { key: 'feed', label: 'Feed', group: 'core', mobilePrimary: true },
-  { key: 'discover', label: 'Discover', group: 'core', mobilePrimary: true },
-  { key: 'rounds', label: 'Rounds', group: 'core', mobilePrimary: true },
-  { key: 'events', label: 'Events', group: 'core', mobilePrimary: true },
-  { key: 'videos', label: 'Videos', group: 'core', mobilePrimary: true },
-  { key: 'ask', label: 'Ask', group: 'core', mobilePrimary: true },
-  { key: 'requests', label: 'Requests', group: 'core', mobilePrimary: true },
-  { key: 'sessions', label: 'Sessions', group: 'core', mobilePrimary: true },
-  { key: 'network', label: 'Network', group: 'core', mobilePrimary: true },
-  { key: 'profile', label: 'Profile', group: 'account', mobilePrimary: true },
-  { key: 'coaching', label: 'Coaching', group: 'account', mobilePrimary: false }, // Secondary nav
-  { key: 'eagle', label: 'AI Coach', group: 'account', mobilePrimary: true }, // Eagle AI — Phase 3
-  { key: 'organizer', label: 'Organizer', group: 'account', mobilePrimary: false }, // Secondary nav
-  { key: 'admin', label: 'Admin', group: 'account', mobilePrimary: false } // Secondary nav - EPIC 15
+const NAV_ITEMS: Array<{ key: TabKey; label: string }> = [
+  { key: 'home', label: 'Home' },
+  { key: 'discover', label: 'Discover' },
+  { key: 'play', label: 'Play' },
+  { key: 'events', label: 'Events' },
+  { key: 'improve', label: 'Improve' },
 ];
-
-const WEB_PHOTO_TILES = [
-  { label: 'Golf Pairing', image: stockPhotos.dashboardHeroGolf },
-  { label: 'Improve Your Game', image: stockPhotos.dashboardHeroProgress } // Changed from Pickleball Community
-];
-
-const MOBILE_PRIMARY = NAV_ITEMS.filter((item) => item.mobilePrimary).map((item) => item.key) as TabKey[];
-
-const mapDeepLinkToTab = (target: DeepLinkTarget): TabKey => {
-  // EPIC 14: Added feed to valid destinations
-  // EPIC 17: Added videos to valid destinations
-  if (target === 'home') return 'home';
-  if (target === 'feed') return 'feed';
-  if (target === 'coaching') return 'coaching';
-  if (target === 'ask') return 'ask';
-  if (target === 'requests') return 'requests';
-  if (target === 'sessions') return 'sessions';
-  if (target === 'profile') return 'profile';
-  if (target === 'discover') return 'discover';
-  if (target === 'rounds') return 'rounds';
-  if (target === 'network') return 'network';
-  if (target === 'events') return 'events';
-  if (target === 'organizer') return 'organizer';
-  if (target === 'videos') return 'videos';
-  if (target === 'admin') return 'admin';
-  if (target === 'eagle') return 'eagle';
-  return 'home';
-};
 
 export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
+  const { tokens } = useTheme();
   const [tab, setTab] = useState<TabKey>('home');
-  const [roundsView, setRoundsView] = useState<'list' | 'create' | 'invitations' | 'detail'>('list');
-  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
-  const [networkView, setNetworkView] = useState<NetworkView>('network');
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [playView, setPlayView] = useState<PlayView>('hub');
   const [eventsView, setEventsView] = useState<EventsView>('list');
+  const [improveView, setImproveView] = useState<ImproveView>('hub');
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [selectedEventPrice, setSelectedEventPrice] = useState<number>(0);
-  const [organizerView, setOrganizerView] = useState<OrganizerView>('dashboard');
-  const [selectedOrganizerEventId, setSelectedOrganizerEventId] = useState<string | null>(null);
-  // EPIC 15: Admin state
-  const [adminView, setAdminView] = useState<AdminView>('login');
-  const [adminUser, setAdminUser] = useState<{ id: string; email: string; display_name: string | null } | null>(null);
+  const [selectedGolfer, setSelectedGolfer] = useState<DiscoverableGolfer | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     const bootstrapFlags = async () => {
@@ -156,542 +77,275 @@ export function DashboardScreen({ session, onSignOut, deepLinkTarget }: Props) {
 
   useEffect(() => {
     if (!deepLinkTarget) return;
-    setTab(mapDeepLinkToTab(deepLinkTarget));
+    if (deepLinkTarget === 'events') {
+      setTab('events');
+      return;
+    }
+    if (deepLinkTarget === 'coaching' || deepLinkTarget === 'videos') {
+      setTab('improve');
+      setImproveView(deepLinkTarget === 'videos' ? 'videos' : 'coaching');
+      return;
+    }
+    if (deepLinkTarget === 'discover' || deepLinkTarget === 'network') {
+      setTab('discover');
+      return;
+    }
+    if (deepLinkTarget === 'ask' || deepLinkTarget === 'requests' || deepLinkTarget === 'sessions') {
+      setTab('play');
+      setPlayView('inbox');
+      return;
+    }
+    if (deepLinkTarget === 'rounds') {
+      setTab('play');
+      setPlayView('rounds');
+      return;
+    }
+    if (deepLinkTarget === 'profile') {
+      setShowProfile(true);
+      return;
+    }
+    setTab('home');
   }, [deepLinkTarget]);
 
-  const title = useMemo(() => NAV_ITEMS.find((item) => item.key === tab)?.label ?? 'Spotter', [tab]);
+  const title = useMemo(() => {
+    if (showProfile) return 'Profile';
+    return NAV_ITEMS.find((item) => item.key === tab)?.label ?? 'Spotter';
+  }, [showProfile, tab]);
 
-  const jumpToQuickAction = (target: DeepLinkTarget) => setTab(mapDeepLinkToTab(target));
-
-  const handleCreateRound = () => {
-    setRoundsView('create');
+  const resetSupportingViews = () => {
+    setSelectedGolfer(null);
+    setShowProfile(false);
   };
 
-  const handleRoundPress = (roundId: string) => {
-    setSelectedRoundId(roundId);
-    setRoundsView('detail');
+  const selectTab = (next: TabKey) => {
+    setTab(next);
+    resetSupportingViews();
   };
 
-  const handleRoundComplete = () => {
-    setRoundsView('list');
+  const openInbox = () => {
+    setTab('play');
+    setPlayView('inbox');
   };
 
-  const handleCancelCreate = () => {
-    setRoundsView('list');
-  };
-
-  // Network sub-view navigation handlers
-  const handleNavigateToSavedMembers = () => {
-    setNetworkView('saved-members');
-  };
-
-  const handleNavigateToNetwork = () => {
-    setNetworkView('network');
-  };
-
-  const handleNavigateToProfile = (userId: string) => {
-    setSelectedProfileId(userId);
-    setNetworkView('profile');
-  };
-
-  // Events sub-view navigation handlers
-  const handleEventPress = (eventId: string) => {
-    setSelectedEventId(eventId);
-    setEventsView('detail');
-  };
-
-  const handleEventRegister = (eventId: string, price: number) => {
-    setSelectedEventId(eventId);
-    setSelectedEventPrice(price);
-    setEventsView('register');
-  };
-
-  const handleEventsBackToList = () => {
-    setEventsView('list');
-    setSelectedEventId(null);
-    setSelectedEventPrice(0);
-  };
-
-  const handleRegistrationComplete = () => {
-    setEventsView('list');
-    setSelectedEventId(null);
-    setSelectedEventPrice(0);
-  };
-
-  // Organizer navigation handlers
-  const handleNavigateToOrganizerDashboard = () => {
-    setOrganizerView('dashboard');
-    setSelectedOrganizerEventId(null);
-  };
-
-  const handleNavigateToOrganizerEventCreate = () => {
-    setOrganizerView('create');
-  };
-
-  const handleNavigateToOrganizerEventDetail = (eventId: string) => {
-    setSelectedOrganizerEventId(eventId);
-    setOrganizerView('detail');
-  };
-
-  const handleNavigateToOrganizerRegistrations = () => {
-    setOrganizerView('registrations');
-  };
-
-  const handleOrganizerEventCreateComplete = () => {
-    setOrganizerView('dashboard');
-  };
-
-  // EPIC 15: Admin navigation handlers
-  const handleAdminLoginSuccess = (user: { id: string; email: string; display_name: string | null }) => {
-    setAdminUser(user);
-    setAdminView('dashboard');
-  };
-
-  const handleAdminLogout = () => {
-    setAdminUser(null);
-    setAdminView('login');
-  };
-
-  const handleNavigateToAdminUsers = () => {
-    setAdminView('users');
-  };
-
-  const handleNavigateToAdminJobs = () => {
-    setAdminView('jobs');
-  };
-
-  const handleNavigateToAdminFeatureFlags = () => {
-    setAdminView('featureflags');
-  };
-
-  const handleNavigateToAdminDashboard = () => {
-    setAdminView('dashboard');
-  };
-
-  const renderContent = () => {
-    // EPIC 14: Added Feed tab for content discovery
-    // BETA SCOPE: 10 tabs including Discovery, Rounds, Network, and Events
-    if (tab === 'home') return <HomeScreen session={session} onNavigate={jumpToQuickAction} />;
-    if (tab === 'feed') return <FeedScreen session={session} onNavigate={jumpToQuickAction} />;
-    if (tab === 'discover') return <DiscoveryScreen session={session} />;
-    if (tab === 'network') {
-      if (networkView === 'saved-members') {
-        return (
-          <SavedMembersScreen
-            onNavigateToProfile={handleNavigateToProfile}
-            onNavigateToNetwork={handleNavigateToNetwork}
-            onBack={handleNavigateToNetwork}
-          />
-        );
-      }
-      if (networkView === 'profile' && selectedProfileId) {
-        // For now, redirect back to network if profile navigation attempted
-        // In a full implementation, this would render ProfileScreen with userId
-        setNetworkView('network');
-        setSelectedProfileId(null);
-        return <NetworkScreen
+  const renderPlay = () => {
+    if (playView === 'create') {
+      return (
+        <CreateRoundScreen
           session={session}
-          onNavigateToSavedMembers={handleNavigateToSavedMembers}
-          onNavigateToProfile={handleNavigateToProfile}
-          onNavigateToDiscovery={jumpToQuickAction.bind(null, 'discover')}
-        />;
-      }
-      return <NetworkScreen
-        session={session}
-        onNavigateToSavedMembers={handleNavigateToSavedMembers}
-        onNavigateToProfile={handleNavigateToProfile}
-        onNavigateToDiscovery={jumpToQuickAction.bind(null, 'discover')}
-      />;
+          onComplete={() => setPlayView('rounds')}
+          onCancel={() => setPlayView('hub')}
+        />
+      );
     }
-    if (tab === 'rounds') {
-      if (roundsView === 'create') {
-        return (
-          <CreateRoundScreen
-            session={session}
-            onComplete={handleRoundComplete}
-            onCancel={handleCancelCreate}
-          />
-        );
-      }
-      if (roundsView === 'invitations') {
-        return (
-          <RoundInvitationsScreen
-            session={session}
-            onRoundPress={handleRoundPress}
-          />
-        );
-      }
-      if (roundsView === 'detail' && selectedRoundId) {
-        return (
-          <RoundDetailScreen
-            session={session}
-            roundId={selectedRoundId}
-            onBack={() => {
-              setRoundsView('list');
-              setSelectedRoundId(null);
-            }}
-          />
-        );
-      }
+    if (playView === 'invitations') {
+      return (
+        <RoundInvitationsScreen
+          session={session}
+          onRoundPress={(roundId) => {
+            setSelectedRoundId(roundId);
+            setPlayView('detail');
+          }}
+        />
+      );
+    }
+    if (playView === 'detail' && selectedRoundId) {
+      return (
+        <RoundDetailScreen
+          session={session}
+          roundId={selectedRoundId}
+          onBack={() => {
+            setSelectedRoundId(null);
+            setPlayView('rounds');
+          }}
+        />
+      );
+    }
+    if (playView === 'rounds') {
       return (
         <RoundsScreen
           session={session}
-          onCreateRound={handleCreateRound}
-          onRoundPress={(round) => handleRoundPress(round.id)}
+          onCreateRound={() => setPlayView('create')}
+          onRoundPress={(round) => {
+            setSelectedRoundId(round.id);
+            setPlayView('detail');
+          }}
         />
       );
     }
-    if (tab === 'events') {
-      if (eventsView === 'detail' && selectedEventId) {
-        return (
-          <EventDetailScreen
-            session={session}
-            eventId={selectedEventId}
-            onRegister={handleEventRegister}
-            onBack={handleEventsBackToList}
-          />
-        );
-      }
-      if (eventsView === 'register' && selectedEventId) {
-        return (
-          <EventRegistrationScreen
-            session={session}
-            eventId={selectedEventId}
-            onComplete={handleRegistrationComplete}
-            onCancel={handleEventsBackToList}
-          />
-        );
-      }
-      return (
-        <SponsoredEventsScreen
-          session={session}
-          onEventPress={handleEventPress}
-        />
-      );
+    if (playView === 'inbox') {
+      return <InboxTabScreen session={session} />;
     }
-    if (tab === 'coaching') return <CoachingTabScreen session={session} />;
-    if (tab === 'eagle') return <EagleAIHubScreen session={session} />;
-    if (tab === 'videos') return <VideoScreen session={session} />;
-    if (tab === 'organizer') {
-      if (organizerView === 'create') {
-        return (
-          <OrganizerEventCreateScreen
-            session={session}
-            onComplete={handleOrganizerEventCreateComplete}
-            onCancel={handleNavigateToOrganizerDashboard}
-          />
-        );
-      }
-      if (organizerView === 'detail' && selectedOrganizerEventId) {
-        return (
-          <OrganizerEventDetailScreen
-            session={session}
-            eventId={selectedOrganizerEventId}
-            onBack={handleNavigateToOrganizerDashboard}
-            onNavigateToRegistrations={handleNavigateToOrganizerRegistrations}
-          />
-        );
-      }
-      if (organizerView === 'registrations') {
-        return (
-          <OrganizerRegistrationListScreen
-            session={session}
-            eventId={selectedOrganizerEventId || undefined}
-            onBack={selectedOrganizerEventId ? () => {
-              setOrganizerView('detail');
-            } : handleNavigateToOrganizerDashboard}
-          />
-        );
-      }
-      return (
-        <OrganizerDashboardScreen
-          session={session}
-          onNavigateToEventCreate={handleNavigateToOrganizerEventCreate}
-          onNavigateToEventDetail={handleNavigateToOrganizerEventDetail}
-          onNavigateToRegistrations={handleNavigateToOrganizerRegistrations}
-        />
-      );
-    }
-    // EPIC 15: Admin tab content
-    if (tab === 'admin') {
-      if (adminView === 'login') {
-        return (
-          <AdminLoginScreen
-            onLoginSuccess={handleAdminLoginSuccess}
-            onBackToApp={() => setTab('home')}
-          />
-        );
-      }
-      if (adminView === 'users') {
-        return (
-          <AdminUserManagementScreen
-            onBack={handleNavigateToAdminDashboard}
-          />
-        );
-      }
-      if (adminView === 'jobs') {
-        return (
-          <AdminJobsScreen
-            onBack={handleNavigateToAdminDashboard}
-          />
-        );
-      }
-      if (adminView === 'featureflags') {
-        return (
-          <AdminFeatureFlagsScreen
-            onBack={handleNavigateToAdminDashboard}
-          />
-        );
-      }
-      return (
-        <AdminDashboardScreen
-          adminUser={adminUser}
-          onLogout={handleAdminLogout}
-          onNavigateToUsers={handleNavigateToAdminUsers}
-          onNavigateToJobs={handleNavigateToAdminJobs}
-          onNavigateToFeatureFlags={handleNavigateToAdminFeatureFlags}
-        />
-      );
-    }
-    if (tab === 'ask') return <AskScreen session={session} />;
-    if (tab === 'requests') return <RequestsScreen session={session} />;
-    if (tab === 'sessions') return <SessionsScreen session={session} />;
-    return <ProfileScreen session={session} onSignOut={onSignOut} onNavigate={jumpToQuickAction} />;
+    return (
+      <PlayHubScreen
+        session={session}
+        onOpenCreateRound={() => setPlayView('create')}
+        onOpenMyRounds={() => setPlayView('rounds')}
+        onOpenInvites={() => setPlayView('invitations')}
+        onOpenInbox={openInbox}
+      />
+    );
   };
 
-  if (isWeb) {
+  const renderEvents = () => {
+    if (eventsView === 'detail' && selectedEventId) {
+      return (
+        <EventDetailScreen
+          session={session}
+          eventId={selectedEventId}
+          onRegister={(eventId) => {
+            setSelectedEventId(eventId);
+            setEventsView('register');
+          }}
+          onBack={() => setEventsView('list')}
+        />
+      );
+    }
+    if (eventsView === 'register' && selectedEventId) {
+      return (
+        <EventRegistrationScreen
+          session={session}
+          eventId={selectedEventId}
+          onComplete={() => setEventsView('list')}
+          onCancel={() => setEventsView('detail')}
+        />
+      );
+    }
     return (
-      <View style={styles.webRoot}>
-        <View style={styles.webSidebar}>
-          <Text style={styles.webBrand}>Spotter</Text>
-          <Text style={styles.sidebarSubtitle}>Match, improve, compete.</Text>
-
-          <NavGroup title="Core" items={NAV_ITEMS.filter((item) => item.group === 'core')} activeTab={tab} onSelect={(newTab) => {
-            setTab(newTab);
-            setRoundsView('list');
-            if (newTab !== 'events') {
-              setEventsView('list');
-              setSelectedEventId(null);
-            }
-            if (newTab !== 'organizer') {
-              setOrganizerView('dashboard');
-              setSelectedOrganizerEventId(null);
-            }
-          }} />
-          <NavGroup title="Account" items={NAV_ITEMS.filter((item) => item.group === 'account')} activeTab={tab} onSelect={(newTab) => {
-            setTab(newTab);
-            setRoundsView('list');
-            setEventsView('list');
-            setSelectedEventId(null);
-            if (newTab !== 'organizer') {
-              setOrganizerView('dashboard');
-              setSelectedOrganizerEventId(null);
-            }
-            // EPIC 15: Reset admin view when leaving admin tab
-            if (newTab !== 'admin') {
-              setAdminView('login');
-              setAdminUser(null);
-            }
-          }} />
-        </View>
-
-        <View style={styles.webMain}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>{title}</Text>
-            <Text style={styles.headerMeta}>{session.user.email ?? 'unknown'}</Text>
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.webHeroStrip}>
-            {WEB_PHOTO_TILES.map((tile) => (
-              <ImageBackground key={tile.label} source={{ uri: tile.image }} style={styles.webHeroTile} imageStyle={styles.webHeroTileImage}>
-                <View style={styles.webHeroOverlay}>
-                  <Text style={styles.webHeroLabel}>{tile.label}</Text>
-                </View>
-              </ImageBackground>
-            ))}
-          </ScrollView>
-
-          <View style={styles.content}>{renderContent()}</View>
-        </View>
-      </View>
+      <SponsoredEventsScreen
+        session={session}
+        onEventPress={(eventId) => {
+          setSelectedEventId(eventId);
+          setEventsView('detail');
+        }}
+      />
     );
-  }
+  };
+
+  const renderImprove = () => {
+    if (improveView === 'coaching') {
+      return <CoachingTabScreen session={session} />;
+    }
+    if (improveView === 'videos') {
+      return <VideoScreen session={session} />;
+    }
+    return (
+      <ImproveHubScreen
+        session={session}
+        onOpenCoaching={() => setImproveView('coaching')}
+        onOpenVideo={() => setImproveView('videos')}
+      />
+    );
+  };
+
+  const renderContent = () => {
+    if (showProfile) {
+      return <ProfileScreen session={session} onSignOut={onSignOut} />;
+    }
+    if (selectedGolfer) {
+      return (
+        <GolferProfileScreen
+          golfer={selectedGolfer}
+          onBack={() => setSelectedGolfer(null)}
+          onInvite={() => {
+            setSelectedGolfer(null);
+            setTab('play');
+            setPlayView('create');
+          }}
+          onSave={() => setSelectedGolfer(null)}
+        />
+      );
+    }
+    if (tab === 'home') {
+      return (
+        <GolfHomeHubScreen
+          session={session}
+          onOpenDiscover={() => selectTab('discover')}
+          onOpenPlay={() => {
+            setTab('play');
+            setPlayView('rounds');
+          }}
+          onOpenEvents={() => selectTab('events')}
+          onOpenImprove={() => selectTab('improve')}
+          onOpenInbox={openInbox}
+        />
+      );
+    }
+    if (tab === 'discover') {
+      return (
+        <DiscoveryScreen
+          session={session}
+          onOpenGolfer={(golfer) => setSelectedGolfer(golfer)}
+          onOpenPlay={() => {
+            setTab('play');
+            setPlayView('create');
+          }}
+        />
+      );
+    }
+    if (tab === 'play') return renderPlay();
+    if (tab === 'events') return renderEvents();
+    return renderImprove();
+  };
 
   return (
-    <View style={styles.mobileRoot}>
-      <View style={styles.mobileHeader}>
+    <View style={[styles.root, { backgroundColor: tokens.background }]}>
+      <View style={[styles.header, { backgroundColor: tokens.backgroundElevated, borderBottomColor: tokens.border }]}>
         <View>
-          <Text style={styles.mobileBrand}>Spotter</Text>
-          <Text style={styles.mobileTitle}>{title}</Text>
+          <Text style={[styles.brand, { color: tokens.text }]}>Spotter</Text>
+          <Text style={[styles.title, { color: tokens.textSecondary }]}>{title}</Text>
         </View>
+        <Pressable style={[styles.avatarButton, { backgroundColor: tokens.backgroundMuted, borderColor: tokens.borderStrong }]} onPress={() => setShowProfile(true)}>
+          <Text style={[styles.avatarText, { color: tokens.text }]}>{(session.user.email ?? 'G').charAt(0).toUpperCase()}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.content}>{renderContent()}</View>
 
-      <View style={styles.mobileTabBar}>
-        {MOBILE_PRIMARY.map((key) => {
-          const label = NAV_ITEMS.find((item) => item.key === key)?.label ?? key;
-          const active = tab === key;
-          return (
-            <TouchableOpacity 
-              key={key} 
-              onPress={() => {
-                setTab(key);
-                if (key !== 'rounds') {
-                  setRoundsView('list');
-                }
-                if (key !== 'events') {
-                  setEventsView('list');
-                  setSelectedEventId(null);
-                }
-                if (key !== 'organizer') {
-                  setOrganizerView('dashboard');
-                  setSelectedOrganizerEventId(null);
-                }
-                if (key !== 'admin') {
-                  setAdminView('login');
-                  setAdminUser(null);
-                }
-              }} 
-              style={styles.mobileTabButton}
-            >
-              <View style={[styles.mobileTabIcon, active ? styles.mobileTabIconActive : null]}>
-                <Text style={[styles.mobileTabIconText, active ? styles.mobileTabIconTextActive : null]}>{label.charAt(0)}</Text>
-              </View>
-              <Text style={[styles.mobileTabText, active ? styles.mobileTabTextActive : null]}>{label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function NavGroup({
-  title,
-  items,
-  activeTab,
-  onSelect
-}: {
-  title: string;
-  items: NavItem[];
-  activeTab: TabKey;
-  onSelect: (tab: TabKey) => void;
-}) {
-  return (
-    <View style={styles.navGroup}>
-      <Text style={styles.navGroupTitle}>{title}</Text>
-      {items.map((item) => {
-        const active = item.key === activeTab;
-        return (
-          <TouchableOpacity key={item.key} onPress={() => onSelect(item.key)} style={[styles.navItem, active ? styles.navItemActive : null]}>
-            <Text style={[styles.navItemText, active ? styles.navItemTextActive : null]}>{item.label}</Text>
-          </TouchableOpacity>
-        );
-      })}
+      {!showProfile && !selectedGolfer ? (
+        <View style={[styles.tabBar, { backgroundColor: tokens.backgroundElevated, borderTopColor: tokens.border }]}>
+          {NAV_ITEMS.map((item) => {
+            const active = item.key === tab;
+            return (
+              <Pressable key={item.key} style={styles.tabItem} onPress={() => selectTab(item.key)}>
+                <Text style={[styles.tabLabel, { color: active ? tokens.primary : tokens.textMuted }]}>{item.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  webRoot: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: palette.sky100
-  },
-  webSidebar: {
-    width: 280,
-    backgroundColor: palette.navy600,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl
-  },
-  webBrand: {
-    color: palette.white,
-    fontSize: 14,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2
-  },
-  sidebarSubtitle: {
-    color: '#CBE4F3',
-    marginTop: 2,
-    marginBottom: spacing.lg
-  },
-  webMain: { flex: 1 },
-  mobileRoot: { flex: 1, backgroundColor: palette.sky100 },
+  root: { flex: 1 },
   header: {
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: palette.sky200,
-    backgroundColor: palette.white
-  },
-  mobileHeader: {
-    paddingTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.sky200,
-    backgroundColor: palette.white,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
   },
-  mobileBrand: {
-    color: palette.navy600,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1
-  },
-  mobileTitle: {
-    color: palette.ink900,
-    fontFamily: font.display,
-    fontSize: 22,
-    fontWeight: '800'
-  },
-  headerTitle: {
-    color: palette.ink900,
-    fontFamily: font.display,
-    fontSize: 30,
-    fontWeight: '800'
-  },
-  headerMeta: { color: palette.ink500 },
-  navGroup: { marginTop: spacing.lg },
-  navGroupTitle: { color: '#D9E8F2', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
-  navItem: { borderRadius: radius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, marginBottom: 4 },
-  navItemActive: { backgroundColor: '#0F4A6A' },
-  navItemText: { color: '#D9E8F2', fontFamily: font.body, fontWeight: '600' },
-  navItemTextActive: { color: palette.white },
-  content: { flex: 1 },
-  webHeroStrip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md },
-  webHeroTile: { width: 260, height: 120, borderRadius: radius.md, overflow: 'hidden', justifyContent: 'flex-end' },
-  webHeroTileImage: { borderRadius: radius.md },
-  webHeroOverlay: { backgroundColor: 'rgba(8, 47, 67, 0.45)', padding: spacing.sm },
-  webHeroLabel: { color: palette.white, fontWeight: '700', fontSize: 16 },
-  mobileTabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: palette.sky300,
-    backgroundColor: palette.white,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs
-  },
-  mobileTabButton: { alignItems: 'center', flex: 1 },
-  mobileTabIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: palette.sky200,
+  brand: { fontSize: 22, fontWeight: '900' },
+  title: { fontSize: 14, marginTop: 2 },
+  avatarButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.pill,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4
   },
-  mobileTabIconActive: { backgroundColor: palette.navy600 },
-  mobileTabIconText: { color: palette.ink700, fontWeight: '700', fontSize: 12 },
-  mobileTabIconTextActive: { color: palette.white },
-  mobileTabText: { color: palette.ink700, fontSize: 10, fontWeight: '600' },
-  mobileTabTextActive: { color: palette.navy600 },
+  avatarText: { fontSize: 16, fontWeight: '800' },
+  content: { flex: 1 },
+  tabBar: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    paddingBottom: spacing.md,
+    paddingTop: spacing.sm,
+  },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm },
+  tabLabel: { fontSize: 13, fontWeight: '800' },
 });

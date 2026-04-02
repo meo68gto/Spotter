@@ -20,6 +20,7 @@ import { Card } from '../../components/Card';
 import { TierBadge } from '../../components/TierBadge';
 import { invokeFunction } from '../../lib/api';
 import { palette, radius, spacing } from '../../theme/design';
+import { MapScreen } from '../MapScreen';
 import {
   DiscoverableGolfer,
   getVisibleTiers,
@@ -72,7 +73,15 @@ interface SavedMembersResponse {
   };
 }
 
-export function DiscoveryScreen({ session }: { session: Session }) {
+export function DiscoveryScreen({
+  session,
+  onOpenGolfer,
+  onOpenPlay,
+}: {
+  session: Session;
+  onOpenGolfer?: (golfer: DiscoverableGolfer) => void;
+  onOpenPlay?: () => void;
+}) {
   const [golfers, setGolfers] = useState<DiscoverableGolfer[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,6 +91,7 @@ export function DiscoveryScreen({ session }: { session: Session }) {
   const [callerTier, setCallerTier] = useState<TierSlug>('free');
   const [savedMemberIds, setSavedMemberIds] = useState<Set<string>>(new Set());
   const [savingMemberIds, setSavingMemberIds] = useState<Set<string>>(new Set());
+  const [presentation, setPresentation] = useState<'list' | 'map'>('list');
   // EPIC 7: Hunt Mode state for SELECT members
   const [huntModeActive, setHuntModeActive] = useState(false);
   // EPIC 7: Computed visible tiers based on caller tier + hunt mode
@@ -129,7 +139,7 @@ export function DiscoveryScreen({ session }: { session: Session }) {
       const response = await invokeFunction<SavedMembersResponse>('network-save-member', {
         method: 'GET',
       });
-      const savedIds = new Set(response.data.map((m) => m.savedId));
+      const savedIds = new Set(response.data.map((m) => m.id));
       setSavedMemberIds(savedIds);
     } catch (error) {
       // Silently fail - saved state is not critical
@@ -422,13 +432,21 @@ export function DiscoveryScreen({ session }: { session: Session }) {
           </View>
         )}
 
-        <Button
-          title={savedMemberIds.has(item.user_id) ? 'Saved' : 'Connect'}
-          onPress={() => handleSaveMember(item)}
-          tone="primary"
-          disabled={savedMemberIds.has(item.user_id) || savingMemberIds.has(item.user_id)}
-          loading={savingMemberIds.has(item.user_id)}
-        />
+        <View style={styles.actionsRow}>
+          <View style={styles.actionButton}>
+            <Button title="View profile" onPress={() => onOpenGolfer?.(item)} tone="secondary" />
+          </View>
+          <View style={styles.actionButton}>
+            <Button
+              title={savedMemberIds.has(item.user_id) ? 'Saved' : 'Save'}
+              onPress={() => handleSaveMember(item)}
+              tone="primary"
+              disabled={savedMemberIds.has(item.user_id) || savingMemberIds.has(item.user_id)}
+              loading={savingMemberIds.has(item.user_id)}
+            />
+          </View>
+        </View>
+        {onOpenPlay ? <Button title="Invite to play" onPress={onOpenPlay} tone="ghost" /> : null}
       </View>
     </Card>
   );
@@ -437,7 +455,16 @@ export function DiscoveryScreen({ session }: { session: Session }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Discover Golfers</Text>
-        <Text style={styles.subtitle}>Find golfers in your tier</Text>
+        <Text style={styles.subtitle}>Find compatible golfers, open rounds, and local golf energy</Text>
+      </View>
+
+      <View style={styles.modeSwitch}>
+        <TouchableOpacity style={[styles.modeChip, presentation === 'list' && styles.modeChipActive]} onPress={() => setPresentation('list')}>
+          <Text style={[styles.modeChipText, presentation === 'list' && styles.modeChipTextActive]}>List</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.modeChip, presentation === 'map' && styles.modeChipActive]} onPress={() => setPresentation('map')}>
+          <Text style={[styles.modeChipText, presentation === 'map' && styles.modeChipTextActive]}>Map</Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity
@@ -456,31 +483,47 @@ export function DiscoveryScreen({ session }: { session: Session }) {
         )}
       </TouchableOpacity>
 
-      <FlatList
-        data={golfers}
-        renderItem={renderGolferCard}
-        keyExtractor={(item) => item.user_id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        onEndReached={onLoadMore}
-        onEndReachedThreshold={0.5}
-        ListHeaderComponent={showFilters ? renderFilterSection : null}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No golfers found</Text>
-              <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
-            </View>
-          ) : null
-        }
-        ListFooterComponent={
-          loading ? (
-            <View style={styles.loadingFooter}>
-              <Text style={styles.loadingText}>Loading...</Text>
-            </View>
-          ) : null
-        }
-      />
+      {presentation === 'map' ? (
+        <ScrollView
+          style={styles.mapContainer}
+          contentContainerStyle={styles.mapContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          {showFilters ? renderFilterSection() : null}
+          <MapScreen />
+          <Card>
+            <Text style={styles.sectionTitle}>Open rounds near you</Text>
+            <Text style={styles.emptySubtext}>Map view helps you orient to local activity. Switch back to list view to compare golfers and send invites.</Text>
+            {onOpenPlay ? <Button title="Create an open round" onPress={onOpenPlay} /> : null}
+          </Card>
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={golfers}
+          renderItem={renderGolferCard}
+          keyExtractor={(item) => item.user_id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          onEndReached={onLoadMore}
+          onEndReachedThreshold={0.5}
+          ListHeaderComponent={showFilters ? renderFilterSection : null}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No golfers found</Text>
+                <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+              </View>
+            ) : null
+          }
+          ListFooterComponent={
+            loading ? (
+              <View style={styles.loadingFooter}>
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            ) : null
+          }
+        />
+      )}
     </View>
   );
 }
@@ -505,6 +548,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: palette.ink700,
     marginTop: 4,
+  },
+  modeSwitch: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: palette.white,
+  },
+  modeChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.sky300,
+    backgroundColor: palette.sky100,
+  },
+  modeChipActive: {
+    backgroundColor: palette.navy600,
+    borderColor: palette.navy600,
+  },
+  modeChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: palette.ink700,
+  },
+  modeChipTextActive: {
+    color: palette.white,
   },
   filterToggle: {
     flexDirection: 'row',
@@ -681,6 +751,13 @@ const styles = StyleSheet.create({
   golferCard: {
     gap: spacing.sm,
   },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionButton: {
+    flex: 1,
+  },
   golferHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -775,6 +852,18 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
+  },
+  mapContainer: {
+    flex: 1,
+  },
+  mapContent: {
+    paddingBottom: spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: palette.ink900,
+    marginBottom: spacing.sm,
   },
   emptyText: {
     fontSize: 16,

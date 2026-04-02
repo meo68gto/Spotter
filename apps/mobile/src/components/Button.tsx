@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
 import { radius, spacing } from '../theme/design';
 import { useTheme } from '../theme/provider';
 
@@ -6,14 +6,18 @@ type Props = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
+  loading?: boolean;
   tone?: 'primary' | 'secondary' | 'ghost';
+  style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   accessibilityHint?: string;
   testID?: string;
 };
 
-export function Button({ title, onPress, disabled, tone = 'primary', accessibilityLabel, accessibilityHint, testID }: Props) {
+export function Button({ title, onPress, disabled, loading, tone = 'primary', style, accessibilityLabel, accessibilityHint, testID }: Props) {
   const { tokens } = useTheme();
+  const isDisabled = disabled || loading;
+  const textColor = tone === 'secondary' || tone === 'ghost' ? tokens.text : tokens.primaryContrast;
   return (
     <Pressable
       style={[
@@ -21,16 +25,18 @@ export function Button({ title, onPress, disabled, tone = 'primary', accessibili
         { backgroundColor: tokens.primary },
         tone === 'secondary' ? [styles.secondary, { backgroundColor: tokens.backgroundMuted, borderColor: tokens.borderStrong }] : null,
         tone === 'ghost' ? [styles.ghost, { borderColor: tokens.borderStrong }] : null,
-        disabled ? styles.disabled : null
+        isDisabled ? styles.disabled : null,
+        style,
       ]}
       onPress={onPress}
-      disabled={disabled}
+      disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={accessibilityHint}
       testID={testID}
     >
-      <Text style={[styles.text, { color: tokens.primaryContrast }, tone === 'secondary' || tone === 'ghost' ? { color: tokens.text } : null]}>{title}</Text>
+      {loading ? <ActivityIndicator size="small" color={textColor} /> : null}
+      <Text style={[styles.text, { color: textColor }, loading ? styles.loadingText : null]}>{title}</Text>
     </Pressable>
   );
 }
@@ -41,7 +47,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     marginTop: spacing.sm,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row'
   },
   secondary: {
     borderWidth: 1,
@@ -55,6 +63,9 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: '700',
     fontSize: 15
+  },
+  loadingText: {
+    marginLeft: spacing.sm
   },
   disabled: {
     opacity: 0.4
