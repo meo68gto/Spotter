@@ -207,15 +207,15 @@ describe('Tier Gate Integration Tests', () => {
 
     it('discovery boost increases for high-reliability users', () => {
       // High-reliability users get a discovery boost (shown to other members)
-      const boostHighReliability = calculateDiscoveryBoost(90, 'select');
-      const boostLowReliability = calculateDiscoveryBoost(30, 'select');
+      const boostHighReliability = calculateDiscoveryBoost(90, 3);
+      const boostLowReliability = calculateDiscoveryBoost(30, 3);
       
       expect(boostHighReliability).toBeGreaterThan(boostLowReliability);
       expect(boostHighReliability).toBeGreaterThan(1.0);
     });
 
     it('discovery boost does not apply to FREE tier users', () => {
-      const boost = calculateDiscoveryBoost(90, 'free');
+      const boost = calculateDiscoveryBoost(90, 0);
       // FREE users don't have the searchBoost feature
       expect(boost).toBe(1.0);
     });

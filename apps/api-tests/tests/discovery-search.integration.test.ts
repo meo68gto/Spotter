@@ -36,7 +36,7 @@ describe('Discovery Search — Tier Visibility Integration', () => {
     golfers: MockDiscoverableGolfer[];
     pagination: {
       offset: number;
-      limit: number;
+      limit: number | null;
       total: number;
     };
   }
@@ -129,7 +129,7 @@ describe('Discovery Search — Tier Visibility Integration', () => {
       golfers: filtered,
       pagination: {
         offset: 0,
-        limit: TIER_LIMITS[callerTier].maxSearchResults ?? 100,
+        limit: TIER_LIMITS[callerTier].maxSearchResults ?? null,
         total: filtered.length,
       },
     };

@@ -25,7 +25,7 @@
         "testMatch": [
           "/.*\\.setup\\.ts/"
         ],
-        "timeout": 30000
+        "timeout": 60000
       },
       {
         "outputDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/test-results",
@@ -39,69 +39,26 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 30000
-      },
-      {
-        "outputDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/test-results",
-        "repeatEach": 1,
-        "retries": 1,
-        "metadata": {},
-        "id": "firefox",
-        "name": "firefox",
-        "testDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/tests",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 30000
-      },
-      {
-        "outputDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/test-results",
-        "repeatEach": 1,
-        "retries": 1,
-        "metadata": {},
-        "id": "webkit",
-        "name": "webkit",
-        "testDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/tests",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 30000
-      },
-      {
-        "outputDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/test-results",
-        "repeatEach": 1,
-        "retries": 1,
-        "metadata": {},
-        "id": "Mobile Chrome",
-        "name": "Mobile Chrome",
-        "testDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/tests",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 30000
-      },
-      {
-        "outputDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/test-results",
-        "repeatEach": 1,
-        "retries": 1,
-        "metadata": {},
-        "id": "Mobile Safari",
-        "name": "Mobile Safari",
-        "testDir": "/Users/brucewayne/Documents/Spotter/apps/e2e/tests",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 30000
+        "timeout": 60000
       }
     ],
     "quiet": false,
     "reporter": [
       [
-        "json"
+        "html",
+        {
+          "open": "never"
+        }
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results.json"
+        }
       ]
     ],
     "reportSlowTests": {
@@ -116,7 +73,7 @@
     "version": "1.58.2",
     "workers": 5,
     "webServer": {
-      "command": "cd ../web && npm run dev",
+      "command": "pnpm --filter=web dev",
       "url": "http://localhost:3000",
       "reuseExistingServer": true,
       "timeout": 120000
@@ -125,19 +82,13 @@
   "suites": [],
   "errors": [
     {
-      "message": "Error: Cannot find module '../../../packages/types/src/tier'\nRequire stack:\n- /Users/brucewayne/Documents/Spotter/apps/e2e/tests/fixtures/tier-helpers.ts\n- /Users/brucewayne/Documents/Spotter/apps/e2e/tests/tier-gating.spec.ts\n- /Users/brucewayne/Documents/Spotter/node_modules/.pnpm/playwright@1.58.2/node_modules/playwright/lib/transform/transform.js\n- /Users/brucewayne/Documents/Spotter/node_modules/.pnpm/playwright@1.58.2/node_modules/playwright/lib/common/configLoader.js\n- /Users/brucewayne/Documents/Spotter/node_modules/.pnpm/playwright@1.58.2/node_modules/playwright/lib/program.js\n- /Users/brucewayne/Documents/Spotter/node_modules/.pnpm/@playwright+test@1.58.2/node_modules/@playwright/test/cli.js",
-      "stack": "Error: Cannot find module '../../../packages/types/src/tier'\nRequire stack:\n- /Users/brucewayne/Documents/Spotter/apps/e2e/tests/fixtures/tier-helpers.ts\n- /Users/brucewayne/Documents/Spotter/apps/e2e/tests/tier-gating.spec.ts\n- /Users/brucewayne/Documents/Spotter/node_modules/.pnpm/playwright@1.58.2/node_modules/playwright/lib/transform/transform.js\n- /Users/brucewayne/Documents/Spotter/node_modules/.pnpm/playwright@1.58.2/node_modules/playwright/lib/common/configLoader.js\n- /Users/brucewayne/Documents/Spotter/node_modules/.pnpm/playwright@1.58.2/node_modules/playwright/lib/program.js\n- /Users/brucewayne/Documents/Spotter/node_modules/.pnpm/@playwright+test@1.58.2/node_modules/@playwright/test/cli.js\n    at Object.<anonymous> (/Users/brucewayne/Documents/Spotter/apps/e2e/tests/fixtures/tier-helpers.ts:2:1)\n    at Object.<anonymous> (/Users/brucewayne/Documents/Spotter/apps/e2e/tests/tier-gating.spec.ts:3:1)",
-      "location": {
-        "file": "/Users/brucewayne/Documents/Spotter/apps/e2e/tests/fixtures/tier-helpers.ts",
-        "column": 1,
-        "line": 2
-      },
-      "snippet": "   at fixtures/tier-helpers.ts:2\n\n  1 | import { Page, expect } from '@playwright/test';\n> 2 | import { TierSlug, TIER_DEFINITIONS, TierFeatures } from '../../../packages/types/src/tier';\n    | ^\n  3 | import { OrganizerTier, ORGANIZER_TIERS } from '../../../packages/types/src/organizer';\n  4 |\n  5 | /**"
+      "message": "Error: Process from config.webServer exited early.",
+      "stack": "Error: Process from config.webServer exited early."
     }
   ],
   "stats": {
-    "startTime": "2026-03-27T21:29:31.878Z",
-    "duration": 749.1589999999999,
+    "startTime": "2026-04-03T23:30:27.591Z",
+    "duration": 1171.65,
     "expected": 0,
     "skipped": 0,
     "unexpected": 0,
