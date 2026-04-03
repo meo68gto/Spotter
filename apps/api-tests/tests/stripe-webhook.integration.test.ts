@@ -280,7 +280,7 @@ describe('Tier Upgrade Payment Flow Simulation', () => {
 
   function simulateInvoicePaymentSucceeded(
     userState: UserTierState,
-    event: { data: { object: { metadata: { tierSlug: string } }; subscription: string } }
+    event: { data: { object: { metadata: { tierSlug: string }; subscription: string } } }
   ): UserTierState {
     return {
       ...userState,
@@ -378,6 +378,8 @@ describe('Tier Upgrade Payment Flow Simulation', () => {
       data: {
         object: {
           metadata: {
+            userId: '00000000-0000-0000-0000-000000000000',
+            tierSlug: 'free',
             type: 'event_registration', // not a tier upgrade
           },
           subscription: 'sub_registration',
