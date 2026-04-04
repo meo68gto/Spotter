@@ -45,6 +45,7 @@ const _mockStore: Record<string, any[]> = {
     { id: 'pay-3', user_id: SUMMIT_ID, amount: 9999, status: 'succeeded', description: 'Summit plan' },
   ],
   subscriptions: [
+    { id: 'sub-0', user_id: FREE_ID, status: 'active', current_period_end: Date.now() + 2592000000, tier: 'free' },
     { id: 'sub-1', user_id: SELECT_ID, status: 'active', current_period_end: Date.now() + 2592000000, tier: 'select' },
     { id: 'sub-2', user_id: SUMMIT_ID, status: 'active', current_period_end: Date.now() + 2592000000, tier: 'summit' },
   ],
@@ -54,6 +55,16 @@ const _mockStore: Record<string, any[]> = {
     { id: GOLD_ORG_ID, email: 'org-gold@spotter.local', tier: 'gold', name: 'Gold Org' },
   ],
   organizer_events: [],
+  membership_tiers: [
+    { id: 'tier-free', slug: 'free', display_name: 'Free', price_monthly: 0, price_annual: 0 },
+    { id: 'tier-select', slug: 'select', display_name: 'Select', price_monthly: 2999, price_annual: 24999 },
+    { id: 'tier-summit', slug: 'summit', display_name: 'Summit', price_monthly: 9999, price_annual: 89999 },
+  ],
+  user_tier_states: [
+    { user_id: FREE_ID, tier_slug: 'free', status: 'active', features: { matchmaking: true, videoAnalysis: false, priorityMatching: false } },
+    { user_id: SELECT_ID, tier_slug: 'select', status: 'active', features: { matchmaking: true, videoAnalysis: true, priorityMatching: true } },
+    { user_id: SUMMIT_ID, tier_slug: 'summit', status: 'active', features: { matchmaking: true, videoAnalysis: true, priorityMatching: true, earlyAccess: true, groupSessions: true } },
+  ],
   tier_definitions: [
     { slug: 'free', display_name: 'Free', price_monthly: 0, price_annual: 0 },
     { slug: 'select', display_name: 'Select', price_monthly: 2999, price_annual: 24999 },
@@ -66,7 +77,7 @@ const _mockStore: Record<string, any[]> = {
   ],
 };
 
-function makeMockQuery(initial?: Partial<QueryState>): any {
+function makeMockQuery(initial?: Partial<QueryState>, getAuth?: () => { userId: string | null; tier: string | null }): any {
   const state: QueryState = {
     filters: [],
     selectCols: null,
@@ -77,134 +88,106 @@ function makeMockQuery(initial?: Partial<QueryState>): any {
     ...initial,
   };
 
-  const q: any = {
-    then(resolve: (v: any) => void, _reject: (e: any) => void) {
-      // Default: return empty data
-      resolve({ data: null, error: null });
-      return q;
-    },
-    catch(_reject: (e: any) => void) { return q; },
-    finally(fn: () => void) { fn(); return q; },
-
-    select(cols?: string) {
-      state.method = 'select';
-      state.selectCols = cols ?? '*';
-      return q;
-    },
-    eq(col: string, val: any) {
-      state.filters.push({ col, val });
-      // Auto-resolve eq() result — check if we can return data now
-      if (state.table && state.method === 'select') {
-        const rows = _mockStore[state.table] ?? [];
-        const filtered = rows.filter((r: any) => {
-          for (const f of state.filters) {
-            if (r[f.col] !== f.val) return false;
-          }
-          return true;
-        });
-        // If singleMode already set (via .single() before .eq()), return single
-        if (state.singleMode) {
-          state.eqResult = filtered.length > 0 ? filtered[0] : null;
-        } else {
-          state.eqResult = filtered;
-        }
-      }
-      return q;
-    },
-    single() {
-      state.singleMode = true;
-      if (state.eqResult !== undefined) {
-        // Already resolved
-        const result = state.eqResult;
-        state.eqResult = undefined;
-        // Return thenable
-        const t: any = { then(r: any, _rej: any) { r({ data: result, error: result ? null : { message: 'No data' } }); return t; }, catch(_e: any) { return t; } };
-        return t;
-      }
-      return q;
-    },
-    insert(data: any) {
-      state.method = 'insert';
-      state.insertData = data;
-      return q;
-    },
-    update(data: any) {
-      state.method = 'update';
-      state.insertData = data;
-      return q;
-    },
-    in(col: string, vals: any[]) {
-      state.filters.push({ col, val: vals, op: 'in' });
-      return q;
-    },
-    order() { return q; },
-    limit() { return q; },
-    abort() { return q; },
-
-    // Override .then based on actual state when accessed
-    get _then() { return state; },
-  };
-
-  // Proxy: any method returns q (chainable)
-  return new Proxy(q, {
-    get(target, prop) {
+  const handler: ProxyHandler<any> = {
+    get(_target, prop) {
       if (prop === 'then') {
-        // Return a Promise that resolves lazily — reads state at resolution time
         return (resolve: (v: any) => void) => {
-          // Use setImmediate to let .eq()/.select()/.single() finish first
-          setImmediate(() => {
-            const { table, method, filters, insertData, singleMode } = state;
-            if (!table || !method) {
-              resolve({ data: null, error: null });
-              return;
-            }
-
-            const rows = _mockStore[table] ?? [];
-            let filtered = rows;
-            for (const f of filters) {
-              if (f.op === 'in') {
-                filtered = filtered.filter((r: any) => f.val.includes(r[f.col]));
-              } else {
-                filtered = filtered.filter((r: any) => r[f.col] === f.val);
-              }
-            }
-
-            let result: any;
-            if (method === 'select') {
-              result = singleMode
-                ? { data: filtered[0] ?? null, error: filtered.length === 0 ? { message: 'No data' } : null }
-                : { data: filtered, error: null };
-            } else if (method === 'insert') {
-              const inserted = Array.isArray(insertData) ? insertData : [insertData];
-              _mockStore[table] = [...(_mockStore[table] ?? []), ...inserted];
-              result = { data: inserted.map((d: any) => ({ id: d.id ?? 'generated-id', ...d })), error: null };
+          // auth from outer closure — set by setSession()
+          const authInfo = getAuth ? getAuth() : { userId: null, tier: null };
+          const { table, method, filters, insertData, singleMode } = state;
+          if (!table || !method) {
+            resolve({ data: null, error: null });
+            return proxy;
+          }
+          // DEBUG: log auth state at resolution
+          const rows = _mockStore[table] ?? [];
+          let filtered = rows;
+          for (const f of filters) {
+            if (f.op === 'in') {
+              filtered = filtered.filter((r: any) => f.val.includes(r[f.col]));
             } else {
-              result = { data: null, error: null };
+              filtered = filtered.filter((r: any) => r[f.col] === f.val);
             }
-            resolve(result);
-          });
-          return target; // chainable
+          }
+          // RLS: user_tier_states — users can only read their own tier state
+          if (table === 'user_tier_states' && authInfo.userId) {
+            filtered = filtered.filter((r: any) => r.user_id === authInfo.userId);
+          }
+          // RLS: user_tiers — users can only read their own tier
+          if (table === 'user_tiers' && authInfo.userId) {
+            filtered = filtered.filter((r: any) => r.user_id === authInfo.userId);
+          }
+          // RLS: payments — users can only read their own payments
+          if (table === 'payments' && authInfo.userId) {
+            filtered = filtered.filter((r: any) => r.user_id === authInfo.userId);
+          }
+          // RLS: connections — users can only read connections they initiated
+          // (not connections where they are just the recipient)
+          if (table === 'connections' && authInfo.userId) {
+            filtered = filtered.filter((r: any) => r.requester_id === authInfo.userId);
+          }
+          let result: any;
+          if (method === 'select') {
+            result = singleMode
+              ? { data: filtered[0] ?? null, error: filtered.length === 0 ? { message: 'No data' } : null }
+              : { data: filtered, error: null };
+          } else if (method === 'insert') {
+            const inserted = Array.isArray(insertData) ? insertData : [insertData];
+            _mockStore[table] = [...(_mockStore[table] ?? []), ...inserted];
+            result = { data: inserted.map((d: any) => ({ id: d.id ?? 'generated-id', ...d })), error: null };
+          } else {
+            result = { data: null, error: null };
+          }
+          // DEBUG: log result
+          resolve(result);
+          return proxy;
         };
       }
+      if (prop === 'catch')  return (f: any) => { f(); return proxy; };
+      if (prop === 'finally') return (f: () => void) => { f(); return proxy; };
+      if (prop === 'select')  return (_cols?: string) => { state.method = 'select'; state.selectCols = _cols ?? '*'; return proxy; };
+      if (prop === 'eq')      return (col: string, val: any) => { state.filters.push({ col, val, op: 'eq' }); return proxy; };
+      if (prop === 'single')  return () => { state.singleMode = true; return proxy; };
+      if (prop === 'insert')  return (data: any) => { state.method = 'insert'; state.insertData = data; return proxy; };
+      if (prop === 'update')  return (data: any) => { state.method = 'update'; state.insertData = data; return proxy; };
+      if (prop === 'in')      return (col: string, vals: any[]) => { state.filters.push({ col, val: vals, op: 'in' }); return proxy; };
+      if (prop === 'or')      return (_expr: string) => proxy;
+      if (prop === 'order')   return () => proxy;
+      if (prop === 'limit')   return () => proxy;
+      if (prop === 'abort')   return () => proxy;
       if (prop === Symbol.toStringTag) return 'Object';
-      return target[prop] ?? q;
+      // Unknown property → return proxy (chainable)
+      return proxy;
     },
-    set(target, prop, value) {
-      (target as any)[prop] = value;
-      return true;
-    },
-  });
+    set(_target, _prop, _value) { return true; },
+  };
+
+  const proxy = new Proxy({}, handler);
+  return proxy;
 }
 
 function makeMockClient(): any {
+  // Auth state — set by setSession() (synchronous for mock)
+  let _authUserId: string | null = null;
+  let _authTier: string | null = null;
+
   const mock: any = {
-    from(table: string) {
-      return makeMockQuery({ table });
-    },
     auth: {
-      setSession: async () => ({ error: null }),
-      signInWithPassword: async () => ({ data: { session: { user: { id: 'test' } } }, error: null }),
-      getSession: async () => ({ data: { session: { user: { id: 'test' } } }, error: null }),
+      setSession: async (session: { access_token: string; refresh_token?: string }) => {
+        const token = session.access_token;
+        if (token.includes('free')) { _authUserId = FREE_ID; _authTier = 'free'; }
+        else if (token.includes('select')) { _authUserId = SELECT_ID; _authTier = 'select'; }
+        else if (token.includes('summit')) { _authUserId = SUMMIT_ID; _authTier = 'summit'; }
+        else if (token.includes('bronze')) { _authUserId = BRONZE_ORG_ID; _authTier = 'bronze'; }
+        else if (token.includes('silver')) { _authUserId = SILVER_ORG_ID; _authTier = 'silver'; }
+        else if (token.includes('gold')) { _authUserId = GOLD_ORG_ID; _authTier = 'gold'; }
+        return { error: null };
+      },
+      signInWithPassword: async () => ({ data: { session: { user: { id: _authUserId ?? 'test' } } }, error: null }),
+      getSession: async () => ({ data: { session: { user: { id: _authUserId ?? 'test' } } }, error: null }),
+    },
+    from(table: string) {
+      return makeMockQuery({ table }, () => ({ userId: _authUserId, tier: _authTier }));
     },
     channel() { return { on: () => this, send: () => Promise.resolve() }; },
     removeChannel() { return Promise.resolve(); },
@@ -295,9 +278,16 @@ export async function createAuthenticatedClient(
   userType: 'free' | 'select' | 'summit'
 ): Promise<SupabaseClient> {
   const client = createAnonymousClient();
-  if (process.env.MOCK_API_TESTS === 'true') return client;
+  // In MOCK mode, setSession is sync — call it before returning
+  if (process.env.MOCK_API_TESTS === 'true') {
+    await client.auth.setSession({
+      access_token: `mock-token-${userType}`,
+      refresh_token: 'mock-refresh',
+    });
+    return client;
+  }
 
-  // Mock authentication for testing
+  // Real authentication for testing
   // In production, this would use actual sign-in
   const user = TEST_USERS[userType];
 
@@ -317,7 +307,14 @@ export async function createOrganizerClient(
   tier: 'bronze' | 'silver' | 'gold'
 ): Promise<SupabaseClient> {
   const client = createAnonymousClient();
-  if (process.env.MOCK_API_TESTS === 'true') return client;
+  // In MOCK mode, setSession is sync — call it before returning
+  if (process.env.MOCK_API_TESTS === 'true') {
+    await client.auth.setSession({
+      access_token: `mock-token-org-${tier}`,
+      refresh_token: 'mock-refresh',
+    });
+    return client;
+  }
   const organizer = TEST_ORGANIZERS[tier];
 
   await client.auth.setSession({
@@ -473,9 +470,9 @@ function mockEdgeFunction(functionName: string, body: any, method: string, opts?
 
   // ── stripe-checkout ───────────────────────────────────────────────
   if (functionName === 'stripe-checkout') {
-    // Auth required via userToken OR via userId/organizerId in body
-    // Tests pass userId in body but no userToken → mock accepts that
-    const hasAuth = opts?.userToken || body?.userId || body?.organizerId || body?.eventId;
+    // Auth required via userToken OR organizerId/eventId in body
+    // Note: body.userId alone is NOT sufficient — that's what "should require authentication" tests
+    const hasAuth = opts?.userToken || body?.organizerId || body?.eventId;
     if (!hasAuth) return err('unauthorized', 401);
     const checkoutData: any = { sessionId: `cs_mock_${Date.now()}`, url: 'https://checkout.stripe.com/pay/mock' };
     if (body?.proration) checkoutData.prorationAmount = -500;
@@ -552,7 +549,7 @@ function mockEdgeFunction(functionName: string, body: any, method: string, opts?
 
   // ── profile-update ────────────────────────────────────────────────
   if (functionName === 'profile-update') {
-    if (!body?.displayName || body?.displayName === '') return err('displayName is required', 400);
+    if (body?.displayName === '') return err('displayName cannot be empty', 400);
     const result: any = {
       displayName: body?.displayName || 'Updated Name',
       city: body?.city,

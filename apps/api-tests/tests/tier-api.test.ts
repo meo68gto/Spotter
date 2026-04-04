@@ -300,11 +300,11 @@ describe('Tier Feature Validation', () => {
     expect(TIER_DEFINITIONS.free.priceCentsMonthly).toBe(0);
     expect(TIER_DEFINITIONS.free.priceCentsYearly).toBe(0);
     
-    expect(TIER_DEFINITIONS.select.priceCentsMonthly).toBe(999); // $9.99
-    expect(TIER_DEFINITIONS.select.priceCentsYearly).toBe(9990); // $99.90
+    expect(TIER_DEFINITIONS.select.priceCentsMonthly).toBe(0);
+    expect(TIER_DEFINITIONS.select.priceCentsYearly).toBe(100000); // $1,000/year
     
-    expect(TIER_DEFINITIONS.summit.priceCentsMonthly).toBe(2999); // $29.99
-    expect(TIER_DEFINITIONS.summit.priceCentsYearly).toBe(29990); // $299.90
+    expect(TIER_DEFINITIONS.summit.priceCentsMonthly).toBe(0);
+    expect(TIER_DEFINITIONS.summit.priceCentsYearly).toBe(1000000); // $10,000 one-time
   });
 });
 
