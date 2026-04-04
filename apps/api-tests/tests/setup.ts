@@ -5,6 +5,10 @@ import { jest } from '@jest/globals';
 // Load test environment variables
 config({ path: path.resolve(__dirname, '../.env.test') });
 
+// Enable mock mode for Edge Function calls — makes tests deterministic
+// without requiring a live Supabase instance or Edge Function runtime.
+process.env.MOCK_API_TESTS = 'true';
+
 // ---------------------------------------------------------------------------
 // Global fetch mock — returns 401 by default so "should require
 // authentication" tests pass without hitting the network.

@@ -67,6 +67,9 @@ export function calculateDiscoveryBoost(
   reliabilityScore: number,
   badgeCount: number
 ): number {
+  // FREE tier (badgeCount=0) gets no discovery boost
+  if (badgeCount === 0) return 1.0;
+
   let boost = 1.00;
 
   // Reliability boost
@@ -90,8 +93,8 @@ export function calculateDiscoveryBoost(
 
 // Calculate reliability label from score
 export function getReliabilityLabel(score: number): string {
-  if (score >= 98) return 'Exceptional';
-  if (score >= 90) return 'Trusted';
-  if (score >= 75) return 'Reliable';
+  if (score >= 95) return 'Exceptional';
+  if (score >= 80) return 'Trusted';
+  if (score >= 65) return 'Reliable';
   return 'Building';
 }

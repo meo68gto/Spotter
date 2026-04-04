@@ -109,6 +109,9 @@ describe('Round Creation (rounds-create)', () => {
   }
 
   function createRound(input: CreateRoundInput): MockRound {
+    if (input.maxPlayers > 4) {
+      throw new Error('maxPlayers cannot exceed 4');
+    }
     return {
       id: `round-${Date.now()}`,
       organizerId: input.organizerId,
