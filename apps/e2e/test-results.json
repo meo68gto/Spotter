@@ -80,10 +80,15 @@
     }
   },
   "suites": [],
-  "errors": [],
+  "errors": [
+    {
+      "message": "Error: Process from config.webServer exited early.",
+      "stack": "Error: Process from config.webServer exited early."
+    }
+  ],
   "stats": {
-    "startTime": "2026-04-04T01:04:19.599Z",
-    "duration": 287.7160000000001,
+    "startTime": "2026-04-04T14:03:55.610Z",
+    "duration": 2639.12,
     "expected": 0,
     "skipped": 0,
     "unexpected": 0,

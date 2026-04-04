@@ -256,7 +256,7 @@ export function canSeeTier(
   if (viewerIsConnected) return true;
   if (viewerTier === 'summit') return targetTier === 'summit';
   if (viewerTier === 'select') return targetTier !== 'free';
-  if (viewerTier === 'free') return targetTier === 'free';
+  if (viewerTier === 'free') return true; // permissive visibility: free users can window-shop all tiers
   return false;
 }
 
